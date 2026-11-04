@@ -242,6 +242,8 @@ code { font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border
       <div class="seg" id="c-pattern" role="radiogroup" aria-label="Pattern"></div>
       <div class="eyebrow">Artwork style</div>
       <div class="seg" id="c-style" role="radiogroup" aria-label="Artwork style"></div>
+      <div class="eyebrow">My pose</div>
+      <div class="seg" id="c-pose" role="radiogroup" aria-label="My pose"></div>
       <label class="check"><input type="checkbox" id="c-age"> Show the age they're turning on the poster</label>
     </div>
 
@@ -716,6 +718,10 @@ const PATTERNS = { confetti: 'Confetti', rays: 'Gold rays', bokeh: 'Party lights
 const STYLES = { cinematic: ['Photo-real', 'a cinematic, photo-realistic portrait with soft studio lighting and shallow depth of field'],
   animated: ['3D animated', 'a polished 3D animated-film character style, cheerful and expressive, while keeping the face clearly recognisable'],
   watercolor: ['Watercolour', 'an elegant watercolour and gouache illustration with gold-leaf accents, keeping the face clearly recognisable'] };
+const POSES = {
+  singing: ['Singing with cake', 'The person is joyfully singing "Happy Birthday": mouth open mid-song, eyes bright and smiling, holding a beautiful birthday cake with lit candles at chest height in both hands, leaning slightly toward the viewer as if singing to a good friend. A few golden musical notes float in the air around them.'],
+  smiling: ['Smiling with cake', 'The person is smiling warmly at the camera, holding a beautiful birthday cake with lit candles at chest height in both hands, as if personally wishing a good friend a happy birthday.']
+};
 function autoPalette(c) {
   const cat = c.priorities && c.priorities[0] ? catOf(c.priorities[0]) : 'other';
   return { family: 'coral', parents: 'champagne', health: 'jade', home: 'champagne', travel: 'midnight', career: 'midnight', faith: 'champagne' }[cat]
@@ -742,6 +748,44 @@ function drawPattern(g, kind, pal, rnd, W, H, zones) {
       g.save(); g.translate(x, y); g.rotate(rnd() * Math.PI); g.globalAlpha = 0.55 + rnd() * 0.45; g.fillStyle = cols[Math.floor(rnd() * 4)];
       if (rnd() < 0.5) g.fillRect(-9, -3.5, 18, 7); else { g.beginPath(); g.arc(0, 0, 4 + rnd() * 3, 0, 7); g.fill(); } g.restore(); }
   }
+  g.restore();
+}
+// two-tier birthday cake standing in front of the portrait (bottom edge at y = base)
+function drawCake(g, cx, base, pal) {
+  g.save();
+  g.shadowColor = 'rgba(0,0,0,.35)'; g.shadowBlur = 24; g.shadowOffsetY = 8;
+  g.fillStyle = pal.gold; g.beginPath(); g.ellipse(cx, base + 4, 230, 16, 0, 0, 7); g.fill();          // plate
+  g.shadowColor = 'transparent';
+  const tier = (w, top, h, body) => {
+    const x = cx - w / 2;
+    const gr = g.createLinearGradient(x, 0, x + w, 0); gr.addColorStop(0, body); gr.addColorStop(0.5, '#ffffff'); gr.addColorStop(1, body);
+    g.fillStyle = gr; g.beginPath(); g.roundRect(x, top, w, h, 14); g.fill();
+    g.fillStyle = '#fffaf2'; g.beginPath(); g.moveTo(x, top + 12);                                         // frosting with drips
+    const drips = Math.round(w / 34);
+    for (let i = 0; i <= drips; i++) { const dx = x + (w * i) / drips; g.quadraticCurveTo(dx - w / drips / 2, top + 30 + (i % 2) * 12, dx, top + 18); }
+    g.lineTo(x + w, top + 12); g.quadraticCurveTo(x + w, top, x + w - 14, top); g.lineTo(x + 14, top); g.quadraticCurveTo(x, top, x, top + 12); g.fill();
+    g.fillStyle = pal.gold; for (let i = 1; i < drips; i += 2) { g.beginPath(); g.arc(x + (w * i) / drips, top + h - 18, 5, 0, 7); g.fill(); } // sugar pearls
+  };
+  tier(380, base - 100, 100, pal.soft);
+  tier(270, base - 172, 74, pal.soft);
+  for (let i = 0; i < 5; i++) {                                                                           // candles + flames
+    const x = cx - 96 + i * 48, top = base - 172 - 58;
+    g.fillStyle = i % 2 ? pal.gold : pal.mid; g.beginPath(); g.roundRect(x - 7, top, 14, 60, 4); g.fill();
+    g.fillStyle = '#ffffff99'; g.fillRect(x - 7, top + 14, 14, 6); g.fillRect(x - 7, top + 34, 14, 6);
+    const fl = g.createRadialGradient(x, top - 18, 2, x, top - 18, 34); fl.addColorStop(0, '#fff6c8ee'); fl.addColorStop(1, '#ffcf5a00');
+    g.fillStyle = fl; g.beginPath(); g.arc(x, top - 18, 34, 0, 7); g.fill();
+    g.fillStyle = '#ffd36b'; g.beginPath(); g.moveTo(x, top - 34); g.quadraticCurveTo(x + 11, top - 12, x, top - 3); g.quadraticCurveTo(x - 11, top - 12, x, top - 34); g.fill();
+  }
+  g.restore();
+}
+// golden music notes floating beside the portrait (singing pose)
+function drawNotes(g, cx, cy, r, pal, rnd) {
+  const spots = [[-1.12, -0.55, 70], [-1.3, 0.05, 52], [-1.05, 0.55, 44], [1.15, -0.5, 64], [1.32, 0.12, 48], [1.08, 0.6, 40]];
+  g.save(); g.fillStyle = pal.gold; g.textAlign = 'center'; g.shadowColor = 'rgba(0,0,0,.3)'; g.shadowBlur = 10;
+  spots.forEach(([fx, fy, size], i) => {
+    g.save(); g.translate(cx + fx * r, cy + fy * r); g.rotate((rnd() - 0.5) * 0.6);
+    g.font = `${size}px "Segoe UI Symbol", "Apple Symbols", "Noto Music", sans-serif`; g.fillText(i % 2 ? '♫' : '♪', 0, 0); g.restore();
+  });
   g.restore();
 }
 function wrapLines(g, text, maxW, maxLines) {
@@ -775,12 +819,14 @@ function drawPoster(canvas, o) {
       const bg = g.createRadialGradient(x - 18, y - 22, 6, x, y, 80); bg.addColorStop(0, '#ffffffcc'); bg.addColorStop(0.25, col); bg.addColorStop(1, pal.deep); g.fillStyle = bg;
       g.beginPath(); g.ellipse(x, y, 56 - i * 3, 70 - i * 3, 0, 0, 7); g.fill(); });
     // portrait in a gold ring
-    const cx = W / 2, cy = 690, r = 250;
+    const cx = W / 2, cy = 640, r = 228;
     const glow = g.createRadialGradient(cx, cy, r * 0.8, cx, cy, r * 1.45); glow.addColorStop(0, pal.gold + '66'); glow.addColorStop(1, pal.gold + '00'); g.fillStyle = glow; g.beginPath(); g.arc(cx, cy, r * 1.45, 0, 7); g.fill();
     g.save(); g.beginPath(); g.arc(cx, cy, r, 0, 7); g.clip();
     const p = o.photo, s = Math.max(2 * r / p.width, 2 * r / p.height); g.drawImage(p, cx - p.width * s / 2, cy - p.height * s / 2, p.width * s, p.height * s); g.restore();
     g.lineWidth = 14; g.strokeStyle = pal.gold; g.beginPath(); g.arc(cx, cy, r + 7, 0, 7); g.stroke();
     g.lineWidth = 3; g.strokeStyle = pal.soft; g.beginPath(); g.arc(cx, cy, r + 26, 0, 7); g.stroke();
+    drawCake(g, cx, 1000, pal);
+    if (o.pose !== 'smiling') drawNotes(g, cx, cy, r, pal, rnd);
   }
   // frame
   g.strokeStyle = pal.gold; g.globalAlpha = 0.85; g.lineWidth = 3; g.beginPath(); g.roundRect(30, 30, W - 60, H - 60, 26); g.stroke(); g.globalAlpha = 1;
@@ -819,6 +865,7 @@ function radios(container, name, options, value) {
 radios($('#c-palette'), 'pal', PALETTES, 'auto');
 radios($('#c-pattern'), 'pat', PATTERNS, 'confetti');
 radios($('#c-style'), 'sty', STYLES, 'cinematic');
+radios($('#c-pose'), 'pose', POSES, 'singing');
 const val = name => (document.querySelector(`input[name="${name}"]:checked`) || {}).value;
 
 function current() { return customers.find(c => c.id === selectedId); }
@@ -871,7 +918,7 @@ async function aiArtwork(c, pal) {
   const motifs = (c.priorities || []).slice(0, 3).join('; ') || 'a joyful celebration';
   const prompt = `Use the person in the reference photo as the only person and main subject. Keep their face, facial features, skin tone, hairstyle and glasses (if any) clearly recognisable as the same real person.
 Create a vertical, premium, "wow" birthday greeting poster artwork in ${style[1]}.
-The person is smiling warmly at the camera, holding a beautiful birthday cake with lit candles, as if personally wishing a good friend a happy birthday.
+${(POSES[val('pose')] || POSES.singing)[1]} Show the cake and both hands clearly; keep the person's face fully visible above the cake.
 Background: a festive celebration scene with balloons, soft confetti and glowing lights, plus tasteful symbolic background details inspired by what the birthday person cares about: ${motifs}. Do not show the birthday person or any other people, only symbolic objects and scenery.
 Colour palette: ${pal.desc}.
 Composition: the person in the middle third. Keep the top 25% and the bottom 30% of the image calm and uncluttered (soft background only) because text will be added there later.
@@ -889,7 +936,7 @@ async function render(wordsOverride) {
   const c = current(), nb = nextBirthday(c.dob);
   let palKey = val('pal'); if (palKey === 'auto') palKey = autoPalette(c);
   await fontsReady();
-  drawPoster($('#poster'), { customer: c, palette: palKey, pattern: val('pat'), art: lastArt, photo: await loadImage(settings.photo || PLACEHOLDER),
+  drawPoster($('#poster'), { customer: c, palette: palKey, pattern: val('pat'), pose: val('pose'), art: lastArt, photo: await loadImage(settings.photo || PLACEHOLDER),
     posterLine: (wordsOverride || lastWords).posterLine, showAge: $('#c-age').checked, turning: nb && nb.turning, dateLabel: nb ? `${nb.date.getDate()} ${MONTHS[nb.date.getMonth()]} ${nb.date.getFullYear()}` : '' });
   invalidateVideo(); // a video made from the old poster is out of date
 }
@@ -931,7 +978,7 @@ $('#redrawBtn').onclick = async () => {
   lastWords = Object.assign({}, lastWords, { posterLine: $('#w-line').value.trim() || lastWords.posterLine, message: $('#w-msg').value.trim() });
   await render(); resetSend(); toast('Poster updated');
 };
-['pal', 'pat'].forEach(n => document.addEventListener('change', e => { if (e.target.name === n && lastWords && !busy) render(); }));
+['pal', 'pat', 'pose'].forEach(n => document.addEventListener('change', e => { if (e.target.name === n && lastWords && !busy) render(); }));
 $('#c-age').onchange = () => { if (lastWords && !busy) render(); };
 
 /* ---------- sing it: record your voice, turn poster + voice into a video ---------- */
