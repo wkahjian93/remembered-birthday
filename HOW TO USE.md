@@ -1,0 +1,68 @@
+# Remembered: how to use it
+
+**The problem:** your birthday wishes sound like every other agent's, so customers reply "thank you" and the conversation stops.
+**The fix:** each wish carries a poster with your face, mentions 2 things that customer actually cares about, and ends with one specific question, so they reply with real news instead of "thanks".
+
+## One-time setup (5 minutes)
+
+1. **Open the app on your phone:** https://wkahjian93.github.io/remembered-birthday/
+   - Open it in Chrome (Android) or Safari (iPhone), then **Add to Home Screen**. It opens like an app with its own candle icon.
+   - Your customers, photo and key stay on that phone only. Anyone else opening the link sees an empty app (just the Kelly example).
+   - To update the app: edit `docs/index.html`, commit, and push to GitHub. Pages republishes it in about a minute.
+2. **Get an OpenAI API key** at platform.openai.com → API keys. Then:
+   - Add billing credit and **set a monthly spending limit** (e.g. USD 10).
+   - Complete **Organization Verification**. OpenAI requires it before image models work.
+3. In the app, tap **Me**:
+   - Choose your face photo (clear, front-facing, just you).
+   - Enter your name and sign-off (e.g. `Kah Jian · REDEFINE`).
+   - Paste your API key and tap **Test connection**. It should say `gpt-image-2 is available`.
+   - Tap **Save my details**.
+
+## Every birthday (about 2 minutes)
+
+1. **Birthdays** tab: customers are sorted by whose birthday is next. Tap **Create poster**.
+2. Pick colours, pattern and artwork style (or leave them on Auto), then tap **Create birthday poster**. The AI artwork takes 30–90 seconds.
+3. Read the poster and message, and edit any word. Tap **Update poster with my edits** if you changed the poster line.
+4. Tick the 3 checks (nickname, facts, your face), then **Share poster + message** → WhatsApp → the customer. Nothing sends until you tap send in WhatsApp.
+5. Tap **Mark as sent**. Next year the app will avoid repeating the same topic.
+
+## Sing it to them (optional, the biggest "wow")
+
+1. After creating the poster, scroll to **Sing it to them**. The lyrics card shows the customer's nickname.
+2. Tap **Record my singing**. After a 3-second countdown, sing, then tap **Stop**. 15–25 seconds is ideal, and the limit is 60.
+   - First time only: allow the microphone when your phone asks.
+   - Prefer another recorder app? Record there, then tap **Upload a voice note** (M4A, MP3 or WAV).
+3. Play it back. Not happy? **Record again**.
+4. Tap **Make singing video**. The app plays your voice over the poster with falling confetti and a gold frame that glows as you sing. It takes as long as your song. **Keep the screen open** while it works.
+5. Watch the video with sound. In **Before you send**, choose **Singing video**, tick all 4 checks, then **Share singing video + message** → WhatsApp.
+
+Tips: sing somewhere quiet, hold the phone about 20 cm from your mouth, and finish with one spoken line, such as "Kelly, enjoy your day! How's Chloe finding Primary 1?". That question is what gets a real reply.
+
+If your phone makes a **WebM** video (some Android browsers), the app warns you. If WhatsApp won't send it, choose **Poster image** and send your recording as a voice note right after it.
+
+## Adding a customer
+
+- **Nickname, date of birth and at least one priority** are needed. Gender is optional.
+- Write priorities as short phrases that fit "I remember…":
+  `Chloe starting Primary 1 next year` · `the Penang Bridge half marathon` · `saving up for a first home`
+- **Never** enter IC numbers, policy numbers or medical details. The app blocks anything that looks like an IC number.
+
+## What the app does with messy data
+
+| Situation | What happens |
+| --- | --- |
+| Missing nickname or DOB, future DOB, impossible date | Won't save, and tells you what to fix |
+| No priorities | Saves after asking you, and warns that the wish will be generic |
+| Born 1 Jan – 20 Feb | Chinese zodiac left blank, because Lunar New Year varies and the app won't guess |
+| No API key / AI fails | Falls back to the Quick design + template wording and tells you why |
+| Edit, delete, restore backup, replace photo or key | Asks you to confirm first |
+| Recording under 3s, over 60s, unreadable or very quiet | Rejects it or warns you, and asks you to record again |
+| Poster changed after the video was made | Old video is discarded, and you tap "Make the video again" |
+| Microphone blocked | Tells you how to allow it, or to upload a voice note instead |
+
+## Good to know
+
+- **Privacy:** customer list, photo and key stay in your phone's browser. Nickname, birthday, priorities and your photo are sent to OpenAI only when you tap Create. Use **Backup & restore** monthly, because clearing browser data erases the list.
+- **Cost:** you pay OpenAI per image and per message. Check current prices on OpenAI's pricing page. Medium quality is the sweet spot.
+- **Models:** default is `gpt-image-2` for images and `gpt-5-mini` for writing. You can change both in **Me** if OpenAI renames them.
+- **Kelly** is a made-up example customer. Delete her once you've added real customers.

@@ -1,0 +1,1135 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#2a1830">
+<title>Remembered</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Allura&family=Gloock&family=Manrope:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: one-column phone app, sticky header, bottom tab bar; poster preview is the hero of the Create tab. */
+:root {
+  --bg: #fbf7fa; --surface: #ffffff; --surface-2: #f4edf3; --ink: #24172a; --muted: #6e6074;
+  --line: #e6dbe5; --accent: #a8285f; --accent-ink: #ffffff; --gold: #b8913f;
+  --ok: #2f7d55; --warn: #a3650c; --bad: #b3261e; --warn-bg: #fff4e0; --bad-bg: #fde8e7; --ok-bg: #e6f4ec;
+  --display: "Gloock", Georgia, "Times New Roman", serif;
+  --body: "Manrope", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --script: "Allura", "Brush Script MT", cursive;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #150e18; --surface: #211726; --surface-2: #2b1f31; --ink: #f3eaf4; --muted: #b5a5b9;
+    --line: #3a2c40; --accent: #f06ba8; --accent-ink: #1c0f17; --gold: #e2c27e;
+    --ok: #6fd19d; --warn: #f3b65c; --bad: #ff8a80; --warn-bg: #3a2a12; --bad-bg: #3d1715; --ok-bg: #12301f; color-scheme: dark; }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--body); -webkit-font-smoothing: antialiased;
+  padding-top: env(safe-area-inset-top, 0px); padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+header.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg);
+  border-bottom: 1px solid var(--line); }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
+.wrap { max-width: 640px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+header .wrap { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding-block: 12px; }
+.brand { font-family: var(--display); font-size: 26px; letter-spacing: .01em; }
+.brand em { font-family: var(--script); font-style: normal; color: var(--accent); font-size: 30px; margin-left: 2px; }
+.tagline { color: var(--muted); font-size: 12.5px; text-align: right; }
+@media (max-width: 440px) { .tagline { display: none; } }
+
+main .wrap { padding-block: 18px 28px; display: grid; gap: 18px; }
+h1 { font-family: var(--display); font-weight: 400; font-size: 28px; line-height: 1.15; margin: 0; text-wrap: balance; }
+h2 { font-family: var(--display); font-weight: 400; font-size: 21px; margin: 0; text-wrap: balance; }
+.lede { color: var(--muted); margin: 6px 0 0; }
+.eyebrow { text-transform: uppercase; letter-spacing: .09em; font-size: 11.5px; font-weight: 700; color: var(--muted); }
+
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 16px; display: grid; gap: 14px; }
+.row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.row > * { min-width: 0; }
+.grow { flex: 1 1 auto; }
+
+.btn { appearance: none; border: 1px solid var(--line); background: var(--surface); border-radius: 12px; padding: 11px 16px;
+  font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.btn.big { width: 100%; font-size: 17px; min-height: 56px; border-radius: 14px; }
+.btn.ghost { background: transparent; }
+.btn.danger { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 40%, var(--line)); background: transparent; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn.small { min-height: 38px; padding: 7px 12px; font-size: 13.5px; border-radius: 10px; }
+
+label.field { display: grid; gap: 6px; font-weight: 600; font-size: 14px; }
+label.field small, .hint { font-weight: 500; color: var(--muted); font-size: 12.5px; }
+input[type=text], input[type=date], input[type=password], input[type=number], select, textarea {
+  width: 100%; border: 1px solid var(--line); background: var(--bg); border-radius: 11px; padding: 11px 12px; font-size: 16px; }
+textarea { min-height: 110px; resize: vertical; line-height: 1.45; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+@media (max-width: 420px) { .two { grid-template-columns: 1fr; } }
+
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chip { background: var(--surface-2); border-radius: 999px; padding: 4px 10px; font-size: 12.5px; font-weight: 600; max-width: 100%; overflow-wrap: anywhere; }
+.chip.gold { background: color-mix(in srgb, var(--gold) 22%, transparent); }
+.chip.ok { background: var(--ok-bg); color: var(--ok); }
+
+.notice { border-radius: 12px; padding: 10px 12px; font-size: 13.5px; display: grid; gap: 2px; }
+.notice.warn { background: var(--warn-bg); color: var(--warn); }
+.notice.bad { background: var(--bad-bg); color: var(--bad); }
+.notice.ok { background: var(--ok-bg); color: var(--ok); }
+.notice b { font-weight: 800; }
+
+/* customer list */
+.cust { display: grid; grid-template-columns: 56px 1fr; gap: 12px; align-items: start; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
+.when { display: grid; place-items: center; text-align: center; width: 56px; height: 60px; border-radius: 12px; background: var(--surface-2); line-height: 1.05; font-variant-numeric: tabular-nums; }
+.when b { font-family: var(--display); font-weight: 400; font-size: 22px; }
+.when span { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.when.today { background: var(--accent); color: var(--accent-ink); }
+.when.today span { color: inherit; }
+.cust h3 { margin: 0; font-size: 17px; font-weight: 800; overflow-wrap: anywhere; }
+.cust .meta { color: var(--muted); font-size: 13px; }
+.cust .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+.tag-sample { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--warn); background: var(--warn-bg); border-radius: 6px; padding: 2px 6px; margin-left: 6px; vertical-align: 2px; }
+.empty { text-align: center; color: var(--muted); padding: 28px 12px; border: 1.5px dashed var(--line); border-radius: 16px; }
+
+/* create */
+.poster-frame { position: relative; border-radius: 18px; overflow: hidden; background: var(--surface-2); aspect-ratio: 4 / 5; max-width: 100%; box-shadow: 0 18px 40px -22px rgba(40, 10, 40, .55); }
+.poster-frame canvas { width: 100%; height: 100%; display: block; }
+.progress { position: absolute; inset: 0; display: grid; place-items: center; text-align: center; padding: 24px; background: color-mix(in srgb, var(--bg) 82%, transparent); backdrop-filter: blur(3px); }
+.progress .step { font-weight: 700; }
+.progress .timer { color: var(--muted); font-size: 13px; font-variant-numeric: tabular-nums; }
+.spinner { width: 38px; height: 38px; border-radius: 50%; border: 4px solid var(--line); border-top-color: var(--accent); animation: spin 1s linear infinite; margin: 0 auto 10px; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 3s; } }
+
+.seg { display: flex; gap: 6px; flex-wrap: wrap; }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg label { border: 1px solid var(--line); border-radius: 999px; padding: 7px 12px; font-size: 13.5px; font-weight: 600; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
+.seg input:checked + label { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
+.seg input:focus-visible + label { outline: 3px solid var(--accent); outline-offset: 2px; }
+.swatch { width: 14px; height: 14px; border-radius: 50%; display: inline-block; }
+
+.check { display: flex; gap: 10px; align-items: flex-start; font-weight: 600; font-size: 14px; }
+.check input { width: 22px; height: 22px; margin-top: 1px; accent-color: var(--accent); flex: none; }
+
+.me-photo { width: 84px; height: 84px; border-radius: 50%; object-fit: cover; border: 3px solid var(--gold); background: var(--surface-2); flex: none; }
+
+/* tab bar */
+nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--surface); border-top: 1px solid var(--line);
+  padding-bottom: env(safe-area-inset-bottom, 0px); padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px); }
+nav.tabs .wrap { display: grid; grid-template-columns: repeat(3, 1fr); padding-block: 6px; }
+nav.tabs button { appearance: none; background: none; border: 0; padding: 8px 4px; border-radius: 12px; font-weight: 700; font-size: 12.5px; color: var(--muted); display: grid; justify-items: center; gap: 2px; cursor: pointer; }
+nav.tabs button svg { width: 24px; height: 24px; }
+nav.tabs button[aria-selected="true"] { color: var(--accent); background: color-mix(in srgb, var(--accent) 9%, transparent); }
+
+/* modal */
+.modal-back { position: fixed; inset: 0; z-index: 20; background: rgba(20, 8, 20, .55); display: grid; align-items: end; justify-items: center; padding: 16px; padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)); }
+.modal { background: var(--surface); color: var(--ink); border-radius: 18px; padding: 18px; width: min(520px, 100%); display: grid; gap: 12px; max-height: 88vh; overflow: auto; }
+.modal p { margin: 0; color: var(--muted); }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(90px + env(safe-area-inset-bottom, 0px)); z-index: 30; background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 12px; font-weight: 700; font-size: 14px; max-width: calc(100% - 32px); }
+/* sing it */
+.lyrics { background: var(--surface-2); border-radius: 14px; padding: 14px; }
+.lyrics p { margin: 6px 0 0; }
+.lyrics .song { font-family: var(--display); font-size: 19px; line-height: 1.55; }
+.btn.rec.live { background: var(--bad); border-color: var(--bad); color: #fff; animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 50% { box-shadow: 0 0 0 8px color-mix(in srgb, var(--bad) 25%, transparent); } }
+@media (prefers-reduced-motion: reduce) { .btn.rec.live { animation: none; } }
+audio { width: 100%; }
+video { width: 100%; max-width: 100%; aspect-ratio: 4 / 5; border-radius: 14px; background: #000; }
+details summary { cursor: pointer; font-weight: 700; }
+code { font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border-radius: 5px; }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <div class="brand">Remembered<em>.</em></div>
+    <div class="tagline">Birthday wishes they'll reply to</div>
+  </div>
+</header>
+
+<main>
+  <!-- ============ CUSTOMERS ============ -->
+  <section id="view-customers" class="wrap">
+    <div>
+      <h1>Upcoming birthdays</h1>
+      <p class="lede">Each customer card holds what they care about, so every wish sounds like you remembered.</p>
+    </div>
+    <div id="custList" style="display:grid;gap:10px"></div>
+    <button class="btn primary big" id="addCustBtn" type="button">+ Add a customer</button>
+
+    <form id="custForm" class="panel" hidden novalidate>
+      <h2 id="custFormTitle">New customer</h2>
+      <label class="field">Nickname (what you call them) *
+        <input type="text" id="f-nick" maxlength="30" autocomplete="off" placeholder="e.g. Kelly">
+      </label>
+      <div class="two">
+        <label class="field">Date of birth *
+          <input type="date" id="f-dob">
+        </label>
+        <label class="field">Gender
+          <select id="f-gender">
+            <option value="">Not sure / prefer not to say</option>
+            <option value="female">Female</option>
+            <option value="male">Male</option>
+          </select>
+        </label>
+      </div>
+      <label class="field">What they care about and prioritise *
+        <small>One per line, as a short phrase that fits "I remember…". These become the "you still remember" moments.</small>
+        <textarea id="f-pri" placeholder="Chloe starting Primary 1 next year&#10;the Penang Bridge half marathon&#10;saving up for a first home in Bayan Lepas"></textarea>
+      </label>
+      <div class="two">
+        <label class="field">Customer since (year)
+          <input type="number" id="f-since" inputmode="numeric" placeholder="e.g. 2019">
+        </label>
+        <label class="field">Recent news (optional)
+          <input type="text" id="f-notes" maxlength="140" placeholder="e.g. just got promoted">
+        </label>
+      </div>
+      <p class="hint">Don't enter IC numbers, policy numbers or medical details. Nickname, birthday and these notes are sent to OpenAI to write the wish.</p>
+      <div id="custFormIssues" style="display:grid;gap:8px"></div>
+      <div class="row">
+        <button class="btn primary grow" type="submit" id="custSaveBtn">Save customer</button>
+        <button class="btn ghost" type="button" id="custCancelBtn">Cancel</button>
+      </div>
+      <button class="btn danger" type="button" id="custDeleteBtn" hidden>Delete this customer</button>
+    </form>
+
+    <details class="panel">
+      <summary>Backup &amp; restore</summary>
+      <p class="hint" style="margin:0">Your customer list lives only in this phone's browser. Clearing browser data erases it, so keep a backup file.</p>
+      <div class="row">
+        <button class="btn small" type="button" id="exportBtn">Download backup</button>
+        <label class="btn small" for="importFile">Restore from backup</label>
+        <input type="file" id="importFile" accept="application/json,.json" hidden>
+      </div>
+    </details>
+  </section>
+
+  <!-- ============ CREATE ============ -->
+  <section id="view-create" class="wrap" hidden>
+    <div>
+      <h1>Create a birthday poster</h1>
+      <p class="lede">Pick a customer, tap create, check it, then send.</p>
+    </div>
+
+    <div class="panel">
+      <label class="field">Customer
+        <select id="c-cust"></select>
+      </label>
+      <div id="c-summary" style="display:grid;gap:10px"></div>
+    </div>
+
+    <div class="panel">
+      <div class="eyebrow">Poster artwork</div>
+      <div class="seg" role="radiogroup" aria-label="Artwork">
+        <input type="radio" name="c-art" id="art-ai" value="ai" checked><label for="art-ai">AI artwork with my face</label>
+        <input type="radio" name="c-art" id="art-quick" value="quick"><label for="art-quick">Quick design (no AI image)</label>
+      </div>
+      <div class="eyebrow">Colours</div>
+      <div class="seg" id="c-palette" role="radiogroup" aria-label="Colours"></div>
+      <div class="eyebrow">Pattern</div>
+      <div class="seg" id="c-pattern" role="radiogroup" aria-label="Pattern"></div>
+      <div class="eyebrow">Artwork style</div>
+      <div class="seg" id="c-style" role="radiogroup" aria-label="Artwork style"></div>
+      <label class="check"><input type="checkbox" id="c-age"> Show the age they're turning on the poster</label>
+    </div>
+
+    <button class="btn primary big" type="button" id="createBtn">Create birthday poster</button>
+
+    <div class="poster-frame" id="posterFrame">
+      <canvas id="poster" width="1080" height="1350" aria-label="Birthday poster preview"></canvas>
+      <div class="progress" id="progress" hidden>
+        <div><div class="spinner"></div><div class="step" id="progStep">Writing the wish…</div><div class="timer" id="progTimer"></div></div>
+      </div>
+    </div>
+    <div id="createIssues" style="display:grid;gap:8px"></div>
+
+    <div class="panel" id="wordsPanel" hidden>
+      <div class="eyebrow">Wording, edit anything</div>
+      <label class="field">Poster line
+        <textarea id="w-line" style="min-height:70px" maxlength="140"></textarea>
+      </label>
+      <label class="field">WhatsApp message
+        <textarea id="w-msg" style="min-height:220px"></textarea>
+        <small id="w-src"></small>
+      </label>
+      <div class="row">
+        <button class="btn small" type="button" id="redrawBtn">Update poster with my edits</button>
+        <button class="btn small ghost" type="button" id="rewordBtn">Write a different message</button>
+      </div>
+    </div>
+
+    <div class="panel" id="singPanel" hidden>
+      <div>
+        <h2>Sing it to them</h2>
+        <p class="hint" style="margin:4px 0 0">Optional. Your real voice singing their name turns the poster into a video they'll remember.</p>
+      </div>
+      <div class="lyrics" id="lyrics"></div>
+      <div class="row">
+        <button class="btn primary grow rec" type="button" id="recBtn">● Record my singing</button>
+        <label class="btn small" for="voiceFile">Upload a voice note</label>
+        <input type="file" id="voiceFile" accept="audio/*" hidden>
+      </div>
+      <div class="hint" id="recStatus"></div>
+      <audio id="voicePlayer" controls hidden></audio>
+      <button class="btn" type="button" id="makeVideoBtn" hidden>Make singing video</button>
+      <video id="videoPlayer" controls playsinline hidden></video>
+      <div id="singIssues" style="display:grid;gap:8px"></div>
+    </div>
+
+    <div class="panel" id="sendPanel" hidden>
+      <h2>Before you send</h2>
+      <div class="seg" id="sendFormat" role="radiogroup" aria-label="What to send" hidden>
+        <input type="radio" name="fmt" id="fmt-video" value="video"><label for="fmt-video">Singing video</label>
+        <input type="radio" name="fmt" id="fmt-image" value="image" checked><label for="fmt-image">Poster image</label>
+      </div>
+      <label class="check"><input type="checkbox" id="ok-name"> The nickname is spelled the way they like it</label>
+      <label class="check"><input type="checkbox" id="ok-facts"> Every detail mentioned is true and still current</label>
+      <label class="check"><input type="checkbox" id="ok-face"> My face looks like me and the poster looks right</label>
+      <label class="check" id="okVoiceRow" hidden><input type="checkbox" id="ok-voice"> I watched the video with sound and I'm happy with it</label>
+      <div class="row">
+        <button class="btn primary grow" type="button" id="shareBtn" disabled>Share poster + message</button>
+      </div>
+      <div class="row">
+        <button class="btn small" type="button" id="saveBtn" disabled>Save poster image</button>
+        <button class="btn small" type="button" id="copyBtn" disabled>Copy message</button>
+        <button class="btn small" type="button" id="sentBtn" disabled>Mark as sent</button>
+      </div>
+      <p class="hint" style="margin:0">Sharing opens your phone's share sheet. Choose WhatsApp, then the customer. Nothing is sent until you tap send in WhatsApp.</p>
+    </div>
+  </section>
+
+  <!-- ============ SETTINGS ============ -->
+  <section id="view-settings" class="wrap" hidden>
+    <div>
+      <h1>Your details</h1>
+      <p class="lede">Set these once. Everything is stored only on this phone.</p>
+    </div>
+    <div class="panel">
+      <div class="row">
+        <img id="mePreview" class="me-photo" alt="Your photo">
+        <div class="grow" style="display:grid;gap:8px">
+          <label class="btn small" for="mePhoto">Choose my face photo</label>
+          <input type="file" id="mePhoto" accept="image/*" hidden>
+          <span class="hint" id="mePhotoHint">Use a clear, front-facing, well-lit photo with just you in it.</span>
+        </div>
+      </div>
+      <label class="field">Your name on the poster
+        <input type="text" id="s-name" maxlength="40" placeholder="e.g. Kah Jian">
+      </label>
+      <label class="field">Sign-off line
+        <input type="text" id="s-sign" maxlength="60" placeholder="e.g. Kah Jian · REDEFINE">
+        <small>Shown at the bottom of the message and poster.</small>
+      </label>
+    </div>
+    <div class="panel">
+      <h2>ChatGPT connection</h2>
+      <label class="field">OpenAI API key
+        <input type="password" id="s-key" autocomplete="off" placeholder="sk-…">
+        <small>Stored only in this phone's browser and sent only to api.openai.com. Set a monthly spending limit in your OpenAI account.</small>
+      </label>
+      <div class="two">
+        <label class="field">Image model
+          <input type="text" id="s-imodel" list="imodels">
+          <datalist id="imodels"><option value="gpt-image-2"><option value="gpt-image-2.5-flare"><option value="gpt-image-2.5-sunburst"><option value="gpt-image-1"></datalist>
+        </label>
+        <label class="field">Writing model
+          <input type="text" id="s-tmodel" list="tmodels">
+          <datalist id="tmodels"><option value="gpt-5-mini"><option value="gpt-5"><option value="gpt-4.1-mini"></datalist>
+        </label>
+      </div>
+      <label class="field">Image quality
+        <select id="s-quality">
+          <option value="low">Low (fastest, cheapest)</option>
+          <option value="medium">Medium (recommended)</option>
+          <option value="high">High (sharpest, slower)</option>
+        </select>
+      </label>
+      <div class="row">
+        <button class="btn small" type="button" id="testKeyBtn">Test connection</button>
+        <span class="hint" id="testKeyOut"></span>
+      </div>
+    </div>
+    <button class="btn primary big" type="button" id="saveSettingsBtn">Save my details</button>
+  </section>
+</main>
+
+<nav class="tabs" aria-label="Sections">
+  <div class="wrap" role="tablist">
+    <button type="button" role="tab" data-view="customers" aria-selected="true">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>
+      Birthdays</button>
+    <button type="button" role="tab" data-view="create" aria-selected="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21h16M5 21v-7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v7"/><path d="M5 16c2 1.5 4 1.5 7 0s5-1.5 7 0"/><path d="M12 12V8M12 5.5c.8-.8.8-1.7 0-2.5-.8.8-.8 1.7 0 2.5z"/></svg>
+      Create</button>
+    <button type="button" role="tab" data-view="settings" aria-selected="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>
+      Me</button>
+  </div>
+</nav>
+
+<script>
+'use strict';
+/* ---------- storage (phone only) ---------- */
+const KEY_S = 'remembered.settings.v1', KEY_C = 'remembered.customers.v1';
+const store = {
+  get(k, fb) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : fb; } catch { return fb; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { toast('Could not save on this phone (storage full or blocked).'); return false; } }
+};
+const DEFAULT_SETTINGS = { name: '', signoff: '', photo: '', apiKey: '', imageModel: 'gpt-image-2', textModel: 'gpt-5-mini', quality: 'medium' };
+let settings = Object.assign({}, DEFAULT_SETTINGS, store.get(KEY_S, {}));
+let customers = store.get(KEY_C, null);
+if (!Array.isArray(customers)) {
+  customers = [{ id: 'sample-kelly', sample: true, nickname: 'Kelly', dob: '1990-11-02', gender: 'female',
+    priorities: ['Chloe starting Primary 1 next year', 'the Penang Bridge half marathon', 'saving up for a first home in Bayan Lepas'],
+    since: 2019, notes: 'Just moved to a new role at her company', history: [] }];
+  store.set(KEY_C, customers);
+}
+const saveCustomers = () => store.set(KEY_C, customers);
+
+/* ---------- small helpers ---------- */
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+let toastTimer;
+function toast(msg) {
+  let t = $('.toast'); if (!t) { t = document.createElement('div'); t.className = 'toast'; t.setAttribute('role', 'status'); document.body.appendChild(t); }
+  t.textContent = msg; t.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, 2600);
+}
+function ask(title, body, okLabel = 'Confirm', danger = false) {
+  return new Promise(resolve => {
+    const back = document.createElement('div'); back.className = 'modal-back';
+    back.innerHTML = `<div class="modal" role="dialog" aria-modal="true" aria-label="${esc(title)}"><h2>${esc(title)}</h2><p>${body}</p>
+      <div class="row"><button class="btn ${danger ? 'danger' : 'primary'} grow" data-ok>${esc(okLabel)}</button><button class="btn ghost" data-no>Cancel</button></div></div>`;
+    const done = v => { back.remove(); resolve(v); };
+    back.querySelector('[data-ok]').onclick = () => done(true);
+    back.querySelector('[data-no]').onclick = () => done(false);
+    back.onclick = e => { if (e.target === back) done(false); };
+    document.body.appendChild(back); back.querySelector('[data-no]').focus();
+  });
+}
+
+/* ---------- dates ---------- */
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function parseDob(s) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s || ''); if (!m) return null;
+  const y = +m[1], mo = +m[2], d = +m[3]; const dt = new Date(y, mo - 1, d);
+  return dt.getMonth() === mo - 1 && dt.getDate() === d ? { y, mo, d } : null;
+}
+const isLeap = y => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+function today0() { const t = new Date(); return new Date(t.getFullYear(), t.getMonth(), t.getDate()); }
+function nextBirthday(dob) {
+  const p = parseDob(dob); if (!p) return null; const t = today0();
+  const mk = y => new Date(y, p.mo - 1, (p.mo === 2 && p.d === 29 && !isLeap(y)) ? 28 : p.d);
+  let when = mk(t.getFullYear()); if (when < t) when = mk(t.getFullYear() + 1);
+  return { date: when, days: Math.round((when - t) / 864e5), turning: when.getFullYear() - p.y };
+}
+function westernSign(mo, d) {
+  const z = [['Capricorn', 20], ['Aquarius', 19], ['Pisces', 20], ['Aries', 20], ['Taurus', 21], ['Gemini', 21], ['Cancer', 22], ['Leo', 23], ['Virgo', 23], ['Libra', 23], ['Scorpio', 22], ['Sagittarius', 22], ['Capricorn', 99]];
+  return d <= z[mo - 1][1] ? z[mo - 1][0] : z[mo][0];
+}
+function chineseZodiac(p) {
+  // Lunar New Year falls between 21 Jan and 20 Feb, so births before 21 Feb are left blank rather than guessed.
+  if (p.mo === 1 || (p.mo === 2 && p.d <= 20)) return null;
+  return ['Rat', 'Ox', 'Tiger', 'Rabbit', 'Dragon', 'Snake', 'Horse', 'Goat', 'Monkey', 'Rooster', 'Dog', 'Pig'][((p.y - 4) % 12 + 12) % 12];
+}
+const ordinal = n => n + (['th', 'st', 'nd', 'rd'][(n % 100 > 10 && n % 100 < 14) ? 0 : (n % 10 < 4 ? n % 10 : 0)] || 'th');
+
+/* ---------- clean + validate a customer (never guess) ---------- */
+function splitPriorities(text) {
+  const seen = new Set();
+  return String(text || '').split(/\n|;|•/).map(s => s.replace(/^[\s\-*\d.)]+/, '').replace(/\s+/g, ' ').trim())
+    .filter(s => s && !seen.has(s.toLowerCase()) && seen.add(s.toLowerCase()));
+}
+function checkCustomer(raw) {
+  const errors = [], warnings = [];
+  const nickname = String(raw.nickname || '').replace(/\s+/g, ' ').trim();
+  if (!nickname) errors.push('Add a nickname.');
+  else if (/^[\d\W_]+$/u.test(nickname)) errors.push('The nickname has no letters. Check it.');
+  else if (nickname.length > 18) warnings.push('Long nickname. It will be printed smaller on the poster.');
+  const p = parseDob(raw.dob);
+  if (!raw.dob) errors.push('Add their date of birth.');
+  else if (!p) errors.push('The date of birth is not a real date.');
+  else {
+    const dt = new Date(p.y, p.mo - 1, p.d);
+    if (dt > today0()) errors.push('The date of birth is in the future.');
+    else if (p.y < 1910) errors.push('The birth year looks wrong (before 1910).');
+    else if (today0().getFullYear() - p.y < 16) warnings.push('They would be under 16. Double-check the year.');
+  }
+  const priorities = Array.isArray(raw.priorities) ? splitPriorities(raw.priorities.join('\n')) : splitPriorities(raw.priorities);
+  if (!priorities.length) warnings.push('No priorities yet. The wish will be warm but generic. Add 1–3 things they care about.');
+  if (priorities.some(x => x.length > 90)) warnings.push('One priority is very long. Short phrases read more naturally.');
+  let since = raw.since === '' || raw.since == null ? null : Number(raw.since);
+  const thisYear = new Date().getFullYear();
+  if (since !== null && !(Number.isInteger(since) && since >= 1960 && since <= thisYear)) errors.push(`"Customer since" must be a year between 1960 and ${thisYear}, or left empty.`);
+  const gender = ['female', 'male'].includes(raw.gender) ? raw.gender : '';
+  if (/\b\d{6}-?\d{2}-?\d{4}\b/.test(priorities.join(' ') + ' ' + (raw.notes || ''))) errors.push('That looks like an IC number. Remove it before saving.');
+  return { errors, warnings, data: { nickname, dob: raw.dob, gender, priorities, since, notes: String(raw.notes || '').trim() } };
+}
+function issuesHtml(errors, warnings) {
+  return errors.map(e => `<div class="notice bad"><b>Fix:</b> ${esc(e)}</div>`).join('') + warnings.map(w => `<div class="notice warn"><b>Check:</b> ${esc(w)}</div>`).join('');
+}
+
+/* ---------- views ---------- */
+function show(view) {
+  document.querySelectorAll('main > section').forEach(s => { s.hidden = s.id !== 'view-' + view; });
+  document.querySelectorAll('nav.tabs button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.view === view)));
+  if (view === 'create') renderCreate();
+  if (view === 'customers') renderCustomers();
+  window.scrollTo(0, 0);
+}
+document.querySelectorAll('nav.tabs button').forEach(b => b.onclick = () => show(b.dataset.view));
+
+/* ---------- customers ---------- */
+function renderCustomers() {
+  const list = $('#custList');
+  if (!customers.length) { list.innerHTML = '<div class="empty">No customers yet. Add your first one to get birthday reminders here.</div>'; return; }
+  const yr = new Date().getFullYear();
+  const rows = customers.map(c => ({ c, nb: nextBirthday(c.dob) })).sort((a, b) => (a.nb ? a.nb.days : 9999) - (b.nb ? b.nb.days : 9999));
+  list.innerHTML = rows.map(({ c, nb }) => {
+    const sent = (c.history || []).some(h => h.date.startsWith(String(yr)));
+    const whenBox = !nb ? `<div class="when"><b>?</b><span>date</span></div>`
+      : nb.days === 0 ? `<div class="when today"><b>🎂</b><span>Today</span></div>`
+      : `<div class="when"><b>${nb.date.getDate()}</b><span>${MONTHS[nb.date.getMonth()]}</span></div>`;
+    const soon = !nb ? 'Birthday needs fixing' : nb.days === 0 ? `Turns ${nb.turning} today` : `Turns ${nb.turning} in ${nb.days} day${nb.days === 1 ? '' : 's'}`;
+    return `<article class="cust">${whenBox}<div style="min-width:0">
+      <h3>${esc(c.nickname)}${c.sample ? '<span class="tag-sample">Example</span>' : ''}</h3>
+      <div class="meta">${soon}${sent ? ' · ' : ''}${sent ? `<span class="chip ok">Sent ${yr}</span>` : ''}</div>
+      <div class="chips" style="margin-top:6px">${(c.priorities || []).slice(0, 3).map(p => `<span class="chip">${esc(p)}</span>`).join('') || '<span class="chip">No priorities yet</span>'}</div>
+      <div class="actions"><button class="btn small primary" data-make="${c.id}">Create poster</button><button class="btn small" data-edit="${c.id}">Edit</button></div>
+    </div></article>`;
+  }).join('');
+  list.querySelectorAll('[data-make]').forEach(b => b.onclick = () => { selectedId = b.dataset.make; show('create'); });
+  list.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => openForm(b.dataset.edit));
+}
+let editingId = null;
+function openForm(id) {
+  editingId = id || null; const c = customers.find(x => x.id === id) || {};
+  $('#custFormTitle').textContent = id ? `Edit ${c.nickname}` : 'New customer';
+  $('#f-nick').value = c.nickname || ''; $('#f-dob').value = c.dob || ''; $('#f-gender').value = c.gender || '';
+  $('#f-pri').value = (c.priorities || []).join('\n'); $('#f-since').value = c.since || ''; $('#f-notes').value = c.notes || '';
+  $('#custFormIssues').innerHTML = ''; $('#custDeleteBtn').hidden = !id;
+  $('#custForm').hidden = false; $('#addCustBtn').hidden = true; $('#f-nick').focus();
+  $('#custForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+function closeForm() { $('#custForm').hidden = true; $('#addCustBtn').hidden = false; editingId = null; }
+$('#addCustBtn').onclick = () => openForm(null);
+$('#custCancelBtn').onclick = closeForm;
+$('#custForm').onsubmit = async e => {
+  e.preventDefault();
+  const { errors, warnings, data } = checkCustomer({ nickname: $('#f-nick').value, dob: $('#f-dob').value, gender: $('#f-gender').value,
+    priorities: $('#f-pri').value, since: $('#f-since').value, notes: $('#f-notes').value });
+  $('#custFormIssues').innerHTML = issuesHtml(errors, warnings);
+  if (errors.length) return;
+  if (warnings.length && !(await ask('Save with these notes?', warnings.map(esc).join('<br>'), 'Save anyway'))) return;
+  if (editingId) {
+    const c = customers.find(x => x.id === editingId);
+    if (!(await ask(`Save changes to ${esc(c.nickname)}?`, 'This replaces the details you saved before.', 'Save changes'))) return;
+    Object.assign(c, data); delete c.sample;
+  } else customers.push(Object.assign({ id: uid(), history: [] }, data));
+  saveCustomers(); closeForm(); renderCustomers(); toast('Customer saved');
+};
+$('#custDeleteBtn').onclick = async () => {
+  const c = customers.find(x => x.id === editingId); if (!c) return;
+  if (!(await ask(`Delete ${esc(c.nickname)}?`, 'Their details and send history will be removed from this phone. This cannot be undone.', 'Delete', true))) return;
+  customers = customers.filter(x => x.id !== editingId); saveCustomers(); closeForm(); renderCustomers(); toast('Customer deleted');
+};
+$('#exportBtn').onclick = () => {
+  const blob = new Blob([JSON.stringify({ app: 'Remembered', exported: new Date().toISOString(), customers }, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `remembered-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+};
+$('#importFile').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  let incoming;
+  try { const j = JSON.parse(await f.text()); incoming = Array.isArray(j) ? j : j.customers; if (!Array.isArray(incoming)) throw 0; }
+  catch { return ask('Not a backup file', 'This file is not a Remembered backup. Nothing was changed.', 'OK'); }
+  const good = [], bad = [];
+  incoming.forEach(r => { const chk = checkCustomer(r || {}); (chk.errors.length ? bad : good).push(chk.errors.length ? (r && r.nickname) || 'Unnamed' : Object.assign({ id: r.id || uid(), history: Array.isArray(r.history) ? r.history : [] }, chk.data)); });
+  const dupes = good.filter(g => customers.some(c => c.id === g.id)).length;
+  const msg = `${good.length} customer(s) ready to restore${dupes ? `, ${dupes} will replace existing entries` : ''}.` + (bad.length ? `<br>${bad.length} skipped because of missing or invalid data: ${bad.map(esc).join(', ')}.` : '');
+  if (!good.length || !(await ask('Restore backup?', msg, 'Restore'))) return;
+  good.forEach(g => { const i = customers.findIndex(c => c.id === g.id); if (i >= 0) customers[i] = g; else customers.push(g); });
+  saveCustomers(); renderCustomers(); toast('Backup restored');
+};
+
+/* ---------- settings ---------- */
+function placeholderFace() {
+  const c = document.createElement('canvas'); c.width = c.height = 512; const g = c.getContext('2d');
+  const gr = g.createLinearGradient(0, 0, 0, 512); gr.addColorStop(0, '#e9dcec'); gr.addColorStop(1, '#cdb8d3'); g.fillStyle = gr; g.fillRect(0, 0, 512, 512);
+  g.fillStyle = '#8f7896'; g.beginPath(); g.arc(256, 210, 96, 0, Math.PI * 2); g.fill();
+  g.beginPath(); g.ellipse(256, 520, 190, 190, 0, Math.PI, 0); g.fill();
+  g.fillStyle = '#ffffff'; g.font = '700 30px Manrope, sans-serif'; g.textAlign = 'center'; g.fillText('YOUR PHOTO', 256, 470);
+  return c.toDataURL('image/png');
+}
+const PLACEHOLDER = placeholderFace();
+function loadSettingsForm() {
+  $('#mePreview').src = settings.photo || PLACEHOLDER;
+  $('#mePhotoHint').textContent = settings.photo ? 'Photo saved. Tap to change it.' : 'Use a clear, front-facing, well-lit photo with just you in it.';
+  $('#s-name').value = settings.name; $('#s-sign').value = settings.signoff; $('#s-key').value = settings.apiKey;
+  $('#s-imodel').value = settings.imageModel; $('#s-tmodel').value = settings.textModel; $('#s-quality').value = settings.quality;
+}
+let pendingPhoto = null;
+function loadImage(src) { return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; }); }
+$('#mePhoto').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  try {
+    const url = URL.createObjectURL(f); const img = await loadImage(url); URL.revokeObjectURL(url);
+    if (Math.min(img.width, img.height) < 300) return ask('Photo too small', 'Pick a photo at least 300 pixels wide so your face stays sharp.', 'OK');
+    // square-crop near the top (keeps hair and face in frame on portrait shots) and shrink to 1024px to keep storage small
+    const s = Math.min(img.width, img.height), sx = (img.width - s) / 2, sy = Math.max(0, (img.height - s) * 0.08);
+    const c = document.createElement('canvas'); c.width = c.height = Math.min(1024, s);
+    c.getContext('2d').drawImage(img, sx, sy, s, s, 0, 0, c.width, c.height);
+    pendingPhoto = c.toDataURL('image/jpeg', 0.9); $('#mePreview').src = pendingPhoto;
+    $('#mePhotoHint').textContent = 'New photo chosen. Tap "Save my details" to keep it.';
+  } catch { ask('Could not read that photo', 'Try a JPG or PNG photo.', 'OK'); }
+};
+$('#saveSettingsBtn').onclick = async () => {
+  const next = Object.assign({}, settings, {
+    name: $('#s-name').value.trim(), signoff: $('#s-sign').value.trim(), apiKey: $('#s-key').value.trim(),
+    imageModel: $('#s-imodel').value.trim() || DEFAULT_SETTINGS.imageModel, textModel: $('#s-tmodel').value.trim() || DEFAULT_SETTINGS.textModel,
+    quality: $('#s-quality').value, photo: pendingPhoto || settings.photo });
+  const changes = [];
+  if (pendingPhoto && settings.photo) changes.push('replace your saved face photo');
+  if (settings.apiKey && next.apiKey !== settings.apiKey) changes.push(next.apiKey ? 'replace your saved API key' : 'remove your API key');
+  if (changes.length && !(await ask('Save changes?', `This will ${changes.join(' and ')}.`, 'Save'))) return;
+  if (next.apiKey && !/^sk-/.test(next.apiKey)) { if (!(await ask('Unusual API key', 'OpenAI keys normally start with "sk-". Save it anyway?', 'Save anyway'))) return; }
+  settings = next; pendingPhoto = null;
+  if (store.set(KEY_S, settings)) { toast('Details saved'); loadSettingsForm(); }
+};
+$('#testKeyBtn').onclick = async () => {
+  const key = $('#s-key').value.trim(), model = $('#s-imodel').value.trim() || 'gpt-image-2', out = $('#testKeyOut');
+  if (!key) { out.textContent = 'Paste your API key first.'; return; }
+  out.textContent = 'Checking…';
+  try {
+    const r = await fetch('https://api.openai.com/v1/models/' + encodeURIComponent(model), { headers: { Authorization: 'Bearer ' + key } });
+    out.textContent = r.ok ? `Connected. ${model} is available on your account.` : explainApiError(r.status, await r.text(), model);
+  } catch { out.textContent = 'No internet connection, or OpenAI could not be reached.'; }
+};
+
+/* ---------- OpenAI calls ---------- */
+function explainApiError(status, body, model) {
+  let msg = ''; try { msg = JSON.parse(body).error.message || ''; } catch {}
+  if (status === 401) return 'The API key is wrong or was revoked. Paste a fresh key in Me.';
+  if (status === 403) return 'OpenAI blocked this request. Image models need Organization Verification in your OpenAI dashboard. ' + msg;
+  if (status === 404) return `Your account can't use "${model}". Pick a different model in Me.`;
+  if (status === 429) return 'Out of credit or too many requests. Check billing at platform.openai.com.';
+  if (status === 400 && /safety|moderation/i.test(msg)) return 'OpenAI refused this image for safety reasons. Try a different photo or style.';
+  return `OpenAI error ${status}. ${msg}`.trim();
+}
+async function callJson(url, opts, model, timeoutMs) {
+  const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), timeoutMs);
+  try {
+    const r = await fetch(url, Object.assign({ signal: ctl.signal }, opts));
+    const text = await r.text();
+    if (!r.ok) throw new Error(explainApiError(r.status, text, model));
+    return JSON.parse(text);
+  } catch (e) {
+    if (e.name === 'AbortError') throw new Error('OpenAI took too long to answer. Try again, or use a lower image quality.');
+    if (e instanceof TypeError) throw new Error('No internet connection, or OpenAI could not be reached.');
+    throw e;
+  } finally { clearTimeout(t); }
+}
+function customerBrief(c) {
+  const p = parseDob(c.dob), nb = nextBirthday(c.dob);
+  const lastYear = (c.history || []).slice(-1)[0];
+  return [`Nickname: ${c.nickname}`, `Gender: ${c.gender || 'not stated'}`, nb ? `Turning: ${nb.turning} on ${nb.date.getDate()} ${MONTHS[nb.date.getMonth()]}` : '',
+    `Things they care about and prioritise:\n- ${(c.priorities || []).join('\n- ') || '(none recorded)'}`,
+    c.notes ? `Recent news: ${c.notes}` : '', c.since ? `My customer since: ${c.since}` : '',
+    p ? `Star sign: ${westernSign(p.mo, p.d)}` : '', lastYear ? `Message I sent last time (do not repeat its wording or the same main topic):\n${lastYear.message}` : ''].filter(Boolean).join('\n');
+}
+async function aiWords(c) {
+  const sys = `You write birthday messages that a Malaysian life-insurance agent sends personally to a client on WhatsApp.
+Goal: the client feels genuinely remembered, not like they got a mass greeting from "just an agent".
+Rules:
+- Natural Malaysian English, warm, confident, sincere. Sounds like a real friend who pays attention. No corporate tone.
+- Weave in 2 of the client's priorities as specific things the agent remembers. Use only facts given. Never invent names, events or numbers.
+- Never mention insurance, policies, products, coverage, financial plans, money advice or any sales call to action.
+- End the WhatsApp message with ONE light, specific question about one priority, so they naturally reply with more than "thank you".
+- WhatsApp message: 60-110 words, 2-3 short paragraphs, at most 2 emojis, then a final line with the sign-off exactly as given.
+- If the age is a milestone (30, 40, 50, 60...) you may acknowledge it gracefully; otherwise do not mention the age.
+- posterLine: one heartfelt line for the poster, max 16 words, references one priority without private details, no emojis, no hashtags.
+Return JSON only: {"posterLine": "...", "message": "..."}`;
+  const user = customerBrief(c) + `\nSign-off: ${settings.signoff || settings.name || ''}`;
+  const j = await callJson('https://api.openai.com/v1/chat/completions', {
+    method: 'POST', headers: { Authorization: 'Bearer ' + settings.apiKey, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model: settings.textModel, response_format: { type: 'json_object' }, messages: [{ role: 'system', content: sys }, { role: 'user', content: user }] })
+  }, settings.textModel, 60000);
+  let out; try { out = JSON.parse(j.choices[0].message.content); } catch { throw new Error('The writing model gave an unreadable answer.'); }
+  if (!out.posterLine || !out.message) throw new Error('The writing model left parts empty.');
+  return { posterLine: String(out.posterLine).trim(), message: String(out.message).trim(), source: 'ai' };
+}
+
+/* category detection for templates, colour and artwork motifs */
+const CATS = [
+  ['family', /\b(daughter|son|kid|kids|child|children|baby|wife|husband|family|grand|twins|newborn|primary|school)\b/i],
+  ['parents', /\b(mum|mom|mother|dad|father|parents|mama|papa)\b/i],
+  ['health', /\b(run|running|marathon|gym|fitness|health|workout|yoga|cycling|hike|hiking|swim|badminton|pickleball|diet|training)\b/i],
+  ['home', /\b(house|home|condo|property|renovat|apartment|move|moving)\b/i],
+  ['travel', /\b(travel|trip|japan|korea|taiwan|europe|holiday|vacation|flight|backpack)\b/i],
+  ['career', /\b(career|promotion|promoted|business|startup|job|role|exam|degree|study|studies|company|shop)\b/i],
+  ['faith', /\b(church|temple|mosque|volunteer|charity)\b/i]
+];
+const catOf = s => (CATS.find(([, re]) => re.test(s)) || ['other'])[0];
+// lower-case only ordinary leading words ("The…", "Saving…"); names like "Chloe" keep their capital
+const lowerFirst = s => /^(the|a|an|my|her|his|their|your|our|new|first|being|\w+ing)\b/i.test(s) ? s.charAt(0).toLowerCase() + s.slice(1) : s;
+function templateWords(c) {
+  const pr = (c.priorities || []).slice(0, 3), nb = nextBirthday(c.dob);
+  const sign = settings.signoff || settings.name || '';
+  const lines = { family: 'Here’s to more beautiful moments with the people you love most', parents: 'May this year give you more precious time with your loved ones',
+    health: 'Stronger, healthier and happier. This is your year', home: 'To a year of building the home you’ve been dreaming of',
+    travel: 'May this new year take you somewhere unforgettable', career: 'Here’s to your boldest, proudest year yet', faith: 'May this year be full of peace, purpose and blessings',
+    other: 'Here’s to everything that matters most to you' };
+  const first = pr[0] ? catOf(pr[0]) : 'other';
+  let body;
+  if (!pr.length) body = `Wishing you a year full of good health, good people and many reasons to smile.`;
+  else {
+    body = `Every time we catch up, you light up talking about ${lowerFirst(pr[0])}. I really admire that.`;
+    if (pr[1]) body += ` I'm cheering for you on ${lowerFirst(pr[1])} this year too${pr[2] ? `, and I hope ${lowerFirst(pr[2])} goes exactly the way you want` : ''}.`;
+  }
+  const milestone = nb && nb.turning % 10 === 0 && nb.turning >= 30 ? ` ${nb.turning} looks great on you!` : '';
+  const thanks = c.since ? `Thank you for trusting me since ${c.since}. It means a lot.` : 'Thank you for letting me be part of your journey.';
+  const q = pr[0] ? `\n\nBy the way, how's everything with ${lowerFirst(pr[0])}?` : '';
+  return { posterLine: lines[first], message: `Happy birthday, ${c.nickname}! 🎉${milestone}\n\n${body} ${thanks}${q}${sign ? `\n\n${sign}` : ''}`, source: 'template' };
+}
+
+/* ---------- poster design ---------- */
+const PALETTES = {
+  auto: { label: 'Auto' },
+  champagne: { label: 'Champagne', deep: '#2a1a10', mid: '#7a4f28', soft: '#f5e6c8', gold: '#ecc979', text: '#fff8ec', desc: 'champagne gold, warm ivory and deep bronze' },
+  midnight: { label: 'Midnight', deep: '#0e1330', mid: '#2e3577', soft: '#c9ccf2', gold: '#ecc66e', text: '#f7f4ff', desc: 'midnight navy, indigo and glowing gold' },
+  coral: { label: 'Coral', deep: '#4a1424', mid: '#c2456a', soft: '#ffd6c9', gold: '#ffc56e', text: '#fff5f0', desc: 'coral pink, peach and soft gold' },
+  jade: { label: 'Jade', deep: '#0c2a24', mid: '#1e6b57', soft: '#cdefe2', gold: '#e6c77a', text: '#f2fff9', desc: 'jade green, mint and antique gold' }
+};
+const PATTERNS = { confetti: 'Confetti', rays: 'Gold rays', bokeh: 'Party lights', sparkle: 'Sparkles' };
+const STYLES = { cinematic: ['Photo-real', 'a cinematic, photo-realistic portrait with soft studio lighting and shallow depth of field'],
+  animated: ['3D animated', 'a polished 3D animated-film character style, cheerful and expressive, while keeping the face clearly recognisable'],
+  watercolor: ['Watercolour', 'an elegant watercolour and gouache illustration with gold-leaf accents, keeping the face clearly recognisable'] };
+function autoPalette(c) {
+  const cat = c.priorities && c.priorities[0] ? catOf(c.priorities[0]) : 'other';
+  return { family: 'coral', parents: 'champagne', health: 'jade', home: 'champagne', travel: 'midnight', career: 'midnight', faith: 'champagne' }[cat]
+    || (c.gender === 'female' ? 'coral' : c.gender === 'male' ? 'midnight' : 'champagne');
+}
+function seeded(seedStr) { let h = 2166136261; for (const ch of seedStr) h = Math.imul(h ^ ch.charCodeAt(0), 16777619); return () => ((h = Math.imul(h ^ (h >>> 15), 2246822507) ^ Math.imul(h ^ (h >>> 13), 3266489909)) >>> 0) / 4294967296; }
+
+function drawPattern(g, kind, pal, rnd, W, H, zones) {
+  const inZone = y => !zones || zones.some(([a, b]) => y >= a && y <= b);
+  g.save();
+  if (kind === 'rays') {
+    g.translate(W / 2, zones ? 0 : H * 0.42); g.globalAlpha = zones ? 0.16 : 0.22;
+    for (let i = 0; i < 36; i++) { g.rotate(Math.PI * 2 / 36); g.fillStyle = i % 2 ? pal.gold : pal.soft; g.beginPath(); g.moveTo(0, 0); g.lineTo(-40, -1600); g.lineTo(40, -1600); g.closePath(); g.fill(); }
+  } else if (kind === 'bokeh') {
+    for (let i = 0; i < 46; i++) { const x = rnd() * W, y = rnd() * H; if (!inZone(y)) continue; const r = 14 + rnd() * 60;
+      const gr = g.createRadialGradient(x, y, 0, x, y, r); gr.addColorStop(0, pal.gold + 'aa'); gr.addColorStop(1, pal.gold + '00'); g.fillStyle = gr; g.beginPath(); g.arc(x, y, r, 0, 7); g.fill(); }
+  } else if (kind === 'sparkle') {
+    g.fillStyle = pal.gold;
+    for (let i = 0; i < 70; i++) { const x = rnd() * W, y = rnd() * H; if (!inZone(y)) continue; const s = 4 + rnd() * 16; g.globalAlpha = 0.5 + rnd() * 0.5;
+      g.beginPath(); g.moveTo(x, y - s); g.quadraticCurveTo(x, y, x + s, y); g.quadraticCurveTo(x, y, x, y + s); g.quadraticCurveTo(x, y, x - s, y); g.quadraticCurveTo(x, y, x, y - s); g.fill(); }
+  } else {
+    const cols = [pal.gold, pal.soft, pal.mid, '#ffffff'];
+    for (let i = 0; i < 150; i++) { const x = rnd() * W, y = rnd() * H; if (!inZone(y)) continue;
+      g.save(); g.translate(x, y); g.rotate(rnd() * Math.PI); g.globalAlpha = 0.55 + rnd() * 0.45; g.fillStyle = cols[Math.floor(rnd() * 4)];
+      if (rnd() < 0.5) g.fillRect(-9, -3.5, 18, 7); else { g.beginPath(); g.arc(0, 0, 4 + rnd() * 3, 0, 7); g.fill(); } g.restore(); }
+  }
+  g.restore();
+}
+function wrapLines(g, text, maxW, maxLines) {
+  const words = String(text).split(/\s+/).filter(Boolean), lines = []; let cur = '';
+  for (const w of words) { const t = cur ? cur + ' ' + w : w; if (g.measureText(t).width > maxW && cur) { lines.push(cur); cur = w; } else cur = t; }
+  if (cur) lines.push(cur);
+  return lines.length <= maxLines ? lines : null;
+}
+function fitText(g, text, font, startPx, minPx, maxW, maxLines) {
+  for (let px = startPx; px >= minPx; px -= 2) { g.font = font.replace('{px}', px); const l = wrapLines(g, text, maxW, maxLines); if (l) return { px, lines: l }; }
+  g.font = font.replace('{px}', minPx); return { px: minPx, lines: wrapLines(g, text, maxW, 99).slice(0, maxLines) };
+}
+async function fontsReady() {
+  try { await Promise.race([Promise.all(['120px Allura', '120px Gloock', '700 40px Manrope', '600 30px Manrope'].map(f => document.fonts.load(f))), new Promise(r => setTimeout(r, 3000))]); } catch {}
+}
+function drawPoster(canvas, o) {
+  const W = 1080, H = 1350, g = canvas.getContext('2d'), pal = PALETTES[o.palette], rnd = seeded(o.customer.id + o.pattern);
+  g.clearRect(0, 0, W, H); g.textAlign = 'center'; g.textBaseline = 'alphabetic';
+  if (o.art) {
+    const s = Math.max(W / o.art.width, H / o.art.height), w = o.art.width * s, h = o.art.height * s;
+    g.drawImage(o.art, (W - w) / 2, (H - h) / 2, w, h);
+    let gr = g.createLinearGradient(0, 0, 0, 470); gr.addColorStop(0, pal.deep + 'f0'); gr.addColorStop(0.65, pal.deep + '99'); gr.addColorStop(1, pal.deep + '00'); g.fillStyle = gr; g.fillRect(0, 0, W, 470);
+    gr = g.createLinearGradient(0, H - 560, 0, H); gr.addColorStop(0, pal.deep + '00'); gr.addColorStop(0.42, pal.deep + 'c8'); gr.addColorStop(1, pal.deep + 'f8'); g.fillStyle = gr; g.fillRect(0, H - 560, W, 560);
+    drawPattern(g, o.pattern, pal, rnd, W, H, [[0, 380], [H - 260, H]]);
+  } else {
+    const gr = g.createRadialGradient(W / 2, 560, 80, W / 2, 620, 900); gr.addColorStop(0, pal.mid); gr.addColorStop(1, pal.deep); g.fillStyle = gr; g.fillRect(0, 0, W, H);
+    drawPattern(g, o.pattern, pal, rnd, W, H, null);
+    // balloons
+    [[150, 720, pal.gold], [930, 690, pal.soft], [90, 900, pal.mid], [990, 900, pal.gold]].forEach(([x, y, col], i) => {
+      g.strokeStyle = pal.soft + '88'; g.lineWidth = 2; g.beginPath(); g.moveTo(x, y + 70); g.bezierCurveTo(x - 20, y + 160, x + 20, y + 240, x, y + 330); g.stroke();
+      const bg = g.createRadialGradient(x - 18, y - 22, 6, x, y, 80); bg.addColorStop(0, '#ffffffcc'); bg.addColorStop(0.25, col); bg.addColorStop(1, pal.deep); g.fillStyle = bg;
+      g.beginPath(); g.ellipse(x, y, 56 - i * 3, 70 - i * 3, 0, 0, 7); g.fill(); });
+    // portrait in a gold ring
+    const cx = W / 2, cy = 690, r = 250;
+    const glow = g.createRadialGradient(cx, cy, r * 0.8, cx, cy, r * 1.45); glow.addColorStop(0, pal.gold + '66'); glow.addColorStop(1, pal.gold + '00'); g.fillStyle = glow; g.beginPath(); g.arc(cx, cy, r * 1.45, 0, 7); g.fill();
+    g.save(); g.beginPath(); g.arc(cx, cy, r, 0, 7); g.clip();
+    const p = o.photo, s = Math.max(2 * r / p.width, 2 * r / p.height); g.drawImage(p, cx - p.width * s / 2, cy - p.height * s / 2, p.width * s, p.height * s); g.restore();
+    g.lineWidth = 14; g.strokeStyle = pal.gold; g.beginPath(); g.arc(cx, cy, r + 7, 0, 7); g.stroke();
+    g.lineWidth = 3; g.strokeStyle = pal.soft; g.beginPath(); g.arc(cx, cy, r + 26, 0, 7); g.stroke();
+  }
+  // frame
+  g.strokeStyle = pal.gold; g.globalAlpha = 0.85; g.lineWidth = 3; g.beginPath(); g.roundRect(30, 30, W - 60, H - 60, 26); g.stroke(); g.globalAlpha = 1;
+  // headline + name
+  g.shadowColor = 'rgba(0,0,0,.35)'; g.shadowBlur = 18;
+  g.fillStyle = pal.gold; g.font = '128px Allura, cursive'; g.fillText('Happy Birthday', W / 2, 168);
+  const nameFit = fitText(g, o.customer.nickname, '{px}px Gloock, Georgia, serif', 150, 64, W - 180, 1);
+  g.fillStyle = pal.text; g.font = `${nameFit.px}px Gloock, Georgia, serif`; g.fillText(nameFit.lines[0], W / 2, 168 + 30 + nameFit.px * 0.82);
+  // age badge
+  if (o.showAge && o.turning) {
+    const bx = W - 150, by = o.art ? 470 : 1010; g.shadowBlur = 0;
+    g.fillStyle = pal.gold; g.beginPath(); g.arc(bx, by, 78, 0, 7); g.fill();
+    g.fillStyle = pal.deep; g.font = '700 22px Manrope, sans-serif'; g.fillText('TURNING', bx, by - 22); g.font = '64px Gloock, Georgia, serif'; g.fillText(String(o.turning), bx, by + 38);
+    g.shadowBlur = 18;
+  }
+  // poster line
+  const lineFit = fitText(g, '“' + o.posterLine + '”', '600 {px}px Manrope, sans-serif', 46, 30, W - 200, 3);
+  g.fillStyle = pal.text; g.font = `600 ${lineFit.px}px Manrope, sans-serif`;
+  const lh = lineFit.px * 1.28, baseY = H - 150 - (lineFit.lines.length - 1) * lh;
+  lineFit.lines.forEach((l, i) => g.fillText(l, W / 2, baseY + i * lh));
+  // footer
+  g.shadowBlur = 0; g.fillStyle = pal.gold; g.font = '700 24px Manrope, sans-serif';
+  const sign = settings.name || settings.signoff;
+  g.fillText(((sign ? 'WITH WARM WISHES FROM ' + sign : 'WITH WARM WISHES') + (o.dateLabel ? '  ·  ' + o.dateLabel : '')).toUpperCase(), W / 2, H - 72);
+}
+
+/* ---------- create flow ---------- */
+let selectedId = null, lastArt = null, lastWords = null, busy = false;
+function radios(container, name, options, value) {
+  container.innerHTML = Object.entries(options).map(([k, v]) => {
+    const label = typeof v === 'string' ? v : Array.isArray(v) ? v[0] : v.label;
+    const sw = PALETTES[k] && k !== 'auto' ? `<span class="swatch" style="background:linear-gradient(135deg, ${PALETTES[k].mid}, ${PALETTES[k].gold})"></span>` : '';
+    return `<input type="radio" name="${name}" id="${name}-${k}" value="${k}" ${k === value ? 'checked' : ''}><label for="${name}-${k}">${sw}${esc(label)}</label>`;
+  }).join('');
+}
+radios($('#c-palette'), 'pal', PALETTES, 'auto');
+radios($('#c-pattern'), 'pat', PATTERNS, 'confetti');
+radios($('#c-style'), 'sty', STYLES, 'cinematic');
+const val = name => (document.querySelector(`input[name="${name}"]:checked`) || {}).value;
+
+function current() { return customers.find(c => c.id === selectedId); }
+function renderCreate() {
+  const sel = $('#c-cust');
+  if (!customers.length) { sel.innerHTML = '<option value="">Add a customer first</option>'; $('#c-summary').innerHTML = ''; $('#createBtn').disabled = true; return; }
+  const sorted = customers.map(c => ({ c, nb: nextBirthday(c.dob) })).sort((a, b) => (a.nb ? a.nb.days : 9999) - (b.nb ? b.nb.days : 9999));
+  if (!current()) selectedId = sorted[0].c.id;
+  sel.innerHTML = sorted.map(({ c, nb }) => `<option value="${c.id}" ${c.id === selectedId ? 'selected' : ''}>${esc(c.nickname)}${nb ? ` (${nb.date.getDate()} ${MONTHS[nb.date.getMonth()]})` : ''}${c.sample ? ' · example' : ''}</option>`).join('');
+  renderSummary();
+}
+function renderSummary() {
+  const c = current(); if (!c) return;
+  const chk = checkCustomer(c), nb = nextBirthday(c.dob), p = parseDob(c.dob);
+  const zh = p && chineseZodiac(p);
+  const ai = val('c-art') === 'ai';
+  const setup = [];
+  if (!settings.photo) setup.push(['warn', 'No face photo yet, so a placeholder is used. Add yours in <b>Me</b>.']);
+  if (!settings.apiKey) setup.push(['warn', 'No OpenAI key yet, so you get a Quick design and template wording. Add a key in <b>Me</b> for AI.']);
+  if (ai && !settings.photo && settings.apiKey) setup.push(['bad', 'AI artwork needs your face photo. Add it in <b>Me</b> or choose Quick design.']);
+  if (!settings.name && !settings.signoff) setup.push(['warn', 'Add your name in <b>Me</b> so the poster and message are signed.']);
+  if (c.sample) setup.push(['warn', 'Kelly is a made-up example customer for testing. Edit or delete her in Birthdays.']);
+  $('#c-summary').innerHTML = `
+    <div class="chips">
+      ${nb ? `<span class="chip gold">${nb.days === 0 ? 'Birthday today' : `In ${nb.days} day${nb.days === 1 ? '' : 's'}`} · ${nb.date.getDate()} ${MONTHS[nb.date.getMonth()]}</span><span class="chip">Turning ${nb.turning}</span>` : ''}
+      ${p ? `<span class="chip">${westernSign(p.mo, p.d)}</span>` : ''}${zh ? `<span class="chip">Year of the ${zh}</span>` : ''}
+    </div>
+    <div class="chips">${(c.priorities || []).map(x => `<span class="chip">${esc(x)}</span>`).join('')}</div>
+    ${issuesHtml(chk.errors, chk.warnings)}
+    ${setup.map(([k, m]) => `<div class="notice ${k}">${m}</div>`).join('')}`;
+  $('#createBtn').disabled = chk.errors.length > 0 || busy;
+}
+$('#c-cust').onchange = e => { selectedId = e.target.value; lastArt = null; lastWords = null; clearVoice(); resetSend(); $('#wordsPanel').hidden = true; $('#singPanel').hidden = true; $('#sendPanel').hidden = true; renderSummary(); };
+document.querySelectorAll('input[name="c-art"]').forEach(r => r.onchange = renderSummary);
+
+let timerId;
+function progress(step) {
+  const box = $('#progress');
+  if (!step) { box.hidden = true; clearInterval(timerId); return; }
+  box.hidden = false; $('#progStep').textContent = step;
+  if (!timerId || box.dataset.started !== '1') {
+    const t0 = Date.now(); box.dataset.started = '1'; clearInterval(timerId);
+    timerId = setInterval(() => { $('#progTimer').textContent = `${Math.round((Date.now() - t0) / 1000)}s · AI artwork usually takes 30–90s`; }, 500);
+  }
+}
+function stopProgress() { $('#progress').dataset.started = '0'; progress(null); $('#progTimer').textContent = ''; }
+
+async function aiArtwork(c, pal) {
+  const style = STYLES[val('sty')] || STYLES.cinematic;
+  const motifs = (c.priorities || []).slice(0, 3).join('; ') || 'a joyful celebration';
+  const prompt = `Use the person in the reference photo as the only person and main subject. Keep their face, facial features, skin tone, hairstyle and glasses (if any) clearly recognisable as the same real person.
+Create a vertical, premium, "wow" birthday greeting poster artwork in ${style[1]}.
+The person is smiling warmly at the camera, holding a beautiful birthday cake with lit candles, as if personally wishing a good friend a happy birthday.
+Background: a festive celebration scene with balloons, soft confetti and glowing lights, plus tasteful symbolic background details inspired by what the birthday person cares about: ${motifs}. Do not show the birthday person or any other people, only symbolic objects and scenery.
+Colour palette: ${pal.desc}.
+Composition: the person in the middle third. Keep the top 25% and the bottom 30% of the image calm and uncluttered (soft background only) because text will be added there later.
+Absolutely no text, letters, numbers, signs or logos anywhere in the image.`;
+  const fd = new FormData();
+  fd.append('model', settings.imageModel); fd.append('prompt', prompt);
+  fd.append('image', await (await fetch(settings.photo)).blob(), 'me.jpg');
+  fd.append('size', '1024x1536'); fd.append('quality', settings.quality);
+  const j = await callJson('https://api.openai.com/v1/images/edits', { method: 'POST', headers: { Authorization: 'Bearer ' + settings.apiKey }, body: fd }, settings.imageModel, 240000);
+  const b64 = j.data && j.data[0] && j.data[0].b64_json; if (!b64) throw new Error('The image model returned no picture.');
+  return loadImage('data:image/png;base64,' + b64);
+}
+
+async function render(wordsOverride) {
+  const c = current(), nb = nextBirthday(c.dob);
+  let palKey = val('pal'); if (palKey === 'auto') palKey = autoPalette(c);
+  await fontsReady();
+  drawPoster($('#poster'), { customer: c, palette: palKey, pattern: val('pat'), art: lastArt, photo: await loadImage(settings.photo || PLACEHOLDER),
+    posterLine: (wordsOverride || lastWords).posterLine, showAge: $('#c-age').checked, turning: nb && nb.turning, dateLabel: nb ? `${nb.date.getDate()} ${MONTHS[nb.date.getMonth()]} ${nb.date.getFullYear()}` : '' });
+  invalidateVideo(); // a video made from the old poster is out of date
+}
+
+async function create(wordsOnly) {
+  const c = current(); if (!c || busy) return;
+  const chk = checkCustomer(c); if (chk.errors.length) { renderSummary(); return; }
+  busy = true; $('#createBtn').disabled = true; $('#rewordBtn').disabled = true; resetSend();
+  const notes = [];
+  const hasKey = !!settings.apiKey, wantAi = val('c-art') === 'ai';
+  try {
+    progress('Writing a wish only you could send…');
+    if (hasKey) { try { lastWords = await aiWords(c); } catch (e) { notes.push(['warn', `AI wording failed, so a template was used instead. ${e.message}`]); lastWords = templateWords(c); } }
+    else lastWords = templateWords(c);
+    if (!wordsOnly) {
+      lastArt = null;
+      if (wantAi && hasKey && settings.photo) {
+        progress('Painting you into the poster with ChatGPT image…');
+        let palKey = val('pal'); if (palKey === 'auto') palKey = autoPalette(c);
+        try { lastArt = await aiArtwork(c, PALETTES[palKey]); } catch (e) { notes.push(['bad', `AI artwork failed, so the Quick design is shown. ${e.message}`]); }
+      } else if (wantAi) notes.push(['warn', !hasKey ? 'Showing the Quick design because no OpenAI key is set.' : 'Showing the Quick design because no face photo is set.']);
+    }
+    progress('Putting it all together…');
+    await render();
+    $('#w-line').value = lastWords.posterLine; $('#w-msg').value = lastWords.message;
+    $('#w-src').textContent = lastWords.source === 'ai' ? `Written by ${settings.textModel} from ${c.nickname}'s priorities. Check every fact before sending.` : 'Written from a template using their priorities. Add an OpenAI key for fully personal AI wording.';
+    $('#wordsPanel').hidden = false; $('#singPanel').hidden = false; $('#sendPanel').hidden = false; renderLyrics();
+  } catch (e) { notes.push(['bad', e.message || 'Something went wrong. Try again.']); }
+  finally {
+    stopProgress(); busy = false; $('#rewordBtn').disabled = false; renderSummary();
+    $('#createIssues').innerHTML = notes.map(([k, m]) => `<div class="notice ${k}">${esc(m)}</div>`).join('');
+    $('#posterFrame').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
+$('#createBtn').onclick = () => create(false);
+$('#rewordBtn').onclick = () => create(true);
+$('#redrawBtn').onclick = async () => {
+  if (!lastWords) return;
+  lastWords = Object.assign({}, lastWords, { posterLine: $('#w-line').value.trim() || lastWords.posterLine, message: $('#w-msg').value.trim() });
+  await render(); resetSend(); toast('Poster updated');
+};
+['pal', 'pat'].forEach(n => document.addEventListener('change', e => { if (e.target.name === n && lastWords && !busy) render(); }));
+$('#c-age').onchange = () => { if (lastWords && !busy) render(); };
+
+/* ---------- sing it: record your voice, turn poster + voice into a video ---------- */
+let voice = null, video = null, recorder = null, recTimer = null, making = false;
+const pickType = list => (window.MediaRecorder && MediaRecorder.isTypeSupported && list.find(t => MediaRecorder.isTypeSupported(t))) || '';
+const newAudioContext = () => new (window.AudioContext || window.webkitAudioContext)();
+function renderLyrics() {
+  const c = current(); if (!c) return;
+  const pr = (c.priorities || [])[0];
+  $('#lyrics').innerHTML = `<div class="eyebrow">Sing this</div>
+    <p class="song">Happy birthday to you<br>Happy birthday to you<br>Happy birthday dear <b>${esc(c.nickname)}</b><br>Happy birthday to you</p>
+    <p class="hint">Then add one line in your normal voice, e.g. “${esc(c.nickname)}, enjoy your day!${pr ? ` How’s ${esc(lowerFirst(pr))} going?` : ''}”</p>`;
+}
+function setSingStatus(msg, kind) { $('#singIssues').innerHTML = msg ? `<div class="notice ${kind || 'warn'}">${esc(msg)}</div>` : ''; }
+function syncSendFormat() {
+  $('#sendFormat').hidden = !video; $('#okVoiceRow').hidden = !video;
+  if (!video) $('#fmt-image').checked = true;
+  gateSend();
+}
+function invalidateVideo() {
+  if (!video) return;
+  URL.revokeObjectURL(video.url); video = null;
+  $('#videoPlayer').hidden = true; $('#videoPlayer').removeAttribute('src');
+  if (voice && !making) { $('#makeVideoBtn').hidden = false; $('#makeVideoBtn').textContent = 'Make the video again (poster changed)'; }
+  syncSendFormat();
+}
+function clearVoice() {
+  invalidateVideo(); if (voice) URL.revokeObjectURL(voice.url); voice = null;
+  $('#voicePlayer').hidden = true; $('#voicePlayer').removeAttribute('src'); $('#makeVideoBtn').hidden = true;
+  $('#recStatus').textContent = ''; setSingStatus(''); $('#recBtn').textContent = '● Record my singing';
+}
+async function setVoice(blob, from) {
+  let buffer;
+  try { const ac = newAudioContext(); buffer = await ac.decodeAudioData(await blob.arrayBuffer()); ac.close(); }
+  catch { return setSingStatus('That recording could not be read. Record again, or upload an M4A, MP3 or WAV file.', 'bad'); }
+  if (buffer.duration < 3) return setSingStatus('That recording is under 3 seconds. Sing the whole song.', 'bad');
+  if (buffer.duration > 60) return setSingStatus('That recording is over 60 seconds. Keep it under a minute.', 'bad');
+  clearVoice();
+  voice = { blob, buffer, url: URL.createObjectURL(blob), duration: buffer.duration };
+  $('#voicePlayer').src = voice.url; $('#voicePlayer').hidden = false;
+  $('#recStatus').textContent = `${from} · ${voice.duration.toFixed(1)}s. Play it back, then make the video.`;
+  $('#recBtn').textContent = '● Record again';
+  $('#makeVideoBtn').hidden = false; $('#makeVideoBtn').textContent = 'Make singing video';
+  const d = buffer.getChannelData(0); let peak = 0; for (let i = 0; i < d.length; i += 64) peak = Math.max(peak, Math.abs(d[i]));
+  if (peak < 0.05) setSingStatus('The recording is very quiet. Hold the phone closer and sing a little louder.');
+}
+$('#recBtn').onclick = async () => {
+  if (recorder && recorder.state === 'recording') { recorder.stop(); return; }
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder)
+    return setSingStatus('This browser can’t record audio. Record a voice note in another app, then tap “Upload a voice note”.', 'bad');
+  if (voice && !(await ask('Record again?', 'Your current recording will be replaced.', 'Record again'))) return;
+  let stream;
+  try { stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: true } }); }
+  catch (e) {
+    return setSingStatus(e.name === 'NotAllowedError' ? 'Microphone access is blocked. Allow the microphone for this site in your browser settings, then try again.'
+      : e.name === 'NotFoundError' ? 'No microphone was found on this device.' : 'The microphone could not start. ' + e.message, 'bad');
+  }
+  const btn = $('#recBtn'); btn.disabled = true; setSingStatus('');
+  for (let n = 3; n > 0; n--) { btn.textContent = `Get ready… ${n}`; await new Promise(r => setTimeout(r, 800)); }
+  const mime = pickType(['audio/mp4', 'audio/webm;codecs=opus', 'audio/webm']);
+  const chunks = [];
+  recorder = new MediaRecorder(stream, mime ? { mimeType: mime } : {});
+  recorder.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+  recorder.onstop = () => {
+    clearInterval(recTimer); stream.getTracks().forEach(t => t.stop()); btn.classList.remove('live'); recorder = null;
+    setVoice(new Blob(chunks, { type: (chunks[0] && chunks[0].type) || mime || 'audio/webm' }), 'Recorded');
+  };
+  const t0 = Date.now(); recorder.start(); btn.disabled = false; btn.classList.add('live'); btn.textContent = '■ Stop recording · 0s';
+  recTimer = setInterval(() => {
+    const s = (Date.now() - t0) / 1000; btn.textContent = `■ Stop recording · ${Math.floor(s)}s`;
+    if (s >= 60 && recorder && recorder.state === 'recording') recorder.stop();
+  }, 250);
+};
+$('#voiceFile').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  if (voice && !(await ask('Replace recording?', 'Your current recording will be replaced.', 'Replace'))) return;
+  setVoice(f, 'Uploaded');
+};
+$('#makeVideoBtn').onclick = async () => {
+  if (!voice || making) return;
+  const vc = document.createElement('canvas');
+  if (!vc.captureStream || !window.MediaRecorder) return setSingStatus('This browser can’t make videos. Send the poster image, then send your recording as a voice note.', 'bad');
+  making = true; invalidateVideo(); $('#makeVideoBtn').hidden = true; resetSend(); setSingStatus('');
+  const W = 720, H = 900, g = vc.getContext('2d'), poster = $('#poster'), c = current();
+  vc.width = W; vc.height = H;
+  let palKey = val('pal'); if (palKey === 'auto') palKey = autoPalette(c); const pal = PALETTES[palKey];
+  const ac = newAudioContext();
+  const iv = { id: 0 };
+  try {
+    await ac.resume();
+    const dest = ac.createMediaStreamDestination(), an = ac.createAnalyser(); an.fftSize = 1024;
+    const src = ac.createBufferSource(); src.buffer = voice.buffer; src.connect(dest); src.connect(an);
+    const stream = vc.captureStream(30); dest.stream.getAudioTracks().forEach(t => stream.addTrack(t));
+    // WhatsApp plays MP4 best; browsers that can't write MP4 fall back to WebM
+    const mime = pickType(['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4;codecs=avc1,mp4a.40.2', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm']);
+    const chunks = [], rec = new MediaRecorder(stream, Object.assign({ videoBitsPerSecond: 3000000 }, mime ? { mimeType: mime } : {}));
+    rec.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+    const done = new Promise(r => { rec.onstop = r; });
+    const rnd = seeded(c.id + 'video');
+    const bits = Array.from({ length: 70 }, () => ({ x: rnd() * W, y: rnd() * H, v: 60 + rnd() * 120, s: 6 + rnd() * 8, r: rnd() * 6, vr: (rnd() - 0.5) * 4,
+      col: [pal.gold, pal.soft, '#ffffff', pal.mid][Math.floor(rnd() * 4)] }));
+    const lead = 0.4, total = voice.duration + lead + 1.2, wave = new Uint8Array(an.fftSize);
+    let level = 0;
+    const t0 = performance.now();
+    const frame = () => {
+      const t = (performance.now() - t0) / 1000, p = Math.min(1, t / total);
+      an.getByteTimeDomainData(wave); let sum = 0; for (const v of wave) sum += (v - 128) ** 2;
+      level = level * 0.8 + Math.min(1, Math.sqrt(sum / wave.length) / 40) * 0.2;
+      const z = 1 + 0.07 * p, w = W * z, h = H * z;             // slow push-in on the poster
+      g.drawImage(poster, (W - w) / 2, (H - h) / 2 - 12 * p, w, h);
+      g.save(); g.globalAlpha = Math.min(1, t / 0.8) * 0.9;     // falling confetti
+      bits.forEach(b => { const y = ((b.y + b.v * t) % (H + 40)) - 20;
+        g.save(); g.translate(b.x + Math.sin(t * 2 + b.r) * 12, y); g.rotate(b.r + b.vr * t); g.fillStyle = b.col; g.fillRect(-b.s / 2, -b.s / 4, b.s, b.s / 2); g.restore(); });
+      g.restore();
+      g.save(); g.strokeStyle = pal.gold; g.shadowColor = pal.gold;  // gold frame glows with your voice
+      g.lineWidth = 5 + level * 10; g.shadowBlur = 8 + level * 50; g.globalAlpha = 0.35 + level * 0.65;
+      g.beginPath(); g.roundRect(14, 14, W - 28, H - 28, 22); g.stroke(); g.restore();
+      if (t > total - 0.6) { g.fillStyle = pal.deep; g.globalAlpha = Math.min(1, (t - total + 0.6) / 0.6) * 0.55; g.fillRect(0, 0, W, H); g.globalAlpha = 1; }
+      $('#progTimer').textContent = `${Math.floor(Math.min(t, total))}s of ${Math.ceil(total)}s · keep this screen open`;
+      return t;
+    };
+    $('#progress').hidden = false; $('#progStep').textContent = 'Making your singing video…';
+    $('#posterFrame').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    frame(); rec.start(250); src.start(ac.currentTime + lead);
+    iv.id = setInterval(() => { if (frame() >= total && rec.state === 'recording') { clearInterval(iv.id); rec.stop(); } }, 1000 / 30);
+    await done;
+    const type = (chunks[0] && chunks[0].type) || rec.mimeType || mime || 'video/webm';
+    const blob = new Blob(chunks, { type });
+    if (blob.size < 10000) throw new Error('The video came out empty.');
+    video = { blob, url: URL.createObjectURL(blob), ext: /mp4/.test(type) ? 'mp4' : 'webm', type: type.split(';')[0] };
+    $('#videoPlayer').src = video.url; $('#videoPlayer').hidden = false; $('#fmt-video').checked = true;
+    setSingStatus(video.ext === 'webm' ? 'Your browser made a WebM video. If WhatsApp won’t send it, choose “Poster image” and send your recording as a voice note.'
+      : 'Video ready. Watch it with sound before sending.', video.ext === 'webm' ? 'warn' : 'ok');
+  } catch (e) {
+    setSingStatus('The video could not be made. ' + (e.message || '') + ' You can still send the poster and your recording separately.', 'bad');
+    $('#makeVideoBtn').hidden = false;
+  } finally {
+    clearInterval(iv.id); stopProgress(); ac.close(); making = false; syncSendFormat();
+  }
+};
+
+/* ---------- confirm-before-send ---------- */
+const okBoxes = ['#ok-name', '#ok-facts', '#ok-face', '#ok-voice'];
+const sendingVideo = () => !!video && $('#fmt-video').checked;
+function resetSend() { okBoxes.forEach(s => { $(s).checked = false; }); gateSend(); }
+function gateSend() {
+  const ok = okBoxes.filter(s => !$(s).closest('label').hidden).every(s => $(s).checked);
+  ['#shareBtn', '#saveBtn', '#copyBtn', '#sentBtn'].forEach(s => { $(s).disabled = !ok; });
+  $('#shareBtn').textContent = sendingVideo() ? 'Share singing video + message' : 'Share poster + message';
+  $('#saveBtn').textContent = sendingVideo() ? 'Save video' : 'Save poster image';
+}
+okBoxes.forEach(s => $(s).onchange = gateSend);
+document.querySelectorAll('input[name="fmt"]').forEach(r => r.onchange = gateSend);
+['#w-line', '#w-msg'].forEach(s => $(s).addEventListener('input', resetSend));
+const fileName = (ext = 'jpg') => `happy-birthday-${current().nickname.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.${ext}`;
+const posterBlob = () => new Promise(r => $('#poster').toBlob(r, 'image/jpeg', 0.93));
+const shareFile = async () => sendingVideo() ? new File([video.blob], fileName(video.ext), { type: video.type })
+  : new File([await posterBlob()], fileName(), { type: 'image/jpeg' });
+async function copyMsg() {
+  const text = $('#w-msg').value;
+  try { await navigator.clipboard.writeText(text); return true; } catch { $('#w-msg').focus(); $('#w-msg').select(); return false; }
+}
+$('#copyBtn').onclick = async () => toast((await copyMsg()) ? 'Message copied' : 'Message selected. Tap Copy.');
+$('#saveBtn').onclick = async () => {
+  const f = await shareFile();
+  const a = document.createElement('a'); a.href = URL.createObjectURL(f); a.download = f.name;
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000); toast(sendingVideo() ? 'Video saved' : 'Poster saved');
+};
+$('#shareBtn').onclick = async () => {
+  const c = current();
+  const what = sendingVideo() ? 'singing video' : 'poster';
+  if (!(await ask(`Share to ${esc(c.nickname)}?`, `Your phone’s share sheet will open with the ${what} and message. Pick WhatsApp and the right contact. It only sends when you tap send there.`, 'Open share sheet'))) return;
+  const file = await shareFile();
+  const copied = await copyMsg();
+  if (navigator.canShare && navigator.canShare({ files: [file] })) {
+    try { await navigator.share({ files: [file], text: $('#w-msg').value }); toast(copied ? 'Shared. Message is also on your clipboard.' : 'Shared'); }
+    catch (e) { if (e.name !== 'AbortError') toast('Sharing failed. Use Save poster + Copy message.'); }
+  } else {
+    $('#saveBtn').click();
+    ask('Send it from WhatsApp', `This browser can't share files directly. The ${what} was saved to your downloads${copied ? ' and the message copied' : ''}. Open WhatsApp, attach it, then paste the message.`, 'OK');
+  }
+};
+$('#sentBtn').onclick = async () => {
+  const c = current();
+  if (!(await ask(`Mark ${esc(c.nickname)} as sent?`, 'Saves today’s date and this message, so next year’s wish talks about something new.', 'Mark as sent'))) return;
+  c.history = (c.history || []).concat({ date: new Date().toISOString().slice(0, 10), message: $('#w-msg').value, sang: sendingVideo() });
+  saveCustomers(); toast(`Logged. ${c.nickname} won't get the same wish next year.`);
+};
+
+/* ---------- boot ---------- */
+loadSettingsForm(); renderCustomers();
+(async () => { // draw a preview of the next birthday straight away so the app never opens empty
+  renderCreate(); const c = current(); if (!c) return;
+  lastWords = templateWords(c); await render();
+  $('#w-line').value = lastWords.posterLine; $('#w-msg').value = lastWords.message;
+  $('#w-src').textContent = 'Preview from a template. Tap "Create birthday poster" for the full version.';
+  $('#wordsPanel').hidden = false; $('#singPanel').hidden = false; $('#sendPanel').hidden = false; renderLyrics();
+})();
+</script>
+</body>
+</html>

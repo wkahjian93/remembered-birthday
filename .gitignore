@@ -1,0 +1,4 @@
+# screenshots contain the owner's face; keep them off the public repo
+*.jpg
+*.jpeg
+node_modules/
