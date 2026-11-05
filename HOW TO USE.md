@@ -26,19 +26,17 @@
 4. Tick the 3 checks (nickname, facts, your face), then **Share poster + message** → WhatsApp → the customer. Nothing sends until you tap send in WhatsApp.
 5. Tap **Mark as sent**. Next year the app will avoid repeating the same topic.
 
-## Sing it to them (optional, the biggest "wow")
+## Animated poster (optional, the biggest "wow")
 
-1. After creating the poster, scroll to **Sing it to them**. The lyrics card shows the customer's nickname.
-2. Tap **Record my singing**. After a 3-second countdown, sing, then tap **Stop**. 15–25 seconds is ideal, and the limit is 60.
-   - First time only: allow the microphone when your phone asks.
-   - Prefer another recorder app? Record there, then tap **Upload a voice note** (M4A, MP3 or WAV).
-3. Play it back. Not happy? **Record again**.
-4. Tap **Make singing video**. The app plays your voice over the poster with falling confetti and a gold frame that glows as you sing. It takes as long as your song. **Keep the screen open** while it works.
-5. Watch the video with sound. In **Before you send**, choose **Singing video**, tick all 4 checks, then **Share singing video + message** → WhatsApp.
+The poster shows you holding a birthday cake out to the customer, with "from <your name>" under their name, so it's clearly **their** birthday and **your** wish. With an OpenAI key, the AI paints you holding the cake (pose: **Presenting a cake** or **Singing to them**). Without a key, the Quick design shows your photo with a cake beside it and a speech bubble.
 
-Tips: sing somewhere quiet, hold the phone about 20 cm from your mouth, and finish with one spoken line, such as "Kelly, enjoy your day! How's Chloe finding Primary 1?". That question is what gets a real reply.
+1. After creating the poster, scroll to **Animated poster**.
+2. Leave **Add a soft music-box tune** ticked (an original tune, so there are no copyright issues), then tap **Make animated poster**. It takes about 8 seconds. **Keep the screen open** while it works.
+3. Watch it. In **Before you send**, choose **Animated poster**, tick all 4 checks, then **Share animated poster + message** → WhatsApp.
 
-If your phone makes a **WebM** video (some Android browsers), the app warns you. If WhatsApp won't send it, choose **Poster image** and send your recording as a voice note right after it.
+Optional: open **Use my own voice instead of music** to record or upload a short voice note. It replaces the tune.
+
+If your phone makes a **WebM** video (some Android browsers), the app warns you. If WhatsApp won't send it, choose **Poster image** instead.
 
 ## Adding a customer
 
@@ -57,7 +55,7 @@ If your phone makes a **WebM** video (some Android browsers), the app warns you.
 | No API key / AI fails | Falls back to the Quick design + template wording and tells you why |
 | Edit, delete, restore backup, replace photo or key | Asks you to confirm first |
 | Recording under 3s, over 60s, unreadable or very quiet | Rejects it or warns you, and asks you to record again |
-| Poster changed after the video was made | Old video is discarded, and you tap "Make the video again" |
+| Poster changed after the animated poster was made | Old video is discarded, and you tap "Make animated poster again" |
 | Microphone blocked | Tells you how to allow it, or to upload a voice note instead |
 
 ## Good to know

@@ -274,32 +274,38 @@ code { font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border
 
     <div class="panel" id="singPanel" hidden>
       <div>
-        <h2>Sing it to them</h2>
-        <p class="hint" style="margin:4px 0 0">Optional. Your real voice singing their name turns the poster into a video they'll remember.</p>
+        <h2>Animated poster</h2>
+        <p class="hint" style="margin:4px 0 0">Turns the poster into an 8-second video with falling confetti, twinkling lights and a glowing frame. It stands out in WhatsApp.</p>
       </div>
-      <div class="lyrics" id="lyrics"></div>
-      <div class="row">
-        <button class="btn primary grow rec" type="button" id="recBtn">● Record my singing</button>
-        <label class="btn small" for="voiceFile">Upload a voice note</label>
-        <input type="file" id="voiceFile" accept="audio/*" hidden>
-      </div>
-      <div class="hint" id="recStatus"></div>
-      <audio id="voicePlayer" controls hidden></audio>
-      <button class="btn" type="button" id="makeVideoBtn" hidden>Make singing video</button>
+      <label class="check"><input type="checkbox" id="v-music" checked> Add a soft music-box tune</label>
+      <button class="btn primary" type="button" id="makeVideoBtn">Make animated poster</button>
       <video id="videoPlayer" controls playsinline hidden></video>
       <div id="singIssues" style="display:grid;gap:8px"></div>
+      <details>
+        <summary>Use my own voice instead of music (optional)</summary>
+        <div style="display:grid;gap:12px;margin-top:12px">
+          <div class="lyrics" id="lyrics"></div>
+          <div class="row">
+            <button class="btn grow rec" type="button" id="recBtn">● Record my voice</button>
+            <label class="btn small" for="voiceFile">Upload a voice note</label>
+            <input type="file" id="voiceFile" accept="audio/*" hidden>
+          </div>
+          <div class="hint" id="recStatus"></div>
+          <audio id="voicePlayer" controls hidden></audio>
+        </div>
+      </details>
     </div>
 
     <div class="panel" id="sendPanel" hidden>
       <h2>Before you send</h2>
       <div class="seg" id="sendFormat" role="radiogroup" aria-label="What to send" hidden>
-        <input type="radio" name="fmt" id="fmt-video" value="video"><label for="fmt-video">Singing video</label>
+        <input type="radio" name="fmt" id="fmt-video" value="video"><label for="fmt-video">Animated poster</label>
         <input type="radio" name="fmt" id="fmt-image" value="image" checked><label for="fmt-image">Poster image</label>
       </div>
       <label class="check"><input type="checkbox" id="ok-name"> The nickname is spelled the way they like it</label>
       <label class="check"><input type="checkbox" id="ok-facts"> Every detail mentioned is true and still current</label>
       <label class="check"><input type="checkbox" id="ok-face"> My face looks like me and the poster looks right</label>
-      <label class="check" id="okVoiceRow" hidden><input type="checkbox" id="ok-voice"> I watched the video with sound and I'm happy with it</label>
+      <label class="check" id="okVoiceRow" hidden><input type="checkbox" id="ok-voice"> I watched the animated poster with sound and it looks right</label>
       <div class="row">
         <button class="btn primary grow" type="button" id="shareBtn" disabled>Share poster + message</button>
       </div>
@@ -718,9 +724,11 @@ const PATTERNS = { confetti: 'Confetti', rays: 'Gold rays', bokeh: 'Party lights
 const STYLES = { cinematic: ['Photo-real', 'a cinematic, photo-realistic portrait with soft studio lighting and shallow depth of field'],
   animated: ['3D animated', 'a polished 3D animated-film character style, cheerful and expressive, while keeping the face clearly recognisable'],
   watercolor: ['Watercolour', 'an elegant watercolour and gouache illustration with gold-leaf accents, keeping the face clearly recognisable'] };
+// the agent is the friend delivering the cake, never the one celebrating
+const NOT_CELEBRANT = 'They are the friend bringing the cake to the birthday person (the viewer), not the one celebrating: no party hat, no birthday sash, no blowing out candles.';
 const POSES = {
-  singing: ['Singing with cake', 'The person is joyfully singing "Happy Birthday": mouth open mid-song, eyes bright and smiling, holding a beautiful birthday cake with lit candles at chest height in both hands, leaning slightly toward the viewer as if singing to a good friend. A few golden musical notes float in the air around them.'],
-  smiling: ['Smiling with cake', 'The person is smiling warmly at the camera, holding a beautiful birthday cake with lit candles at chest height in both hands, as if personally wishing a good friend a happy birthday.']
+  presenting: ['Presenting a cake', `The person is smiling warmly and holding a beautiful birthday cake with lit candles out toward the viewer in both hands, clearly offering it to them. ${NOT_CELEBRANT}`],
+  singing: ['Singing to them', `The person is joyfully singing "Happy Birthday" to the viewer, mouth open mid-song, while holding a beautiful birthday cake with lit candles out toward the viewer in both hands. A few golden musical notes float in the air. ${NOT_CELEBRANT}`]
 };
 function autoPalette(c) {
   const cat = c.priorities && c.priorities[0] ? catOf(c.priorities[0]) : 'other';
@@ -778,9 +786,20 @@ function drawCake(g, cx, base, pal) {
   }
   g.restore();
 }
-// golden music notes floating beside the portrait (singing pose)
+// speech bubble from the agent's portrait, so the poster reads as "me wishing you"
+function drawBubble(g, text, x, y, w, tipX, tipY, pal) {
+  const fit = fitText(g, text, '800 {px}px Manrope, sans-serif', 46, 28, w - 56, 3);
+  const lh = fit.px * 1.2, h = fit.lines.length * lh + 44;
+  g.save(); g.shadowColor = 'rgba(0,0,0,.3)'; g.shadowBlur = 20; g.fillStyle = pal.text;
+  g.beginPath(); g.roundRect(x, y, w, h, 28); g.fill();
+  g.beginPath(); g.moveTo(x + 40, y + h - 6); g.lineTo(tipX, tipY); g.lineTo(x + 100, y + h - 6); g.closePath(); g.fill();
+  g.shadowColor = 'transparent'; g.fillStyle = pal.deep; g.font = `800 ${fit.px}px Manrope, sans-serif`; g.textAlign = 'center';
+  fit.lines.forEach((l, i) => g.fillText(l, x + w / 2, y + 22 + fit.px * 0.9 + i * lh));
+  g.restore();
+}
+// golden music notes floating on the open side of the portrait (singing pose)
 function drawNotes(g, cx, cy, r, pal, rnd) {
-  const spots = [[-1.12, -0.55, 70], [-1.3, 0.05, 52], [-1.05, 0.55, 44], [1.15, -0.5, 64], [1.32, 0.12, 48], [1.08, 0.6, 40]];
+  const spots = [[-1.12, -0.55, 70], [-1.3, 0.05, 52], [-1.05, 0.55, 44]];
   g.save(); g.fillStyle = pal.gold; g.textAlign = 'center'; g.shadowColor = 'rgba(0,0,0,.3)'; g.shadowBlur = 10;
   spots.forEach(([fx, fy, size], i) => {
     g.save(); g.translate(cx + fx * r, cy + fy * r); g.rotate((rnd() - 0.5) * 0.6);
@@ -814,19 +833,20 @@ function drawPoster(canvas, o) {
     const gr = g.createRadialGradient(W / 2, 560, 80, W / 2, 620, 900); gr.addColorStop(0, pal.mid); gr.addColorStop(1, pal.deep); g.fillStyle = gr; g.fillRect(0, 0, W, H);
     drawPattern(g, o.pattern, pal, rnd, W, H, null);
     // balloons
-    [[150, 720, pal.gold], [930, 690, pal.soft], [90, 900, pal.mid], [990, 900, pal.gold]].forEach(([x, y, col], i) => {
+    [[115, 520, pal.gold], [975, 735, pal.soft], [95, 960, pal.mid]].forEach(([x, y, col], i) => {
       g.strokeStyle = pal.soft + '88'; g.lineWidth = 2; g.beginPath(); g.moveTo(x, y + 70); g.bezierCurveTo(x - 20, y + 160, x + 20, y + 240, x, y + 330); g.stroke();
       const bg = g.createRadialGradient(x - 18, y - 22, 6, x, y, 80); bg.addColorStop(0, '#ffffffcc'); bg.addColorStop(0.25, col); bg.addColorStop(1, pal.deep); g.fillStyle = bg;
       g.beginPath(); g.ellipse(x, y, 56 - i * 3, 70 - i * 3, 0, 0, 7); g.fill(); });
-    // portrait in a gold ring
-    const cx = W / 2, cy = 640, r = 228;
+    // portrait in a gold ring (left), offering the cake (right) and saying the wish (bubble)
+    const cx = 390, cy = 665, r = 190;
     const glow = g.createRadialGradient(cx, cy, r * 0.8, cx, cy, r * 1.45); glow.addColorStop(0, pal.gold + '66'); glow.addColorStop(1, pal.gold + '00'); g.fillStyle = glow; g.beginPath(); g.arc(cx, cy, r * 1.45, 0, 7); g.fill();
     g.save(); g.beginPath(); g.arc(cx, cy, r, 0, 7); g.clip();
     const p = o.photo, s = Math.max(2 * r / p.width, 2 * r / p.height); g.drawImage(p, cx - p.width * s / 2, cy - p.height * s / 2, p.width * s, p.height * s); g.restore();
     g.lineWidth = 14; g.strokeStyle = pal.gold; g.beginPath(); g.arc(cx, cy, r + 7, 0, 7); g.stroke();
     g.lineWidth = 3; g.strokeStyle = pal.soft; g.beginPath(); g.arc(cx, cy, r + 26, 0, 7); g.stroke();
-    drawCake(g, cx, 1000, pal);
-    if (o.pose !== 'smiling') drawNotes(g, cx, cy, r, pal, rnd);
+    drawCake(g, 660, 1010, pal);
+    if (o.pose === 'singing') drawNotes(g, cx, cy, r, pal, rnd);
+    drawBubble(g, `Happy birthday, ${o.customer.nickname}!`, 600, 430, 400, 560, 560, pal);
   }
   // frame
   g.strokeStyle = pal.gold; g.globalAlpha = 0.85; g.lineWidth = 3; g.beginPath(); g.roundRect(30, 30, W - 60, H - 60, 26); g.stroke(); g.globalAlpha = 1;
@@ -834,10 +854,13 @@ function drawPoster(canvas, o) {
   g.shadowColor = 'rgba(0,0,0,.35)'; g.shadowBlur = 18;
   g.fillStyle = pal.gold; g.font = '128px Allura, cursive'; g.fillText('Happy Birthday', W / 2, 168);
   const nameFit = fitText(g, o.customer.nickname, '{px}px Gloock, Georgia, serif', 150, 64, W - 180, 1);
-  g.fillStyle = pal.text; g.font = `${nameFit.px}px Gloock, Georgia, serif`; g.fillText(nameFit.lines[0], W / 2, 168 + 30 + nameFit.px * 0.82);
+  const nameBase = 168 + 30 + nameFit.px * 0.82;
+  g.fillStyle = pal.text; g.font = `${nameFit.px}px Gloock, Georgia, serif`; g.fillText(nameFit.lines[0], W / 2, nameBase);
+  const sender = settings.name || settings.signoff;
+  if (sender) { g.fillStyle = pal.gold; g.font = '62px Allura, cursive'; g.fillText(`from ${sender}`, W / 2, nameBase + 70); }
   // age badge
   if (o.showAge && o.turning) {
-    const bx = W - 150, by = o.art ? 470 : 1010; g.shadowBlur = 0;
+    const bx = W - 140, by = o.art ? 500 : 905; g.shadowBlur = 0;
     g.fillStyle = pal.gold; g.beginPath(); g.arc(bx, by, 78, 0, 7); g.fill();
     g.fillStyle = pal.deep; g.font = '700 22px Manrope, sans-serif'; g.fillText('TURNING', bx, by - 22); g.font = '64px Gloock, Georgia, serif'; g.fillText(String(o.turning), bx, by + 38);
     g.shadowBlur = 18;
@@ -849,8 +872,7 @@ function drawPoster(canvas, o) {
   lineFit.lines.forEach((l, i) => g.fillText(l, W / 2, baseY + i * lh));
   // footer
   g.shadowBlur = 0; g.fillStyle = pal.gold; g.font = '700 24px Manrope, sans-serif';
-  const sign = settings.name || settings.signoff;
-  g.fillText(((sign ? 'WITH WARM WISHES FROM ' + sign : 'WITH WARM WISHES') + (o.dateLabel ? '  ·  ' + o.dateLabel : '')).toUpperCase(), W / 2, H - 72);
+  g.fillText(((settings.signoff || 'WITH WARM WISHES') + (o.dateLabel ? '  ·  ' + o.dateLabel : '')).toUpperCase(), W / 2, H - 72);
 }
 
 /* ---------- create flow ---------- */
@@ -865,7 +887,7 @@ function radios(container, name, options, value) {
 radios($('#c-palette'), 'pal', PALETTES, 'auto');
 radios($('#c-pattern'), 'pat', PATTERNS, 'confetti');
 radios($('#c-style'), 'sty', STYLES, 'cinematic');
-radios($('#c-pose'), 'pose', POSES, 'singing');
+radios($('#c-pose'), 'pose', POSES, 'presenting');
 const val = name => (document.querySelector(`input[name="${name}"]:checked`) || {}).value;
 
 function current() { return customers.find(c => c.id === selectedId); }
@@ -918,7 +940,7 @@ async function aiArtwork(c, pal) {
   const motifs = (c.priorities || []).slice(0, 3).join('; ') || 'a joyful celebration';
   const prompt = `Use the person in the reference photo as the only person and main subject. Keep their face, facial features, skin tone, hairstyle and glasses (if any) clearly recognisable as the same real person.
 Create a vertical, premium, "wow" birthday greeting poster artwork in ${style[1]}.
-${(POSES[val('pose')] || POSES.singing)[1]} Show the cake and both hands clearly; keep the person's face fully visible above the cake.
+${(POSES[val('pose')] || POSES.presenting)[1]} Show the cake and both hands clearly; keep the person's face fully visible above the cake.
 Background: a festive celebration scene with balloons, soft confetti and glowing lights, plus tasteful symbolic background details inspired by what the birthday person cares about: ${motifs}. Do not show the birthday person or any other people, only symbolic objects and scenery.
 Colour palette: ${pal.desc}.
 Composition: the person in the middle third. Keep the top 25% and the bottom 30% of the image calm and uncluttered (soft background only) because text will be added there later.
@@ -988,7 +1010,7 @@ const newAudioContext = () => new (window.AudioContext || window.webkitAudioCont
 function renderLyrics() {
   const c = current(); if (!c) return;
   const pr = (c.priorities || [])[0];
-  $('#lyrics').innerHTML = `<div class="eyebrow">Sing this</div>
+  $('#lyrics').innerHTML = `<div class="eyebrow">Sing or say this</div>
     <p class="song">Happy birthday to you<br>Happy birthday to you<br>Happy birthday dear <b>${esc(c.nickname)}</b><br>Happy birthday to you</p>
     <p class="hint">Then add one line in your normal voice, e.g. “${esc(c.nickname)}, enjoy your day!${pr ? ` How’s ${esc(lowerFirst(pr))} going?` : ''}”</p>`;
 }
@@ -1002,13 +1024,29 @@ function invalidateVideo() {
   if (!video) return;
   URL.revokeObjectURL(video.url); video = null;
   $('#videoPlayer').hidden = true; $('#videoPlayer').removeAttribute('src');
-  if (voice && !making) { $('#makeVideoBtn').hidden = false; $('#makeVideoBtn').textContent = 'Make the video again (poster changed)'; }
+  if (!making) { $('#makeVideoBtn').hidden = false; $('#makeVideoBtn').textContent = 'Make animated poster again (poster changed)'; }
   syncSendFormat();
 }
 function clearVoice() {
   invalidateVideo(); if (voice) URL.revokeObjectURL(voice.url); voice = null;
-  $('#voicePlayer').hidden = true; $('#voicePlayer').removeAttribute('src'); $('#makeVideoBtn').hidden = true;
-  $('#recStatus').textContent = ''; setSingStatus(''); $('#recBtn').textContent = '● Record my singing';
+  $('#voicePlayer').hidden = true; $('#voicePlayer').removeAttribute('src');
+  $('#makeVideoBtn').hidden = false; $('#makeVideoBtn').textContent = 'Make animated poster';
+  $('#recStatus').textContent = ''; setSingStatus(''); $('#recBtn').textContent = '● Record my voice';
+}
+// an original, gentle music-box tune (no copyrighted melody), rendered offline at the given sample rate
+function musicBox(sampleRate, secs) {
+  const chords = [[523.25, 659.25, 783.99, 1046.5], [392, 493.88, 587.33, 783.99], [440, 523.25, 659.25, 880], [349.23, 440, 523.25, 698.46]];
+  const oc = new OfflineAudioContext(2, Math.ceil(sampleRate * secs), sampleRate);
+  const master = oc.createGain(); master.gain.value = 0.22; master.connect(oc.destination);
+  const ping = (f, at, len, vol = 0.5) => [[1, vol], [2.76, vol * 0.2]].forEach(([m, v]) => {
+    const o = oc.createOscillator(), gn = oc.createGain(); o.type = 'sine'; o.frequency.value = f * m;
+    gn.gain.setValueAtTime(0, at); gn.gain.linearRampToValueAtTime(v, at + 0.006); gn.gain.exponentialRampToValueAtTime(0.0001, at + len);
+    o.connect(gn).connect(master); o.start(at); o.stop(at + len + 0.05);
+  });
+  const step = 0.22, end = secs - 1.8; let t = 0.4, bar = 0;
+  while (t < end) { const ch = chords[bar % 4]; [0, 1, 2, 3, 2, 1].forEach((n, i) => { if (t + i * step < end) ping(ch[n], t + i * step, 1.1); }); t += step * 6; bar++; }
+  chords[0].forEach((f, i) => ping(f, end + i * 0.05, 1.7, 0.35)); // final ringing chord
+  return oc.startRendering();
 }
 async function setVoice(blob, from) {
   let buffer;
@@ -1019,9 +1057,9 @@ async function setVoice(blob, from) {
   clearVoice();
   voice = { blob, buffer, url: URL.createObjectURL(blob), duration: buffer.duration };
   $('#voicePlayer').src = voice.url; $('#voicePlayer').hidden = false;
-  $('#recStatus').textContent = `${from} · ${voice.duration.toFixed(1)}s. Play it back, then make the video.`;
+  $('#recStatus').textContent = `${from} · ${voice.duration.toFixed(1)}s. It replaces the music in the animated poster.`;
   $('#recBtn').textContent = '● Record again';
-  $('#makeVideoBtn').hidden = false; $('#makeVideoBtn').textContent = 'Make singing video';
+  $('#makeVideoBtn').hidden = false; $('#makeVideoBtn').textContent = 'Make animated poster with my voice';
   const d = buffer.getChannelData(0); let peak = 0; for (let i = 0; i < d.length; i += 64) peak = Math.max(peak, Math.abs(d[i]));
   if (peak < 0.05) setSingStatus('The recording is very quiet. Hold the phone closer and sing a little louder.');
 }
@@ -1058,9 +1096,9 @@ $('#voiceFile').onchange = async e => {
   setVoice(f, 'Uploaded');
 };
 $('#makeVideoBtn').onclick = async () => {
-  if (!voice || making) return;
+  if (making) return;
   const vc = document.createElement('canvas');
-  if (!vc.captureStream || !window.MediaRecorder) return setSingStatus('This browser can’t make videos. Send the poster image, then send your recording as a voice note.', 'bad');
+  if (!vc.captureStream || !window.MediaRecorder) return setSingStatus('This browser can’t make videos. Send the poster image instead.', 'bad');
   making = true; invalidateVideo(); $('#makeVideoBtn').hidden = true; resetSend(); setSingStatus('');
   const W = 720, H = 900, g = vc.getContext('2d'), poster = $('#poster'), c = current();
   vc.width = W; vc.height = H;
@@ -1069,9 +1107,13 @@ $('#makeVideoBtn').onclick = async () => {
   const iv = { id: 0 };
   try {
     await ac.resume();
+    const lead = 0.4, total = voice ? voice.duration + lead + 1.2 : 8;
+    const sound = voice ? voice.buffer : $('#v-music').checked ? await musicBox(ac.sampleRate, total) : null;
     const dest = ac.createMediaStreamDestination(), an = ac.createAnalyser(); an.fftSize = 1024;
-    const src = ac.createBufferSource(); src.buffer = voice.buffer; src.connect(dest); src.connect(an);
-    const stream = vc.captureStream(30); dest.stream.getAudioTracks().forEach(t => stream.addTrack(t));
+    const src = ac.createBufferSource();
+    if (sound) { src.buffer = sound; src.connect(dest); src.connect(an); }
+    const stream = vc.captureStream(30);
+    if (sound) dest.stream.getAudioTracks().forEach(t => stream.addTrack(t));
     // WhatsApp plays MP4 best; browsers that can't write MP4 fall back to WebM
     const mime = pickType(['video/mp4;codecs=avc1.42E01E,mp4a.40.2', 'video/mp4;codecs=avc1,mp4a.40.2', 'video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm']);
     const chunks = [], rec = new MediaRecorder(stream, Object.assign({ videoBitsPerSecond: 3000000 }, mime ? { mimeType: mime } : {}));
@@ -1080,29 +1122,37 @@ $('#makeVideoBtn').onclick = async () => {
     const rnd = seeded(c.id + 'video');
     const bits = Array.from({ length: 70 }, () => ({ x: rnd() * W, y: rnd() * H, v: 60 + rnd() * 120, s: 6 + rnd() * 8, r: rnd() * 6, vr: (rnd() - 0.5) * 4,
       col: [pal.gold, pal.soft, '#ffffff', pal.mid][Math.floor(rnd() * 4)] }));
-    const lead = 0.4, total = voice.duration + lead + 1.2, wave = new Uint8Array(an.fftSize);
+    const stars = Array.from({ length: 26 }, () => ({ x: 30 + rnd() * (W - 60), y: 30 + rnd() * (H - 60), s: 5 + rnd() * 9, ph: rnd() * 6, sp: 2 + rnd() * 3 }));
+    const wave = new Uint8Array(an.fftSize);
     let level = 0;
     const t0 = performance.now();
     const frame = () => {
       const t = (performance.now() - t0) / 1000, p = Math.min(1, t / total);
-      an.getByteTimeDomainData(wave); let sum = 0; for (const v of wave) sum += (v - 128) ** 2;
-      level = level * 0.8 + Math.min(1, Math.sqrt(sum / wave.length) / 40) * 0.2;
+      let target = 0.35 + 0.25 * Math.sin(t * 3);               // gentle pulse when silent
+      if (sound) { an.getByteTimeDomainData(wave); let sum = 0; for (const v of wave) sum += (v - 128) ** 2; target = Math.min(1, Math.sqrt(sum / wave.length) / (voice ? 40 : 18)); }
+      level = level * 0.8 + target * 0.2;
       const z = 1 + 0.07 * p, w = W * z, h = H * z;             // slow push-in on the poster
       g.drawImage(poster, (W - w) / 2, (H - h) / 2 - 12 * p, w, h);
       g.save(); g.globalAlpha = Math.min(1, t / 0.8) * 0.9;     // falling confetti
       bits.forEach(b => { const y = ((b.y + b.v * t) % (H + 40)) - 20;
         g.save(); g.translate(b.x + Math.sin(t * 2 + b.r) * 12, y); g.rotate(b.r + b.vr * t); g.fillStyle = b.col; g.fillRect(-b.s / 2, -b.s / 4, b.s, b.s / 2); g.restore(); });
       g.restore();
-      g.save(); g.strokeStyle = pal.gold; g.shadowColor = pal.gold;  // gold frame glows with your voice
+      g.save(); g.fillStyle = '#ffffff';                          // twinkling lights
+      stars.forEach(st => { const a = Math.max(0, Math.sin(t * st.sp + st.ph)); if (a < 0.05) return; const s = st.s * (0.6 + a * 0.6);
+        g.globalAlpha = a * 0.9; g.beginPath(); g.moveTo(st.x, st.y - s); g.quadraticCurveTo(st.x, st.y, st.x + s, st.y); g.quadraticCurveTo(st.x, st.y, st.x, st.y + s);
+        g.quadraticCurveTo(st.x, st.y, st.x - s, st.y); g.quadraticCurveTo(st.x, st.y, st.x, st.y - s); g.fill(); });
+      g.restore();
+      if (t < 0.6) { g.fillStyle = pal.deep; g.globalAlpha = 1 - t / 0.6; g.fillRect(0, 0, W, H); g.globalAlpha = 1; } // fade in
+      g.save(); g.strokeStyle = pal.gold; g.shadowColor = pal.gold;  // gold frame glows with the music or voice
       g.lineWidth = 5 + level * 10; g.shadowBlur = 8 + level * 50; g.globalAlpha = 0.35 + level * 0.65;
       g.beginPath(); g.roundRect(14, 14, W - 28, H - 28, 22); g.stroke(); g.restore();
       if (t > total - 0.6) { g.fillStyle = pal.deep; g.globalAlpha = Math.min(1, (t - total + 0.6) / 0.6) * 0.55; g.fillRect(0, 0, W, H); g.globalAlpha = 1; }
       $('#progTimer').textContent = `${Math.floor(Math.min(t, total))}s of ${Math.ceil(total)}s · keep this screen open`;
       return t;
     };
-    $('#progress').hidden = false; $('#progStep').textContent = 'Making your singing video…';
+    $('#progress').hidden = false; $('#progStep').textContent = 'Animating your poster…';
     $('#posterFrame').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    frame(); rec.start(250); src.start(ac.currentTime + lead);
+    frame(); rec.start(250); if (sound) src.start(ac.currentTime + (voice ? lead : 0));
     iv.id = setInterval(() => { if (frame() >= total && rec.state === 'recording') { clearInterval(iv.id); rec.stop(); } }, 1000 / 30);
     await done;
     const type = (chunks[0] && chunks[0].type) || rec.mimeType || mime || 'video/webm';
@@ -1110,10 +1160,10 @@ $('#makeVideoBtn').onclick = async () => {
     if (blob.size < 10000) throw new Error('The video came out empty.');
     video = { blob, url: URL.createObjectURL(blob), ext: /mp4/.test(type) ? 'mp4' : 'webm', type: type.split(';')[0] };
     $('#videoPlayer').src = video.url; $('#videoPlayer').hidden = false; $('#fmt-video').checked = true;
-    setSingStatus(video.ext === 'webm' ? 'Your browser made a WebM video. If WhatsApp won’t send it, choose “Poster image” and send your recording as a voice note.'
-      : 'Video ready. Watch it with sound before sending.', video.ext === 'webm' ? 'warn' : 'ok');
+    setSingStatus(video.ext === 'webm' ? 'Your browser made a WebM video. If WhatsApp won’t send it, choose “Poster image” below.'
+      : 'Animated poster ready. Watch it with sound before sending.', video.ext === 'webm' ? 'warn' : 'ok');
   } catch (e) {
-    setSingStatus('The video could not be made. ' + (e.message || '') + ' You can still send the poster and your recording separately.', 'bad');
+    setSingStatus('The animated poster could not be made. ' + (e.message || '') + ' You can still send the poster image.', 'bad');
     $('#makeVideoBtn').hidden = false;
   } finally {
     clearInterval(iv.id); stopProgress(); ac.close(); making = false; syncSendFormat();
@@ -1127,7 +1177,7 @@ function resetSend() { okBoxes.forEach(s => { $(s).checked = false; }); gateSend
 function gateSend() {
   const ok = okBoxes.filter(s => !$(s).closest('label').hidden).every(s => $(s).checked);
   ['#shareBtn', '#saveBtn', '#copyBtn', '#sentBtn'].forEach(s => { $(s).disabled = !ok; });
-  $('#shareBtn').textContent = sendingVideo() ? 'Share singing video + message' : 'Share poster + message';
+  $('#shareBtn').textContent = sendingVideo() ? 'Share animated poster + message' : 'Share poster + message';
   $('#saveBtn').textContent = sendingVideo() ? 'Save video' : 'Save poster image';
 }
 okBoxes.forEach(s => $(s).onchange = gateSend);
