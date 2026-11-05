@@ -121,6 +121,8 @@ textarea { min-height: 110px; resize: vertical; line-height: 1.45; }
 .check input { width: 22px; height: 22px; margin-top: 1px; accent-color: var(--accent); flex: none; }
 
 .me-photo { width: 84px; height: 84px; border-radius: 50%; object-fit: cover; border: 3px solid var(--gold); background: var(--surface-2); flex: none; }
+.cake-photo { width: 84px; height: 124px; object-fit: contain; border-radius: 12px; border: 2px solid var(--gold); flex: none;
+  background: repeating-conic-gradient(var(--surface-2) 0 25%, var(--bg) 0 50%) 0 0 / 14px 14px; }
 
 /* tab bar */
 nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--surface); border-top: 1px solid var(--line);
@@ -333,6 +335,16 @@ code { font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border
           <span class="hint" id="mePhotoHint">Use a clear, front-facing, well-lit photo with just you in it.</span>
         </div>
       </div>
+      <div class="row">
+        <img id="cakePreview" class="cake-photo" alt="You holding a birthday cake" hidden>
+        <div class="grow" style="display:grid;gap:8px">
+          <label class="btn small" for="cakePhotoFile">Choose my cake photo</label>
+          <input type="file" id="cakePhotoFile" accept="image/*" hidden>
+          <button class="btn small" type="button" id="cakeAiBtn">Make one with AI from my face photo</button>
+          <button class="btn small ghost" type="button" id="cakeRemoveBtn" hidden>Remove cake photo</button>
+          <span class="hint" id="cakeHint">Optional but best: a photo of you holding a birthday cake on a plain background. The app removes the background and puts you on every poster.</span>
+        </div>
+      </div>
       <label class="field">Your name on the poster
         <input type="text" id="s-name" maxlength="40" placeholder="e.g. Kah Jian">
       </label>
@@ -395,7 +407,7 @@ const store = {
   get(k, fb) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : fb; } catch { return fb; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { toast('Could not save on this phone (storage full or blocked).'); return false; } }
 };
-const DEFAULT_SETTINGS = { name: '', signoff: '', photo: '', apiKey: '', imageModel: 'gpt-image-2', textModel: 'gpt-5-mini', quality: 'medium' };
+const DEFAULT_SETTINGS = { name: '', signoff: '', photo: '', cakePhoto: null, apiKey: '', imageModel: 'gpt-image-2', textModel: 'gpt-5-mini', quality: 'medium' };
 let settings = Object.assign({}, DEFAULT_SETTINGS, store.get(KEY_S, {}));
 let customers = store.get(KEY_C, null);
 if (!Array.isArray(customers)) {
@@ -587,8 +599,10 @@ function loadSettingsForm() {
   $('#mePhotoHint').textContent = settings.photo ? 'Photo saved. Tap to change it.' : 'Use a clear, front-facing, well-lit photo with just you in it.';
   $('#s-name').value = settings.name; $('#s-sign').value = settings.signoff; $('#s-key').value = settings.apiKey;
   $('#s-imodel').value = settings.imageModel; $('#s-tmodel').value = settings.textModel; $('#s-quality').value = settings.quality;
+  showCake(settings.cakePhoto);
+  if (settings.cakePhoto) $('#cakeHint').textContent = settings.cakePhoto.cut ? 'Cake photo saved, background removed. It’s used in the Quick design poster.' : 'Cake photo saved. Its background isn’t plain, so it’s shown in a gold arch frame.';
 }
-let pendingPhoto = null;
+let pendingPhoto = null, pendingCake; // pendingCake: undefined = unchanged, null = remove, object = new photo
 function loadImage(src) { return new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = src; }); }
 $('#mePhoto').onchange = async e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return;
@@ -607,15 +621,111 @@ $('#saveSettingsBtn').onclick = async () => {
   const next = Object.assign({}, settings, {
     name: $('#s-name').value.trim(), signoff: $('#s-sign').value.trim(), apiKey: $('#s-key').value.trim(),
     imageModel: $('#s-imodel').value.trim() || DEFAULT_SETTINGS.imageModel, textModel: $('#s-tmodel').value.trim() || DEFAULT_SETTINGS.textModel,
-    quality: $('#s-quality').value, photo: pendingPhoto || settings.photo });
+    quality: $('#s-quality').value, photo: pendingPhoto || settings.photo, cakePhoto: pendingCake === undefined ? settings.cakePhoto : pendingCake });
   const changes = [];
   if (pendingPhoto && settings.photo) changes.push('replace your saved face photo');
+  if (pendingCake !== undefined && settings.cakePhoto) changes.push(pendingCake ? 'replace your saved cake photo' : 'remove your cake photo');
   if (settings.apiKey && next.apiKey !== settings.apiKey) changes.push(next.apiKey ? 'replace your saved API key' : 'remove your API key');
   if (changes.length && !(await ask('Save changes?', `This will ${changes.join(' and ')}.`, 'Save'))) return;
   if (next.apiKey && !/^sk-/.test(next.apiKey)) { if (!(await ask('Unusual API key', 'OpenAI keys normally start with "sk-". Save it anyway?', 'Save anyway'))) return; }
-  settings = next; pendingPhoto = null;
-  if (store.set(KEY_S, settings)) { toast('Details saved'); loadSettingsForm(); }
+  const before = settings; settings = next;
+  if (store.set(KEY_S, settings)) { pendingPhoto = null; pendingCake = undefined; toast('Details saved'); loadSettingsForm(); }
+  else settings = before;
 };
+
+/* ---------- cake photo: you holding a cake, background removed ---------- */
+function showCake(c) { $('#cakePreview').hidden = !c; if (c) $('#cakePreview').src = c.src; $('#cakeRemoveBtn').hidden = !c; }
+// Removes a plain studio background by flood-filling inward from the edges. Busy backgrounds are left alone (cut: false).
+function cutOutBackground(img) {
+  const sc = Math.min(1, 1100 / img.height), w = Math.round(img.width * sc), h = Math.round(img.height * sc);
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  const g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(img, 0, 0, w, h);
+  const id = g.getImageData(0, 0, w, h), d = id.data, N = w * h;
+  const edge = [];
+  for (let x = 0; x < w; x += 3) edge.push(x * 4);
+  for (let y = 0; y < h * 0.6; y += 3) edge.push(y * w * 4, (y * w + w - 1) * 4);
+  const bgc = [0, 1, 2].map(k => edge.reduce((a, i) => a + d[i + k], 0) / edge.length);
+  const spread = Math.sqrt(edge.reduce((a, i) => a + [0, 1, 2].reduce((s, k) => s + (d[i + k] - bgc[k]) ** 2, 0), 0) / edge.length);
+  const keepAsIs = () => ({ src: c.toDataURL('image/jpeg', 0.9), cut: false });
+  if (spread > 30) return keepAsIs();
+  // distance from the background, weighting colourfulness heavily: studio grey is neutral, skin is warm,
+  // so a pale face never counts as background even when it is close in brightness
+  const chroma = i => Math.max(d[i], d[i + 1], d[i + 2]) - Math.min(d[i], d[i + 1], d[i + 2]);
+  const bgChroma = Math.max(...bgc) - Math.min(...bgc);
+  const toBg = i => Math.hypot(d[i] - bgc[0], d[i + 1] - bgc[1], d[i + 2] - bgc[2]) + 3 * Math.abs(chroma(i) - bgChroma);
+  const bg = new Uint8Array(N), queue = new Int32Array(N); let qh = 0, qt = 0;
+  const seed = p => { if (!bg[p] && toBg(p * 4) < 45) { bg[p] = 1; queue[qt++] = p; } };
+  for (let x = 0; x < w; x++) { seed(x); seed((h - 1) * w + x); }
+  for (let y = 0; y < h; y++) { seed(y * w); seed(y * w + w - 1); }
+  while (qh < qt) {
+    const p = queue[qh++], x = p % w, y = (p / w) | 0, i = p * 4;
+    for (const q of [x > 0 ? p - 1 : -1, x < w - 1 ? p + 1 : -1, y > 0 ? p - w : -1, y < h - 1 ? p + w : -1]) {
+      if (q < 0 || bg[q]) continue;
+      const j = q * 4;
+      if (toBg(j) < 45 && Math.hypot(d[j] - d[i], d[j + 1] - d[i + 1], d[j + 2] - d[i + 2]) < 10) { bg[q] = 1; queue[qt++] = q; }
+    }
+  }
+  const share = qt / N;
+  if (share < 0.12 || share > 0.92) return keepAsIs();
+  // alpha: background clear, subject solid, edge pixels graded by how far they are from the background colour
+  const a = new Float32Array(N);
+  for (let p = 0; p < N; p++) a[p] = bg[p] ? 0 : 1;
+  for (let p = 0; p < N; p++) {
+    if (bg[p]) continue;
+    const x = p % w, y = (p / w) | 0;
+    if ((x > 0 && bg[p - 1]) || (x < w - 1 && bg[p + 1]) || (y > 0 && bg[p - w]) || (y < h - 1 && bg[p + w])) a[p] = Math.min(1, Math.max(0.35, (toBg(p * 4) - 6) / 40));
+  }
+  let minX = w, minY = h, maxX = 0, maxY = 0;
+  for (let y = 1; y < h - 1; y++) for (let x = 1; x < w - 1; x++) {
+    const p = y * w + x;
+    let s = 0; for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) s += a[p + dy * w + dx];
+    const al = a[p] === 0 || a[p] === 1 ? (s === 0 || s === 9 ? a[p] : s / 9) : a[p];
+    const i = p * 4;
+    if (al > 0 && al < 1) for (let k = 0; k < 3; k++) d[i + k] = Math.max(0, Math.min(255, (d[i + k] - (1 - al) * bgc[k]) / al)); // remove grey fringe
+    d[i + 3] = Math.round(al * 255);
+    if (al > 0.05) { if (x < minX) minX = x; if (x > maxX) maxX = x; if (y < minY) minY = y; if (y > maxY) maxY = y; }
+  }
+  g.putImageData(id, 0, 0);
+  const out = document.createElement('canvas'); out.width = maxX - minX + 1; out.height = maxY - minY + 1;
+  out.getContext('2d').drawImage(c, minX, minY, out.width, out.height, 0, 0, out.width, out.height);
+  const webp = out.toDataURL('image/webp', 0.9);
+  return { src: webp.startsWith('data:image/webp') ? webp : out.toDataURL('image/png'), cut: true };
+}
+async function useCakeImage(img, from) {
+  const res = cutOutBackground(img);
+  pendingCake = res; showCake(res);
+  $('#cakeHint').textContent = res.cut ? `${from}. Background removed. Check the preview, then tap "Save my details".`
+    : `${from}. The background isn’t plain, so the photo will sit in a gold arch frame. Tap "Save my details" to keep it.`;
+}
+$('#cakePhotoFile').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  try {
+    const url = URL.createObjectURL(f); const img = await loadImage(url); URL.revokeObjectURL(url);
+    if (img.height < 500) return ask('Photo too small', 'Pick a photo at least 500 pixels tall so you stay sharp on the poster.', 'OK');
+    await useCakeImage(img, 'Photo chosen');
+  } catch { ask('Could not read that photo', 'Try a JPG or PNG photo.', 'OK'); }
+};
+$('#cakeAiBtn').onclick = async () => {
+  const key = $('#s-key').value.trim(), face = pendingPhoto || settings.photo, btn = $('#cakeAiBtn');
+  if (!face) return ask('Add your face photo first', 'The AI uses your face photo to make the cake photo.', 'OK');
+  if (!key) return ask('Add your OpenAI key first', 'Paste your API key below, then try again.', 'OK');
+  if (!(await ask('Make a cake photo with AI?', 'This uses your face photo and one OpenAI image, which costs a small amount on your OpenAI account. It takes 30–90 seconds. You only need to do it once.', 'Make it'))) return;
+  const prompt = `Use the person in the reference photo. Keep their face, facial features, skin tone and hairstyle exactly recognisable as the same real person.
+Photorealistic studio photo: the person stands facing the camera, smiling warmly, holding a beautiful birthday cake with lit candles out toward the camera in both hands at chest height, wearing smart formal clothes.
+Waist-up framing with the whole head, both hands and the cake fully in frame.
+Plain, evenly lit, light grey seamless studio background with nothing else in it. No text, letters or logos anywhere.`;
+  btn.disabled = true; btn.textContent = 'Making your cake photo… (30–90s)';
+  try {
+    const fd = new FormData();
+    fd.append('model', $('#s-imodel').value.trim() || settings.imageModel); fd.append('prompt', prompt);
+    fd.append('image', await (await fetch(face)).blob(), 'me.jpg'); fd.append('size', '1024x1536'); fd.append('quality', $('#s-quality').value);
+    const j = await callJson('https://api.openai.com/v1/images/edits', { method: 'POST', headers: { Authorization: 'Bearer ' + key }, body: fd }, settings.imageModel, 240000);
+    const b64 = j.data && j.data[0] && j.data[0].b64_json; if (!b64) throw new Error('The image model returned no picture.');
+    await useCakeImage(await loadImage('data:image/png;base64,' + b64), 'AI cake photo made');
+  } catch (e) { $('#cakeHint').textContent = e.message; }
+  finally { btn.disabled = false; btn.textContent = 'Make one with AI from my face photo'; }
+};
+$('#cakeRemoveBtn').onclick = () => { pendingCake = null; showCake(null); $('#cakeHint').textContent = 'The cake photo will be removed when you tap "Save my details".'; };
 $('#testKeyBtn').onclick = async () => {
   const key = $('#s-key').value.trim(), model = $('#s-imodel').value.trim() || 'gpt-image-2', out = $('#testKeyOut');
   if (!key) { out.textContent = 'Paste your API key first.'; return; }
@@ -954,6 +1064,35 @@ function drawPoster(canvas, o) {
     let gr = g.createLinearGradient(0, 0, 0, 480); gr.addColorStop(0, pal.deep + 'f2'); gr.addColorStop(0.65, pal.deep + '99'); gr.addColorStop(1, pal.deep + '00'); g.fillStyle = gr; g.fillRect(0, 0, W, 480);
     gr = g.createLinearGradient(0, H - 560, 0, H); gr.addColorStop(0, pal.deep + '00'); gr.addColorStop(0.42, pal.deep + 'cc'); gr.addColorStop(1, pal.deep + 'f8'); g.fillStyle = gr; g.fillRect(0, H - 560, W, 560);
     drawPattern(g, o.pattern, pal, rnd, W, H, [[0, 380], [H - 260, H]]);
+  } else if (o.cake) {
+    // the agent's own photo holding a cake, standing centre stage on the velvet
+    velvet(g, W, H, pal);
+    drawPattern(g, o.pattern, pal, rnd, W, H, null);
+    curtains(g, W, pal);
+    balloon(g, 122, 690, 56, 70, GOLD_BALLOON);
+    balloon(g, 966, 770, 54, 68, PEARL_BALLOON);
+    balloon(g, 108, 925, 48, 61, [pal.soft, pal.mid, pal.deep]);
+    const im = o.cake.img, top = 405;
+    const halo = g.createRadialGradient(W / 2, top + 330, 40, W / 2, top + 330, 560);
+    halo.addColorStop(0, 'rgba(255,226,160,.5)'); halo.addColorStop(1, 'rgba(255,226,160,0)');
+    g.fillStyle = halo; g.fillRect(0, 0, W, H);
+    if (o.cake.cut) {
+      const s = Math.min(980 / im.height, 780 / im.width), w = im.width * s, h = im.height * s;
+      g.save(); g.shadowColor = 'rgba(0,0,0,.6)'; g.shadowBlur = 40; g.shadowOffsetY = 18;
+      g.drawImage(im, (W - w) / 2, top, w, h); g.restore();
+    } else {
+      // busy background: show the photo in a gold arched window instead
+      const x = 260, y = top, w = 560, h = 820, arch = () => { g.beginPath(); g.moveTo(x, y + h); g.lineTo(x, y + w / 2); g.arc(x + w / 2, y + w / 2, w / 2, Math.PI, 0); g.lineTo(x + w, y + h); g.closePath(); };
+      g.save(); arch(); g.clip();
+      const s = Math.max(w / im.width, h / im.height); g.drawImage(im, x + (w - im.width * s) / 2, y, im.width * s, im.height * s);
+      const inner = g.createLinearGradient(x, 0, x + w, 0); inner.addColorStop(0, 'rgba(0,0,0,.35)'); inner.addColorStop(0.2, 'rgba(0,0,0,0)'); inner.addColorStop(0.8, 'rgba(0,0,0,0)'); inner.addColorStop(1, 'rgba(0,0,0,.35)');
+      g.fillStyle = inner; g.fillRect(x, y, w, h); g.restore();
+      g.save(); g.shadowColor = 'rgba(0,0,0,.55)'; g.shadowBlur = 24; g.shadowOffsetY = 10; g.lineWidth = 16; g.strokeStyle = goldFoil(g, x, y, x + w, y + h); arch(); g.stroke(); g.restore();
+    }
+    // fade the lower body into the velvet so the quote stays readable
+    const fade = g.createLinearGradient(0, H - 470, 0, H); fade.addColorStop(0, pal.deep + '00'); fade.addColorStop(0.45, pal.deep + 'd0'); fade.addColorStop(1, pal.deep + 'fa');
+    g.fillStyle = fade; g.fillRect(0, H - 470, W, 470);
+    drawBubble(g, `Happy birthday, ${o.customer.nickname}!`, 660, 420, 360, 640, 560, pal);
   } else {
     velvet(g, W, H, pal);
     drawPattern(g, o.pattern, pal, rnd, W, H, null);
@@ -1052,6 +1191,7 @@ function renderSummary() {
   if (!settings.apiKey) setup.push(['warn', 'No OpenAI key yet, so you get a Quick design and template wording. Add a key in <b>Me</b> for AI.']);
   if (ai && !settings.photo && settings.apiKey) setup.push(['bad', 'AI artwork needs your face photo. Add it in <b>Me</b> or choose Quick design.']);
   if (!settings.name && !settings.signoff) setup.push(['warn', 'Add your name in <b>Me</b> so the poster and message are signed.']);
+  if (!settings.cakePhoto && !(ai && settings.apiKey)) setup.push(['warn', 'Tip: add a photo of you holding a cake in <b>Me</b>. The Quick design then shows you holding the cake.']);
   if (c.sample) setup.push(['warn', 'Kelly is a made-up example customer for testing. Edit or delete her in Birthdays.']);
   $('#c-summary').innerHTML = `
     <div class="chips">
@@ -1102,6 +1242,7 @@ async function render(wordsOverride) {
   let palKey = val('pal'); if (palKey === 'auto') palKey = autoPalette(c);
   await fontsReady();
   drawPoster($('#poster'), { customer: c, palette: palKey, pattern: val('pat'), pose: val('pose'), art: lastArt, photo: await loadImage(settings.photo || PLACEHOLDER),
+    cake: settings.cakePhoto ? { img: await loadImage(settings.cakePhoto.src), cut: settings.cakePhoto.cut } : null,
     posterLine: (wordsOverride || lastWords).posterLine, showAge: $('#c-age').checked, turning: nb && nb.turning, dateLabel: nb ? `${nb.date.getDate()} ${MONTHS[nb.date.getMonth()]} ${nb.date.getFullYear()}` : '' });
   invalidateVideo(); // a video made from the old poster is out of date
 }

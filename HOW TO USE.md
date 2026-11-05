@@ -14,6 +14,7 @@
    - Complete **Organization Verification**. OpenAI requires it before image models work.
 3. In the app, tap **Me**:
    - Choose your face photo (clear, front-facing, just you).
+   - **Best poster:** add **My cake photo**, a photo of you holding a birthday cake on a plain background. Tap **Choose my cake photo**, or **Make one with AI from my face photo** (one OpenAI image, done once). The app removes the background, so you stand on the poster holding the cake. If the background isn't plain, the photo goes in a gold arch frame instead.
    - Enter your name and sign-off (e.g. `Kah Jian · REDEFINE`).
    - Paste your API key and tap **Test connection**. It should say `gpt-image-2 is available`.
    - Tap **Save my details**.
