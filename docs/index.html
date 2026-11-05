@@ -1055,15 +1055,24 @@ async function fontsReady() {
   const faces = ['120px Allura', '120px Gloock', '700 40px Manrope', '600 30px Manrope', 'italic 600 50px "Cormorant Garamond"'];
   try { await Promise.race([Promise.all(faces.map(f => document.fonts.load(f))), new Promise(r => setTimeout(r, 3000))]); } catch {}
 }
+// where the AI picture sits on the 1080x1350 poster (3:2, matching the 1536x1024 image we ask for)
+const ART_BOX = { x: 72, y: 428, w: 936, h: 624 };
 function drawPoster(canvas, o) {
   const W = 1080, H = 1350, g = canvas.getContext('2d'), pal = PALETTES[o.palette], rnd = seeded(o.customer.id + o.pattern);
   g.clearRect(0, 0, W, H); g.textAlign = 'center'; g.textBaseline = 'alphabetic';
   if (o.art) {
-    const s = Math.max(W / o.art.width, H / o.art.height), w = o.art.width * s, h = o.art.height * s;
-    g.drawImage(o.art, (W - w) / 2, (H - h) / 2, w, h);
-    let gr = g.createLinearGradient(0, 0, 0, 480); gr.addColorStop(0, pal.deep + 'f2'); gr.addColorStop(0.65, pal.deep + '99'); gr.addColorStop(1, pal.deep + '00'); g.fillStyle = gr; g.fillRect(0, 0, W, 480);
-    gr = g.createLinearGradient(0, H - 560, 0, H); gr.addColorStop(0, pal.deep + '00'); gr.addColorStop(0.42, pal.deep + 'cc'); gr.addColorStop(1, pal.deep + 'f8'); g.fillStyle = gr; g.fillRect(0, H - 560, W, 560);
-    drawPattern(g, o.pattern, pal, rnd, W, H, [[0, 380], [H - 260, H]]);
+    // title band on top, AI picture in its own gold frame, quote band below: words never sit on the face
+    const { x, y, w, h } = ART_BOX;
+    velvet(g, W, H, pal);
+    drawPattern(g, o.pattern, pal, rnd, W, H, [[0, 400], [y + h + 20, H]]);
+    const s = Math.max(w / o.art.width, h / o.art.height), dw = o.art.width * s, dh = o.art.height * s;
+    g.save(); g.shadowColor = 'rgba(0,0,0,.6)'; g.shadowBlur = 36; g.shadowOffsetY = 16; g.fillStyle = pal.deep;
+    g.beginPath(); g.roundRect(x, y, w, h, 18); g.fill(); g.restore();
+    g.save(); g.beginPath(); g.roundRect(x, y, w, h, 18); g.clip();
+    g.drawImage(o.art, x + (w - dw) / 2, y - (dh - h) * 0.12, dw, dh); // crop mostly from the bottom so the head stays in view
+    g.restore();
+    g.save(); g.lineWidth = 12; g.strokeStyle = goldFoil(g, x, y, x + w, y + h); g.beginPath(); g.roundRect(x - 6, y - 6, w + 12, h + 12, 22); g.stroke();
+    g.lineWidth = 2; g.strokeStyle = 'rgba(255,248,220,.6)'; g.beginPath(); g.roundRect(x - 15, y - 15, w + 30, h + 30, 28); g.stroke(); g.restore();
   } else if (o.cake) {
     // the agent's own photo holding a cake, standing centre stage on the velvet
     velvet(g, W, H, pal);
@@ -1132,7 +1141,7 @@ function drawPoster(canvas, o) {
   }
   // age medallion
   if (o.showAge && o.turning) {
-    const bx = W - 140, by = o.art ? 500 : 905;
+    const bx = W - 130, by = o.art ? 318 : 905; // AI layout: in the title band, clear of the picture
     g.save(); g.shadowColor = 'rgba(0,0,0,.55)'; g.shadowBlur = 22; g.shadowOffsetY = 8;
     g.fillStyle = goldFoil(g, bx - 80, by - 80, bx + 80, by + 80); g.beginPath(); g.arc(bx, by, 80, 0, 7); g.fill();
     g.shadowColor = 'transparent'; g.strokeStyle = 'rgba(60,38,8,.6)'; g.lineWidth = 2; g.beginPath(); g.arc(bx, by, 66, 0, 7); g.stroke();
@@ -1144,10 +1153,13 @@ function drawPoster(canvas, o) {
   }
   // poster line in classic italic serif
   const lineFont = 'italic 600 {px}px "Cormorant Garamond", Georgia, serif';
-  const lineFit = fitText(g, '“' + o.posterLine + '”', lineFont, 58, 36, W - 220, 3);
+  const lineFit = o.art ? fitText(g, '“' + o.posterLine + '”', lineFont, 50, 32, W - 200, 2) : fitText(g, '“' + o.posterLine + '”', lineFont, 58, 36, W - 220, 3);
   g.save(); g.shadowColor = 'rgba(0,0,0,.6)'; g.shadowBlur = 14; g.shadowOffsetY = 3;
   g.fillStyle = pal.text; g.font = lineFont.replace('{px}', lineFit.px);
-  const lh = lineFit.px * 1.18, baseY = H - 150 - (lineFit.lines.length - 1) * lh;
+  const lh = lineFit.px * 1.18;
+  // AI layout: centre the quote in the band between the picture frame and the footer
+  const baseY = o.art ? (ART_BOX.y + ART_BOX.h + 15 + H - 100) / 2 - ((lineFit.lines.length - 1) * lh) / 2 + lineFit.px * 0.32
+    : H - 150 - (lineFit.lines.length - 1) * lh;
   lineFit.lines.forEach((l, i) => g.fillText(l, W / 2, baseY + i * lh));
   g.restore();
   // footer
@@ -1222,16 +1234,16 @@ async function aiArtwork(c, pal) {
   const style = STYLES[val('sty')] || STYLES.classic3d;
   const motifs = (c.priorities || []).slice(0, 3).join('; ') || 'a joyful celebration';
   const prompt = `Use the person in the reference photo as the only person and main subject. Keep their face, facial features, skin tone, hairstyle and glasses (if any) clearly recognisable as the same real person.
-Create a vertical, premium, "wow" birthday greeting poster artwork in ${style[1]}.
+Create a horizontal (landscape), premium, "wow" birthday greeting picture in ${style[1]}.
 ${(POSES[val('pose')] || POSES.presenting)[1]} Show the cake and both hands clearly; keep the person's face fully visible above the cake.
 Background: a festive celebration scene with balloons, soft confetti and glowing lights, plus tasteful symbolic background details inspired by what the birthday person cares about: ${motifs}. Do not show the birthday person or any other people, only symbolic objects and scenery.
 Colour palette: ${pal.desc}.
-Composition: the person in the middle third. Keep the top 25% and the bottom 30% of the image calm and uncluttered (soft background only) because text will be added there later.
+Composition: landscape, waist-up, the person centred, with their whole head, both hands and the cake fully in frame and not cropped, and a little space above the head.
 Absolutely no text, letters, numbers, signs or logos anywhere in the image.`;
   const fd = new FormData();
   fd.append('model', settings.imageModel); fd.append('prompt', prompt);
   fd.append('image', await (await fetch(settings.photo)).blob(), 'me.jpg');
-  fd.append('size', '1024x1536'); fd.append('quality', settings.quality);
+  fd.append('size', '1536x1024'); fd.append('quality', settings.quality);
   const j = await callJson('https://api.openai.com/v1/images/edits', { method: 'POST', headers: { Authorization: 'Bearer ' + settings.apiKey }, body: fd }, settings.imageModel, 240000);
   const b64 = j.data && j.data[0] && j.data[0].b64_json; if (!b64) throw new Error('The image model returned no picture.');
   return loadImage('data:image/png;base64,' + b64);
