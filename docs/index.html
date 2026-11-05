@@ -12,7 +12,7 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Allura&family=Gloock&family=Manrope:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Allura&family=Cormorant+Garamond:ital,wght@1,600&family=Gloock&family=Manrope:wght@400;500;600;700;800&display=swap">
 <style>
 /* Layout: one-column phone app, sticky header, bottom tab bar; poster preview is the hero of the Create tab. */
 :root {
@@ -715,13 +715,14 @@ function templateWords(c) {
 /* ---------- poster design ---------- */
 const PALETTES = {
   auto: { label: 'Auto' },
-  champagne: { label: 'Champagne', deep: '#2a1a10', mid: '#7a4f28', soft: '#f5e6c8', gold: '#ecc979', text: '#fff8ec', desc: 'champagne gold, warm ivory and deep bronze' },
-  midnight: { label: 'Midnight', deep: '#0e1330', mid: '#2e3577', soft: '#c9ccf2', gold: '#ecc66e', text: '#f7f4ff', desc: 'midnight navy, indigo and glowing gold' },
-  coral: { label: 'Coral', deep: '#4a1424', mid: '#c2456a', soft: '#ffd6c9', gold: '#ffc56e', text: '#fff5f0', desc: 'coral pink, peach and soft gold' },
-  jade: { label: 'Jade', deep: '#0c2a24', mid: '#1e6b57', soft: '#cdefe2', gold: '#e6c77a', text: '#f2fff9', desc: 'jade green, mint and antique gold' }
+  champagne: { label: 'Black & gold', deep: '#120c08', mid: '#3d2c1b', soft: '#f3e3c0', gold: '#d9b45a', text: '#fff6e6', desc: 'black velvet, ivory and polished gold' },
+  midnight: { label: 'Navy & gold', deep: '#0a1230', mid: '#1f2f6b', soft: '#d6dcf5', gold: '#d9b45a', text: '#fbf7ec', desc: 'royal navy velvet, ivory and polished gold' },
+  coral: { label: 'Burgundy & gold', deep: '#33081a', mid: '#7a1632', soft: '#f5dccb', gold: '#e0bb63', text: '#fff6ee', desc: 'deep burgundy velvet, ivory and polished gold' },
+  jade: { label: 'Emerald & gold', deep: '#05261d', mid: '#0f5a44', soft: '#d3efe2', gold: '#dcbc6a', text: '#f6fff9', desc: 'emerald velvet, ivory and polished gold' }
 };
 const PATTERNS = { confetti: 'Confetti', rays: 'Gold rays', bokeh: 'Party lights', sparkle: 'Sparkles' };
-const STYLES = { cinematic: ['Photo-real', 'a cinematic, photo-realistic portrait with soft studio lighting and shallow depth of field'],
+const STYLES = { classic3d: ['Classic 3D', 'a classic, elegant 3D render with realistic depth: rich velvet drapes, polished gold balloons and ornate gold details, soft cinematic studio lighting and glossy highlights, while the person stays photo-realistic and clearly recognisable'],
+  cinematic: ['Photo-real', 'a cinematic, photo-realistic portrait with soft studio lighting and shallow depth of field'],
   animated: ['3D animated', 'a polished 3D animated-film character style, cheerful and expressive, while keeping the face clearly recognisable'],
   watercolor: ['Watercolour', 'an elegant watercolour and gouache illustration with gold-leaf accents, keeping the face clearly recognisable'] };
 // the agent is the friend delivering the cake, never the one celebrating
@@ -751,58 +752,181 @@ function drawPattern(g, kind, pal, rnd, W, H, zones) {
     for (let i = 0; i < 70; i++) { const x = rnd() * W, y = rnd() * H; if (!inZone(y)) continue; const s = 4 + rnd() * 16; g.globalAlpha = 0.5 + rnd() * 0.5;
       g.beginPath(); g.moveTo(x, y - s); g.quadraticCurveTo(x, y, x + s, y); g.quadraticCurveTo(x, y, x, y + s); g.quadraticCurveTo(x, y, x - s, y); g.quadraticCurveTo(x, y, x, y - s); g.fill(); }
   } else {
-    const cols = [pal.gold, pal.soft, pal.mid, '#ffffff'];
+    const cols = ['#f6dc86', '#d9ad4a', pal.soft, '#fff6dd'];
     for (let i = 0; i < 150; i++) { const x = rnd() * W, y = rnd() * H; if (!inZone(y)) continue;
       g.save(); g.translate(x, y); g.rotate(rnd() * Math.PI); g.globalAlpha = 0.55 + rnd() * 0.45; g.fillStyle = cols[Math.floor(rnd() * 4)];
       if (rnd() < 0.5) g.fillRect(-9, -3.5, 18, 7); else { g.beginPath(); g.arc(0, 0, 4 + rnd() * 3, 0, 7); g.fill(); } g.restore(); }
   }
   g.restore();
 }
-// two-tier birthday cake standing in front of the portrait (bottom edge at y = base)
-function drawCake(g, cx, base, pal) {
+/* ---------- classic 3D drawing kit ---------- */
+function shade(hex, amt) {
+  const n = [1, 3, 5].map(i => parseInt(hex.slice(i, i + 2), 16));
+  return '#' + n.map(c => Math.round(amt < 0 ? c * (1 + amt) : c + (255 - c) * amt).toString(16).padStart(2, '0')).join('');
+}
+// polished gold foil: bright bands between darker bronze, like light across metal
+function goldFoil(g, x0, y0, x1, y1) {
+  const gr = g.createLinearGradient(x0, y0, x1, y1);
+  [[0, '#7a5518'], [0.18, '#d9ad4a'], [0.36, '#fff0b0'], [0.5, '#c9962e'], [0.68, '#f6dc86'], [0.85, '#a87a26'], [1, '#6e4c15']].forEach(([o, c]) => gr.addColorStop(o, c));
+  return gr;
+}
+// embossed lettering: soft drop shadow, stacked dark extrusion, foil face, thin bright top edge
+function text3D(g, text, x, y, font, px, face) {
+  g.save(); g.font = font; g.textAlign = 'center';
+  const depth = Math.max(3, Math.round(px / 18));
+  g.shadowColor = 'rgba(0,0,0,.6)'; g.shadowBlur = px * 0.3; g.shadowOffsetY = px * 0.1;
+  for (let i = depth; i >= 1; i--) {
+    g.fillStyle = i === depth ? '#2e1d06' : '#5e4011'; g.fillText(text, x + i * 0.6, y + i);
+    if (i === depth) g.shadowColor = 'transparent';
+  }
+  g.fillStyle = face || goldFoil(g, 0, y - px * 0.85, 0, y + px * 0.15); g.fillText(text, x, y);
+  g.lineWidth = Math.max(1, px / 70); g.strokeStyle = 'rgba(255,250,225,.5)'; g.strokeText(text, x - 0.4, y - 0.8);
+  g.restore();
+}
+// velvet backdrop: deep radial tone, soft drape folds, warm spotlight from above
+function velvet(g, W, H, pal) {
+  let gr = g.createRadialGradient(W / 2, H * 0.36, 60, W / 2, H * 0.45, H * 0.85);
+  gr.addColorStop(0, pal.mid); gr.addColorStop(0.6, pal.deep); gr.addColorStop(1, '#000000');
+  g.fillStyle = gr; g.fillRect(0, 0, W, H);
+  const fw = W / 16;
+  for (let i = 0; i < 16; i++) {
+    const x = i * fw, f = g.createLinearGradient(x, 0, x + fw, 0);
+    f.addColorStop(0, 'rgba(0,0,0,.2)'); f.addColorStop(0.5, 'rgba(255,255,255,.06)'); f.addColorStop(1, 'rgba(0,0,0,.2)');
+    g.fillStyle = f; g.fillRect(x, 0, fw, H);
+  }
+  gr = g.createRadialGradient(W / 2, -60, 40, W / 2, 260, 780);
+  gr.addColorStop(0, 'rgba(255,238,195,.38)'); gr.addColorStop(1, 'rgba(255,238,195,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, W, H);
+}
+// swept-back stage curtains with gold tie-backs
+function curtains(g, W, pal) {
+  [[0, 1], [W, -1]].forEach(([x0, d]) => {
+    g.save();
+    const gr = g.createLinearGradient(x0, 0, x0 + d * 300, 0);
+    gr.addColorStop(0, shade(pal.deep, -0.3)); gr.addColorStop(0.45, pal.mid); gr.addColorStop(0.8, shade(pal.mid, 0.12)); gr.addColorStop(1, pal.deep);
+    g.shadowColor = 'rgba(0,0,0,.55)'; g.shadowBlur = 30; g.shadowOffsetX = d * 10;
+    g.fillStyle = gr; g.beginPath(); g.moveTo(x0, 0); g.lineTo(x0 + d * 290, 0);
+    g.bezierCurveTo(x0 + d * 200, 170, x0 + d * 70, 360, x0 + d * 55, 520); g.lineTo(x0 + d * 70, 640); g.lineTo(x0, 660); g.closePath(); g.fill();
+    g.shadowColor = 'transparent';
+    g.strokeStyle = 'rgba(0,0,0,.25)'; g.lineWidth = 3;
+    [0.3, 0.55, 0.8].forEach(k => { g.beginPath(); g.moveTo(x0 + d * 290 * k, 0); g.quadraticCurveTo(x0 + d * 160 * k, 300, x0 + d * 30, 560); g.stroke(); });
+    g.fillStyle = goldFoil(g, x0, 500, x0 + d * 90, 540); g.beginPath(); g.ellipse(x0 + d * 48, 525, 42, 16, d * 0.35, 0, 7); g.fill();
+    g.fillStyle = goldFoil(g, x0, 540, x0 + d * 40, 620); g.beginPath(); g.moveTo(x0 + d * 40, 535); g.lineTo(x0 + d * 58, 615); g.lineTo(x0 + d * 24, 615); g.closePath(); g.fill(); // tassel
+    g.restore();
+  });
+}
+// double gold frame with fan ornaments in each corner
+function ornateFrame(g, W, H) {
+  const m = 26;
   g.save();
-  g.shadowColor = 'rgba(0,0,0,.35)'; g.shadowBlur = 24; g.shadowOffsetY = 8;
-  g.fillStyle = pal.gold; g.beginPath(); g.ellipse(cx, base + 4, 230, 16, 0, 0, 7); g.fill();          // plate
+  g.shadowColor = 'rgba(0,0,0,.55)'; g.shadowBlur = 14; g.shadowOffsetY = 4;
+  g.strokeStyle = goldFoil(g, 0, 0, W, H); g.lineWidth = 10; g.beginPath(); g.roundRect(m, m, W - 2 * m, H - 2 * m, 18); g.stroke();
+  g.shadowColor = 'transparent'; g.lineWidth = 2.5; g.beginPath(); g.roundRect(m + 17, m + 17, W - 2 * m - 34, H - 2 * m - 34, 12); g.stroke();
+  [[m, m, 1, 1], [W - m, m, -1, 1], [m, H - m, 1, -1], [W - m, H - m, -1, -1]].forEach(([x, y, sx, sy]) => {
+    g.save(); g.translate(x, y); g.scale(sx, sy);
+    g.shadowColor = 'rgba(0,0,0,.5)'; g.shadowBlur = 10; g.shadowOffsetY = 3;
+    g.fillStyle = goldFoil(g, 0, 0, 80, 80); g.beginPath(); g.moveTo(0, 0); g.arc(0, 0, 66, 0, Math.PI / 2); g.closePath(); g.fill();
+    g.shadowColor = 'transparent'; g.fillStyle = 'rgba(60,38,8,.45)';
+    for (let a = 1; a < 6; a++) { g.save(); g.rotate(a * Math.PI / 12); g.fillRect(10, -1.2, 52, 2.4); g.restore(); }
+    g.fillStyle = goldFoil(g, 62, 62, 96, 96); g.beginPath(); g.moveTo(84, 68); g.lineTo(96, 84); g.lineTo(84, 100); g.lineTo(72, 84); g.closePath(); g.fill();
+    g.restore();
+  });
+  g.restore();
+}
+// glossy balloon with knot, specular highlight and string; base = [highlight, body, shadow]
+function balloon(g, x, y, rx, ry, base) {
+  g.save();
+  g.strokeStyle = 'rgba(255,240,210,.45)'; g.lineWidth = 2;
+  g.beginPath(); g.moveTo(x, y + ry + 10); g.bezierCurveTo(x - 22, y + ry + 90, x + 22, y + ry + 170, x, y + ry + 270); g.stroke();
+  g.shadowColor = 'rgba(0,0,0,.45)'; g.shadowBlur = 24; g.shadowOffsetY = 12;
+  const gr = g.createRadialGradient(x - rx * 0.35, y - ry * 0.4, rx * 0.08, x, y, ry * 1.1);
+  gr.addColorStop(0, '#ffffff'); gr.addColorStop(0.2, base[0]); gr.addColorStop(0.65, base[1]); gr.addColorStop(1, base[2]);
+  g.fillStyle = gr; g.beginPath(); g.ellipse(x, y, rx, ry, 0, 0, 7); g.fill();
   g.shadowColor = 'transparent';
-  const tier = (w, top, h, body) => {
-    const x = cx - w / 2;
-    const gr = g.createLinearGradient(x, 0, x + w, 0); gr.addColorStop(0, body); gr.addColorStop(0.5, '#ffffff'); gr.addColorStop(1, body);
-    g.fillStyle = gr; g.beginPath(); g.roundRect(x, top, w, h, 14); g.fill();
-    g.fillStyle = '#fffaf2'; g.beginPath(); g.moveTo(x, top + 12);                                         // frosting with drips
-    const drips = Math.round(w / 34);
-    for (let i = 0; i <= drips; i++) { const dx = x + (w * i) / drips; g.quadraticCurveTo(dx - w / drips / 2, top + 30 + (i % 2) * 12, dx, top + 18); }
-    g.lineTo(x + w, top + 12); g.quadraticCurveTo(x + w, top, x + w - 14, top); g.lineTo(x + 14, top); g.quadraticCurveTo(x, top, x, top + 12); g.fill();
-    g.fillStyle = pal.gold; for (let i = 1; i < drips; i += 2) { g.beginPath(); g.arc(x + (w * i) / drips, top + h - 18, 5, 0, 7); g.fill(); } // sugar pearls
-  };
-  tier(380, base - 100, 100, pal.soft);
-  tier(270, base - 172, 74, pal.soft);
-  for (let i = 0; i < 5; i++) {                                                                           // candles + flames
-    const x = cx - 96 + i * 48, top = base - 172 - 58;
-    g.fillStyle = i % 2 ? pal.gold : pal.mid; g.beginPath(); g.roundRect(x - 7, top, 14, 60, 4); g.fill();
-    g.fillStyle = '#ffffff99'; g.fillRect(x - 7, top + 14, 14, 6); g.fillRect(x - 7, top + 34, 14, 6);
-    const fl = g.createRadialGradient(x, top - 18, 2, x, top - 18, 34); fl.addColorStop(0, '#fff6c8ee'); fl.addColorStop(1, '#ffcf5a00');
-    g.fillStyle = fl; g.beginPath(); g.arc(x, top - 18, 34, 0, 7); g.fill();
-    g.fillStyle = '#ffd36b'; g.beginPath(); g.moveTo(x, top - 34); g.quadraticCurveTo(x + 11, top - 12, x, top - 3); g.quadraticCurveTo(x - 11, top - 12, x, top - 34); g.fill();
+  g.fillStyle = base[2]; g.beginPath(); g.moveTo(x - 9, y + ry + 12); g.lineTo(x + 9, y + ry + 12); g.lineTo(x, y + ry - 2); g.closePath(); g.fill();
+  g.fillStyle = 'rgba(255,255,255,.6)'; g.beginPath(); g.ellipse(x - rx * 0.4, y - ry * 0.42, rx * 0.15, ry * 0.25, -0.5, 0, 7); g.fill();
+  g.restore();
+}
+const GOLD_BALLOON = ['#ffe9a8', '#d4a33a', '#5e400f'], PEARL_BALLOON = ['#fffaf0', '#e3d8c4', '#7d7160'];
+// thick polished gold ring with a bead border
+function goldRing(g, cx, cy, r, w) {
+  g.save();
+  g.shadowColor = 'rgba(0,0,0,.6)'; g.shadowBlur = 28; g.shadowOffsetY = 12;
+  g.lineWidth = w; g.strokeStyle = goldFoil(g, cx - r, cy - r, cx + r, cy + r); g.beginPath(); g.arc(cx, cy, r + w / 2, 0, 7); g.stroke();
+  g.shadowColor = 'transparent';
+  g.lineWidth = 2.5; g.strokeStyle = 'rgba(255,250,220,.85)'; g.beginPath(); g.arc(cx, cy, r + w - 3, Math.PI * 1.05, Math.PI * 1.75); g.stroke();
+  g.strokeStyle = 'rgba(50,32,6,.75)'; g.beginPath(); g.arc(cx, cy, r + 1, 0, 7); g.stroke();
+  for (let i = 0; i < 40; i++) {
+    const a = (i / 40) * Math.PI * 2, bx = cx + Math.cos(a) * (r + w + 13), by = cy + Math.sin(a) * (r + w + 13);
+    const bg = g.createRadialGradient(bx - 1.5, by - 1.5, 0.5, bx, by, 5.5); bg.addColorStop(0, '#fff3c4'); bg.addColorStop(1, '#9a6e1f');
+    g.fillStyle = bg; g.beginPath(); g.arc(bx, by, 5, 0, 7); g.fill();
   }
   g.restore();
 }
-// speech bubble from the agent's portrait, so the poster reads as "me wishing you"
+// two round tiers seen slightly from above, gold bands, frosting drips, candles; plate centre at y = base
+function drawCake(g, cx, base, pal) {
+  g.save();
+  g.shadowColor = 'rgba(0,0,0,.55)'; g.shadowBlur = 34; g.shadowOffsetY = 16;
+  g.fillStyle = '#5e400f'; g.beginPath(); g.ellipse(cx, base + 9, 236, 36, 0, 0, 7); g.fill();
+  g.shadowColor = 'transparent';
+  g.fillStyle = goldFoil(g, cx - 236, 0, cx + 236, 0); g.beginPath(); g.ellipse(cx, base, 236, 36, 0, 0, 7); g.fill();
+  const body = pal.soft;
+  const tier = (rx, bottom, h) => {
+    const ry = rx * 0.18, top = bottom - h;
+    const side = g.createLinearGradient(cx - rx, 0, cx + rx, 0);
+    side.addColorStop(0, shade(body, -0.38)); side.addColorStop(0.32, '#ffffff'); side.addColorStop(0.6, body); side.addColorStop(1, shade(body, -0.5));
+    g.fillStyle = side; g.beginPath(); g.moveTo(cx - rx, top); g.lineTo(cx - rx, bottom); g.ellipse(cx, bottom, rx, ry, 0, Math.PI, 0, true); g.lineTo(cx + rx, top); g.closePath(); g.fill();
+    g.fillStyle = goldFoil(g, cx - rx, 0, cx + rx, 0);                       // gold band
+    g.beginPath(); g.moveTo(cx - rx, bottom - 30); g.ellipse(cx, bottom - 30, rx, ry, 0, Math.PI, 0, true);
+    g.lineTo(cx + rx, bottom - 16); g.ellipse(cx, bottom - 16, rx, ry, 0, 0, Math.PI, false); g.closePath(); g.fill();
+    g.fillStyle = '#fffaf0';                                                   // frosting drips on the front edge
+    const n = Math.round(rx / 20);
+    for (let i = 1; i < n; i++) {
+      const a = Math.PI - (i / n) * Math.PI, x = cx + Math.cos(a) * rx, y = top + Math.sin(a) * ry, len = 16 + ((i * 5) % 3) * 10;
+      g.beginPath(); g.roundRect(x - 7, y - 4, 14, len, 7); g.fill();
+    }
+    g.lineWidth = 14; g.strokeStyle = '#fffaf0'; g.beginPath(); g.ellipse(cx, top + 3, rx - 3, ry, 0, 0, Math.PI); g.stroke();
+    const tf = g.createRadialGradient(cx - rx * 0.3, top - ry * 0.4, 4, cx, top, rx);
+    tf.addColorStop(0, '#ffffff'); tf.addColorStop(1, shade(body, -0.06));
+    g.fillStyle = tf; g.beginPath(); g.ellipse(cx, top, rx, ry, 0, 0, 7); g.fill();
+    return { top, ry };
+  };
+  const low = tier(190, base - 4, 110);
+  const up = tier(132, low.top + 4, 82);
+  [-0.8, -0.4, 0, 0.4, 0.8].forEach((k, i) => {                             // candles + flames
+    const x = cx + k * 100, y = up.top + Math.sqrt(1 - k * k * 0.6) * up.ry * 0.4, top = y - 62;
+    const cg = g.createLinearGradient(x - 7, 0, x + 7, 0); cg.addColorStop(0, shade(i % 2 ? pal.gold : pal.mid, -0.3)); cg.addColorStop(0.4, shade(i % 2 ? pal.gold : pal.mid, 0.35)); cg.addColorStop(1, shade(i % 2 ? pal.gold : pal.mid, -0.35));
+    g.fillStyle = cg; g.beginPath(); g.roundRect(x - 7, top, 14, 62, 4); g.fill();
+    const fl = g.createRadialGradient(x, top - 18, 2, x, top - 18, 36); fl.addColorStop(0, '#fff6c8ee'); fl.addColorStop(1, '#ffcf5a00');
+    g.fillStyle = fl; g.beginPath(); g.arc(x, top - 18, 36, 0, 7); g.fill();
+    g.fillStyle = '#ffd36b'; g.beginPath(); g.moveTo(x, top - 34); g.quadraticCurveTo(x + 11, top - 12, x, top - 3); g.quadraticCurveTo(x - 11, top - 12, x, top - 34); g.fill();
+    g.fillStyle = '#fffbe8'; g.beginPath(); g.ellipse(x, top - 11, 3.5, 7, 0, 0, 7); g.fill();
+  });
+  g.restore();
+}
+// ivory speech bubble with a gold edge, pointing at the agent's portrait
 function drawBubble(g, text, x, y, w, tipX, tipY, pal) {
-  const fit = fitText(g, text, '800 {px}px Manrope, sans-serif', 46, 28, w - 56, 3);
-  const lh = fit.px * 1.2, h = fit.lines.length * lh + 44;
-  g.save(); g.shadowColor = 'rgba(0,0,0,.3)'; g.shadowBlur = 20; g.fillStyle = pal.text;
-  g.beginPath(); g.roundRect(x, y, w, h, 28); g.fill();
-  g.beginPath(); g.moveTo(x + 40, y + h - 6); g.lineTo(tipX, tipY); g.lineTo(x + 100, y + h - 6); g.closePath(); g.fill();
-  g.shadowColor = 'transparent'; g.fillStyle = pal.deep; g.font = `800 ${fit.px}px Manrope, sans-serif`; g.textAlign = 'center';
-  fit.lines.forEach((l, i) => g.fillText(l, x + w / 2, y + 22 + fit.px * 0.9 + i * lh));
+  const font = 'italic 600 {px}px "Cormorant Garamond", Georgia, serif';
+  const fit = fitText(g, text, font, 56, 34, w - 56, 3);
+  const lh = fit.px * 1.1, h = fit.lines.length * lh + 44;
+  g.save();
+  g.shadowColor = 'rgba(0,0,0,.5)'; g.shadowBlur = 26; g.shadowOffsetY = 10;
+  g.fillStyle = '#fffaf0';
+  g.beginPath(); g.roundRect(x, y, w, h, 26); g.fill();
+  g.beginPath(); g.moveTo(x + 40, y + h - 6); g.lineTo(tipX, tipY); g.lineTo(x + 104, y + h - 6); g.closePath(); g.fill();
+  g.shadowColor = 'transparent';
+  g.strokeStyle = goldFoil(g, x, y, x + w, y + h); g.lineWidth = 4; g.beginPath(); g.roundRect(x + 8, y + 8, w - 16, h - 16, 20); g.stroke();
+  g.fillStyle = pal.deep; g.font = font.replace('{px}', fit.px); g.textAlign = 'center';
+  fit.lines.forEach((l, i) => g.fillText(l, x + w / 2, y + 20 + fit.px * 0.85 + i * lh));
   g.restore();
 }
 // golden music notes floating on the open side of the portrait (singing pose)
 function drawNotes(g, cx, cy, r, pal, rnd) {
-  const spots = [[-1.12, -0.55, 70], [-1.3, 0.05, 52], [-1.05, 0.55, 44]];
-  g.save(); g.fillStyle = pal.gold; g.textAlign = 'center'; g.shadowColor = 'rgba(0,0,0,.3)'; g.shadowBlur = 10;
+  const spots = [[-1.18, -0.55, 70], [-1.36, 0.05, 52], [-1.12, 0.55, 44]];
+  g.save(); g.textAlign = 'center'; g.shadowColor = 'rgba(0,0,0,.45)'; g.shadowBlur = 10; g.shadowOffsetY = 4;
   spots.forEach(([fx, fy, size], i) => {
     g.save(); g.translate(cx + fx * r, cy + fy * r); g.rotate((rnd() - 0.5) * 0.6);
+    g.fillStyle = goldFoil(g, 0, -size, 0, 0);
     g.font = `${size}px "Segoe UI Symbol", "Apple Symbols", "Noto Music", sans-serif`; g.fillText(i % 2 ? '♫' : '♪', 0, 0); g.restore();
   });
   g.restore();
@@ -818,7 +942,8 @@ function fitText(g, text, font, startPx, minPx, maxW, maxLines) {
   g.font = font.replace('{px}', minPx); return { px: minPx, lines: wrapLines(g, text, maxW, 99).slice(0, maxLines) };
 }
 async function fontsReady() {
-  try { await Promise.race([Promise.all(['120px Allura', '120px Gloock', '700 40px Manrope', '600 30px Manrope'].map(f => document.fonts.load(f))), new Promise(r => setTimeout(r, 3000))]); } catch {}
+  const faces = ['120px Allura', '120px Gloock', '700 40px Manrope', '600 30px Manrope', 'italic 600 50px "Cormorant Garamond"'];
+  try { await Promise.race([Promise.all(faces.map(f => document.fonts.load(f))), new Promise(r => setTimeout(r, 3000))]); } catch {}
 }
 function drawPoster(canvas, o) {
   const W = 1080, H = 1350, g = canvas.getContext('2d'), pal = PALETTES[o.palette], rnd = seeded(o.customer.id + o.pattern);
@@ -826,53 +951,71 @@ function drawPoster(canvas, o) {
   if (o.art) {
     const s = Math.max(W / o.art.width, H / o.art.height), w = o.art.width * s, h = o.art.height * s;
     g.drawImage(o.art, (W - w) / 2, (H - h) / 2, w, h);
-    let gr = g.createLinearGradient(0, 0, 0, 470); gr.addColorStop(0, pal.deep + 'f0'); gr.addColorStop(0.65, pal.deep + '99'); gr.addColorStop(1, pal.deep + '00'); g.fillStyle = gr; g.fillRect(0, 0, W, 470);
-    gr = g.createLinearGradient(0, H - 560, 0, H); gr.addColorStop(0, pal.deep + '00'); gr.addColorStop(0.42, pal.deep + 'c8'); gr.addColorStop(1, pal.deep + 'f8'); g.fillStyle = gr; g.fillRect(0, H - 560, W, 560);
+    let gr = g.createLinearGradient(0, 0, 0, 480); gr.addColorStop(0, pal.deep + 'f2'); gr.addColorStop(0.65, pal.deep + '99'); gr.addColorStop(1, pal.deep + '00'); g.fillStyle = gr; g.fillRect(0, 0, W, 480);
+    gr = g.createLinearGradient(0, H - 560, 0, H); gr.addColorStop(0, pal.deep + '00'); gr.addColorStop(0.42, pal.deep + 'cc'); gr.addColorStop(1, pal.deep + 'f8'); g.fillStyle = gr; g.fillRect(0, H - 560, W, 560);
     drawPattern(g, o.pattern, pal, rnd, W, H, [[0, 380], [H - 260, H]]);
   } else {
-    const gr = g.createRadialGradient(W / 2, 560, 80, W / 2, 620, 900); gr.addColorStop(0, pal.mid); gr.addColorStop(1, pal.deep); g.fillStyle = gr; g.fillRect(0, 0, W, H);
+    velvet(g, W, H, pal);
     drawPattern(g, o.pattern, pal, rnd, W, H, null);
-    // balloons
-    [[115, 520, pal.gold], [975, 735, pal.soft], [95, 960, pal.mid]].forEach(([x, y, col], i) => {
-      g.strokeStyle = pal.soft + '88'; g.lineWidth = 2; g.beginPath(); g.moveTo(x, y + 70); g.bezierCurveTo(x - 20, y + 160, x + 20, y + 240, x, y + 330); g.stroke();
-      const bg = g.createRadialGradient(x - 18, y - 22, 6, x, y, 80); bg.addColorStop(0, '#ffffffcc'); bg.addColorStop(0.25, col); bg.addColorStop(1, pal.deep); g.fillStyle = bg;
-      g.beginPath(); g.ellipse(x, y, 56 - i * 3, 70 - i * 3, 0, 0, 7); g.fill(); });
-    // portrait in a gold ring (left), offering the cake (right) and saying the wish (bubble)
-    const cx = 390, cy = 665, r = 190;
-    const glow = g.createRadialGradient(cx, cy, r * 0.8, cx, cy, r * 1.45); glow.addColorStop(0, pal.gold + '66'); glow.addColorStop(1, pal.gold + '00'); g.fillStyle = glow; g.beginPath(); g.arc(cx, cy, r * 1.45, 0, 7); g.fill();
+    curtains(g, W, pal);
+    balloon(g, 128, 700, 56, 70, GOLD_BALLOON);
+    balloon(g, 968, 760, 54, 68, PEARL_BALLOON);
+    balloon(g, 112, 930, 48, 61, [pal.soft, pal.mid, pal.deep]);
+    // the agent (left) offering the cake (right) and saying the wish (bubble)
+    const cx = 390, cy = 665, r = 178;
+    const glow = g.createRadialGradient(cx, cy, r * 0.8, cx, cy, r * 1.6); glow.addColorStop(0, 'rgba(255,225,150,.35)'); glow.addColorStop(1, 'rgba(255,225,150,0)');
+    g.fillStyle = glow; g.beginPath(); g.arc(cx, cy, r * 1.6, 0, 7); g.fill();
     g.save(); g.beginPath(); g.arc(cx, cy, r, 0, 7); g.clip();
-    const p = o.photo, s = Math.max(2 * r / p.width, 2 * r / p.height); g.drawImage(p, cx - p.width * s / 2, cy - p.height * s / 2, p.width * s, p.height * s); g.restore();
-    g.lineWidth = 14; g.strokeStyle = pal.gold; g.beginPath(); g.arc(cx, cy, r + 7, 0, 7); g.stroke();
-    g.lineWidth = 3; g.strokeStyle = pal.soft; g.beginPath(); g.arc(cx, cy, r + 26, 0, 7); g.stroke();
-    drawCake(g, 660, 1010, pal);
+    const p = o.photo, s = Math.max(2 * r / p.width, 2 * r / p.height); g.drawImage(p, cx - p.width * s / 2, cy - p.height * s / 2, p.width * s, p.height * s);
+    const inner = g.createRadialGradient(cx, cy, r * 0.7, cx, cy, r); inner.addColorStop(0, 'rgba(0,0,0,0)'); inner.addColorStop(1, 'rgba(0,0,0,.4)');
+    g.fillStyle = inner; g.fillRect(cx - r, cy - r, 2 * r, 2 * r);
+    g.restore();
+    goldRing(g, cx, cy, r, 18);
+    drawCake(g, 664, 1012, pal);
     if (o.pose === 'singing') drawNotes(g, cx, cy, r, pal, rnd);
-    drawBubble(g, `Happy birthday, ${o.customer.nickname}!`, 600, 430, 400, 560, 560, pal);
+    drawBubble(g, `Happy birthday, ${o.customer.nickname}!`, 610, 418, 400, 560, 560, pal);
   }
-  // frame
-  g.strokeStyle = pal.gold; g.globalAlpha = 0.85; g.lineWidth = 3; g.beginPath(); g.roundRect(30, 30, W - 60, H - 60, 26); g.stroke(); g.globalAlpha = 1;
-  // headline + name
-  g.shadowColor = 'rgba(0,0,0,.35)'; g.shadowBlur = 18;
-  g.fillStyle = pal.gold; g.font = '128px Allura, cursive'; g.fillText('Happy Birthday', W / 2, 168);
-  const nameFit = fitText(g, o.customer.nickname, '{px}px Gloock, Georgia, serif', 150, 64, W - 180, 1);
-  const nameBase = 168 + 30 + nameFit.px * 0.82;
-  g.fillStyle = pal.text; g.font = `${nameFit.px}px Gloock, Georgia, serif`; g.fillText(nameFit.lines[0], W / 2, nameBase);
+  ornateFrame(g, W, H);
+  // headline + name in embossed gold and pearl
+  text3D(g, 'Happy Birthday', W / 2, 172, '128px Allura, cursive', 128);
+  const nameFit = fitText(g, o.customer.nickname, '{px}px Gloock, Georgia, serif', 150, 64, W - 200, 1);
+  const nameBase = 172 + 30 + nameFit.px * 0.82;
+  const pearl = g.createLinearGradient(0, nameBase - nameFit.px * 0.8, 0, nameBase); pearl.addColorStop(0, '#ffffff'); pearl.addColorStop(0.55, pal.text); pearl.addColorStop(1, shade(pal.soft, -0.15));
+  text3D(g, nameFit.lines[0], W / 2, nameBase, `${nameFit.px}px Gloock, Georgia, serif`, nameFit.px, pearl);
   const sender = settings.name || settings.signoff;
-  if (sender) { g.fillStyle = pal.gold; g.font = '62px Allura, cursive'; g.fillText(`from ${sender}`, W / 2, nameBase + 70); }
-  // age badge
-  if (o.showAge && o.turning) {
-    const bx = W - 140, by = o.art ? 500 : 905; g.shadowBlur = 0;
-    g.fillStyle = pal.gold; g.beginPath(); g.arc(bx, by, 78, 0, 7); g.fill();
-    g.fillStyle = pal.deep; g.font = '700 22px Manrope, sans-serif'; g.fillText('TURNING', bx, by - 22); g.font = '64px Gloock, Georgia, serif'; g.fillText(String(o.turning), bx, by + 38);
-    g.shadowBlur = 18;
+  if (sender) {
+    g.save(); g.font = '60px Allura, cursive'; const tw = g.measureText(`from ${sender}`).width; g.restore();
+    text3D(g, `from ${sender}`, W / 2, nameBase + 70, '60px Allura, cursive', 60);
+    g.save(); g.strokeStyle = goldFoil(g, 0, 0, W, 0); g.lineWidth = 2.5; const ly = nameBase + 52;
+    [[-1], [1]].forEach(([d]) => { g.beginPath(); g.moveTo(W / 2 + d * (tw / 2 + 22), ly); g.lineTo(W / 2 + d * (tw / 2 + 120), ly); g.stroke();
+      g.fillStyle = goldFoil(g, 0, ly - 6, 0, ly + 6); g.beginPath(); const dx = W / 2 + d * (tw / 2 + 128); g.moveTo(dx, ly - 6); g.lineTo(dx + 6, ly); g.lineTo(dx, ly + 6); g.lineTo(dx - 6, ly); g.fill(); });
+    g.restore();
   }
-  // poster line
-  const lineFit = fitText(g, '“' + o.posterLine + '”', '600 {px}px Manrope, sans-serif', 46, 30, W - 200, 3);
-  g.fillStyle = pal.text; g.font = `600 ${lineFit.px}px Manrope, sans-serif`;
-  const lh = lineFit.px * 1.28, baseY = H - 150 - (lineFit.lines.length - 1) * lh;
+  // age medallion
+  if (o.showAge && o.turning) {
+    const bx = W - 140, by = o.art ? 500 : 905;
+    g.save(); g.shadowColor = 'rgba(0,0,0,.55)'; g.shadowBlur = 22; g.shadowOffsetY = 8;
+    g.fillStyle = goldFoil(g, bx - 80, by - 80, bx + 80, by + 80); g.beginPath(); g.arc(bx, by, 80, 0, 7); g.fill();
+    g.shadowColor = 'transparent'; g.strokeStyle = 'rgba(60,38,8,.6)'; g.lineWidth = 2; g.beginPath(); g.arc(bx, by, 66, 0, 7); g.stroke();
+    g.strokeStyle = 'rgba(255,248,215,.7)'; g.beginPath(); g.arc(bx, by, 69, Math.PI * 1.1, Math.PI * 1.7); g.stroke();
+    g.fillStyle = '#4a3009'; g.font = '700 20px Manrope, sans-serif'; g.fillText('TURNING', bx, by - 22);
+    g.fillStyle = 'rgba(255,245,210,.6)'; g.font = '64px Gloock, Georgia, serif'; g.fillText(String(o.turning), bx + 1, by + 41);
+    g.fillStyle = '#4a3009'; g.fillText(String(o.turning), bx, by + 39);
+    g.restore();
+  }
+  // poster line in classic italic serif
+  const lineFont = 'italic 600 {px}px "Cormorant Garamond", Georgia, serif';
+  const lineFit = fitText(g, '“' + o.posterLine + '”', lineFont, 58, 36, W - 220, 3);
+  g.save(); g.shadowColor = 'rgba(0,0,0,.6)'; g.shadowBlur = 14; g.shadowOffsetY = 3;
+  g.fillStyle = pal.text; g.font = lineFont.replace('{px}', lineFit.px);
+  const lh = lineFit.px * 1.18, baseY = H - 150 - (lineFit.lines.length - 1) * lh;
   lineFit.lines.forEach((l, i) => g.fillText(l, W / 2, baseY + i * lh));
+  g.restore();
   // footer
-  g.shadowBlur = 0; g.fillStyle = pal.gold; g.font = '700 24px Manrope, sans-serif';
+  g.save(); g.fillStyle = goldFoil(g, 0, H - 92, 0, H - 66); g.font = '700 22px Manrope, sans-serif';
+  if ('letterSpacing' in g) g.letterSpacing = '3px';
   g.fillText(((settings.signoff || 'WITH WARM WISHES') + (o.dateLabel ? '  ·  ' + o.dateLabel : '')).toUpperCase(), W / 2, H - 72);
+  g.restore();
 }
 
 /* ---------- create flow ---------- */
@@ -886,7 +1029,7 @@ function radios(container, name, options, value) {
 }
 radios($('#c-palette'), 'pal', PALETTES, 'auto');
 radios($('#c-pattern'), 'pat', PATTERNS, 'confetti');
-radios($('#c-style'), 'sty', STYLES, 'cinematic');
+radios($('#c-style'), 'sty', STYLES, 'classic3d');
 radios($('#c-pose'), 'pose', POSES, 'presenting');
 const val = name => (document.querySelector(`input[name="${name}"]:checked`) || {}).value;
 
@@ -936,7 +1079,7 @@ function progress(step) {
 function stopProgress() { $('#progress').dataset.started = '0'; progress(null); $('#progTimer').textContent = ''; }
 
 async function aiArtwork(c, pal) {
-  const style = STYLES[val('sty')] || STYLES.cinematic;
+  const style = STYLES[val('sty')] || STYLES.classic3d;
   const motifs = (c.priorities || []).slice(0, 3).join('; ') || 'a joyful celebration';
   const prompt = `Use the person in the reference photo as the only person and main subject. Keep their face, facial features, skin tone, hairstyle and glasses (if any) clearly recognisable as the same real person.
 Create a vertical, premium, "wow" birthday greeting poster artwork in ${style[1]}.
