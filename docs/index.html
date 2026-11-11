@@ -98,6 +98,16 @@ textarea { min-height: 110px; resize: vertical; line-height: 1.45; }
 .cust .meta { color: var(--muted); font-size: 13px; }
 .cust .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
 .tag-sample { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--warn); background: var(--warn-bg); border-radius: 6px; padding: 2px 6px; margin-left: 6px; vertical-align: 2px; }
+.month-list { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.month-list li { display: grid; grid-template-columns: 52px 1fr auto; gap: 8px; align-items: center; font-size: 14px; }
+.month-list li.past { opacity: .5; }
+.month-list .d { font-weight: 800; font-variant-numeric: tabular-nums; }
+.review-row { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: grid; gap: 8px; background: var(--bg); }
+.review-row.off { opacity: .55; }
+.review-row .top { display: flex; gap: 10px; align-items: center; }
+.review-row .raw { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+.review-row input[type=text], .review-row input[type=date] { padding: 8px 10px; font-size: 15px; }
+.mini-label { font-size: 12px; font-weight: 700; color: var(--muted); display: grid; gap: 4px; }
 .empty { text-align: center; color: var(--muted); padding: 28px 12px; border: 1.5px dashed var(--line); border-radius: 16px; }
 
 /* create */
@@ -166,6 +176,23 @@ code { font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border
       <h1>Upcoming occasions</h1>
       <p class="lede">Birthdays and policy anniversaries, soonest first. Each card holds what the customer cares about, so every message sounds like you remembered.</p>
     </div>
+    <div class="panel" id="monthPanel"></div>
+
+    <div class="panel" id="importPanel">
+      <div>
+        <h2>Import from ePartner</h2>
+        <p class="hint" style="margin:4px 0 0">Take a photo or screenshot of your customer or policy list. Only names, birthdays and policy dates are read. IC and policy numbers are ignored. You check every row before anything is saved.</p>
+      </div>
+      <div class="row">
+        <label class="btn small primary" for="scanFile">📷 Photo or screenshot</label>
+        <input type="file" id="scanFile" accept="image/*" multiple hidden>
+        <label class="btn small" for="csvFile">Import CSV file</label>
+        <input type="file" id="csvFile" accept=".csv,text/csv,.txt,text/plain" hidden>
+      </div>
+      <div id="scanStatus" style="display:grid;gap:8px"></div>
+      <div id="reviewBox" style="display:grid;gap:10px" hidden></div>
+    </div>
+
     <div id="custList" style="display:grid;gap:10px"></div>
     <button class="btn primary big" id="addCustBtn" type="button">+ Add a customer</button>
 
@@ -556,6 +583,7 @@ document.querySelectorAll('nav.tabs button').forEach(b => b.onclick = () => show
 
 /* ---------- customers ---------- */
 function renderCustomers() {
+  renderMonth();
   const list = $('#custList');
   if (!customers.length) { list.innerHTML = '<div class="empty">No customers yet. Add your first one to get birthday and anniversary reminders here.</div>'; return; }
   const inDays = n => n === 0 ? 'today' : `in ${n} day${n === 1 ? '' : 's'}`;
@@ -633,6 +661,299 @@ $('#importFile').onchange = async e => {
   if (!good.length || !(await ask('Restore backup?', msg, 'Restore'))) return;
   good.forEach(g => { const i = customers.findIndex(c => c.id === g.id); if (i >= 0) customers[i] = g; else customers.push(g); });
   saveCustomers(); renderCustomers(); toast('Backup restored');
+};
+
+/* ---------- this month: birthdays and anniversaries, plus phone calendar reminders ---------- */
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+function occasionsInMonth(year, month) { // month 0-11; every birthday and anniversary that falls in it
+  const out = [];
+  customers.forEach(c => {
+    const b = parseDob(c.dob), p = parseDob(c.policyDate);
+    if (b && b.mo - 1 === month) out.push({ c, occ: 'birthday', day: b.mo === 2 && b.d === 29 && !isLeap(year) ? 28 : b.d, what: `turns ${year - b.y}` });
+    if (p && p.mo - 1 === month && year > p.y) out.push({ c, occ: 'anniversary', day: p.mo === 2 && p.d === 29 && !isLeap(year) ? 28 : p.d, what: `${year - p.y} year${year - p.y === 1 ? '' : 's'} with you` });
+  });
+  return out.sort((a, b) => a.day - b.day);
+}
+function renderMonth() {
+  const t = today0(), y = t.getFullYear(), m = t.getMonth(), list = occasionsInMonth(y, m);
+  const nm = (m + 1) % 12, ny = m === 11 ? y + 1 : y, next = occasionsInMonth(ny, nm);
+  const fresh = customers.filter(c => !c.sample && c.calSig !== calSig(c)).length;
+  // the app's own reminder: anything in the next 7 days shows first, every time the app opens
+  const soon = [];
+  customers.forEach(c => {
+    const nb = nextBirthday(c.dob), na = nextAnniversary(c.policyDate);
+    if (nb && nb.days <= 7) soon.push({ c, occ: 'birthday', days: nb.days, what: `turns ${nb.turning}` });
+    if (na && na.days <= 7) soon.push({ c, occ: 'anniversary', days: na.days, what: `${na.years} year${na.years === 1 ? '' : 's'} with you` });
+  });
+  soon.sort((a, b) => a.days - b.days);
+  try { if (navigator.setAppBadge) soon.length ? navigator.setAppBadge(soon.length) : navigator.clearAppBadge(); } catch {}
+  const when = d => d === 0 ? 'Today' : d === 1 ? 'Tomorrow' : `In ${d} days`;
+  $('#monthPanel').innerHTML = `${soon.length ? `<div class="notice warn" style="gap:6px"><b>Coming up in the next 7 days</b>
+      ${soon.map(o => `<div class="row" style="justify-content:space-between;gap:6px"><span>${when(o.days)}: ${o.occ === 'birthday' ? '🎂' : '🤝'} ${esc(o.c.nickname)} ${esc(o.what)}</span>
+        <button class="btn small" data-make="${o.c.id}" data-occ="${o.occ}">Create</button></div>`).join('')}</div>` : ''}
+    <div class="row" style="justify-content:space-between"><h2>This month: ${MONTH_NAMES[m]}</h2>
+      <span class="chip gold">${list.filter(o => o.occ === 'birthday').length} 🎂 · ${list.filter(o => o.occ === 'anniversary').length} 🤝</span></div>
+    ${list.length ? `<ul class="month-list">${list.map(o => `<li class="${o.day < t.getDate() ? 'past' : ''}"><span class="d">${o.day} ${MONTHS[m]}</span>
+      <span>${o.occ === 'birthday' ? '🎂' : '🤝'} ${esc(o.c.nickname)} <span class="hint">${esc(o.what)}</span></span>
+      <button class="btn small" data-make="${o.c.id}" data-occ="${o.occ}">Create</button></li>`).join('')}</ul>`
+      : '<p class="hint" style="margin:0">No customer birthdays or policy anniversaries this month.</p>'}
+    <p class="hint" style="margin:0">Next month (${MONTH_NAMES[nm]}): ${next.length ? `${next.length} occasion${next.length === 1 ? '' : 's'}` : 'none yet'}.</p>
+    <div class="row">
+      <button class="btn small primary" type="button" id="calNewBtn" ${fresh ? '' : 'disabled'}>📅 Add ${fresh ? fresh : 'new'} customer${fresh === 1 ? '' : 's'} to my calendar</button>
+      <button class="btn small" type="button" id="calAllBtn">Full calendar + monthly summaries</button>
+    </div>
+    <p class="hint" style="margin:0">Your phone calendar then reminds you 3 days before and at 9am on the day, every year. ${fresh ? `${fresh} customer${fresh === 1 ? ' is' : 's are'} not in your calendar yet.` : 'Everyone is in your calendar.'}</p>`;
+  $('#monthPanel').querySelectorAll('[data-make]').forEach(b => b.onclick = () => { selectedId = b.dataset.make; setOccasion(b.dataset.occ); show('create'); });
+  $('#calNewBtn').onclick = () => exportCalendar(false);
+  $('#calAllBtn').onclick = () => exportCalendar(true);
+}
+const calSig = c => `${c.nickname}|${c.dob}|${c.policyDate || ''}`; // what the calendar entries were made from
+const icsEsc = s => String(s).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
+const icsDay = d => `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+function icsFold(line) { // calendar lines wrap at about 75 bytes, never inside a character such as an emoji
+  const out = []; let cur = '', bytes = 0;
+  for (const ch of Array.from(line)) {
+    const b = new TextEncoder().encode(ch).length;
+    if (bytes + b > 73) { out.push(cur); cur = ' '; bytes = 1; }
+    cur += ch; bytes += b;
+  }
+  out.push(cur); return out.join('\r\n');
+}
+function icsEvent(uid, date, summary, description, monthly) {
+  const end = new Date(date); end.setDate(end.getDate() + 1);
+  const alarm = (trigger, text) => ['BEGIN:VALARM', 'ACTION:DISPLAY', `TRIGGER:${trigger}`, `DESCRIPTION:${icsEsc(text)}`, 'END:VALARM'];
+  return ['BEGIN:VEVENT', `UID:${uid}@customer-relationship-app`, `DTSTAMP:${new Date().toISOString().replace(/[-:]/g, '').slice(0, 15)}Z`,
+    `DTSTART;VALUE=DATE:${icsDay(date)}`, `DTEND;VALUE=DATE:${icsDay(end)}`, 'RRULE:FREQ=YEARLY', `SUMMARY:${icsEsc(summary)}`, `DESCRIPTION:${icsEsc(description)}`, 'TRANSP:TRANSPARENT',
+    ...(monthly ? [] : alarm('-PT63H', `In 3 days: ${summary}`)), ...alarm('PT9H', summary), 'END:VEVENT'];
+}
+async function exportCalendar(all) {
+  const pick = all ? customers.filter(c => !c.sample) : customers.filter(c => !c.sample && c.calSig !== calSig(c));
+  if (!pick.length) return ask('Nothing to add', customers.some(c => c.sample) && customers.length === 1 ? 'Add your own customers first. The Kelly example is never added to your calendar.' : 'Every customer is already in your calendar.', 'OK');
+  const appUrl = location.origin + location.pathname, lines = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//REDEFINE//Customer Relationship App//EN', 'CALSCALE:GREGORIAN', 'X-WR-CALNAME:Customers'];
+  pick.forEach(c => {
+    const nb = nextBirthday(c.dob), p = parseDob(c.policyDate), na = nextAnniversary(c.policyDate);
+    if (nb) lines.push(...icsEvent(`${c.id}-birthday`, nb.date, `🎂 ${c.nickname}'s birthday`, `Make a birthday poster in Customer Relationship App: ${appUrl}`));
+    if (na) lines.push(...icsEvent(`${c.id}-anniversary`, na.date, `🤝 ${c.nickname}'s policy anniversary (since ${p.y})`, `Send a thank-you poster from Customer Relationship App: ${appUrl}`));
+  });
+  if (all) { // one summary on the 1st of each month that has occasions, repeating yearly
+    const t = today0();
+    for (let i = 0; i < 12; i++) {
+      const m = (t.getMonth() + i) % 12, y = t.getFullYear() + (t.getMonth() + i > 11 ? 1 : 0), list = occasionsInMonth(y, m).filter(o => !o.c.sample);
+      if (!list.length) continue;
+      const nb = list.filter(o => o.occ === 'birthday').length, na = list.length - nb;
+      lines.push(...icsEvent(`month-${m + 1}`, new Date(y, m, 1), `📅 ${MONTH_NAMES[m]}: ${nb} birthday${nb === 1 ? '' : 's'}, ${na} anniversar${na === 1 ? 'y' : 'ies'}`,
+        list.map(o => `${o.day} ${MONTHS[m]} · ${o.c.nickname} · ${o.occ === 'birthday' ? 'birthday' : 'policy anniversary'}`).join('\n') + `\n\nOpen the app: ${appUrl}`, true));
+    }
+  }
+  lines.push('END:VCALENDAR');
+  const msg = all ? `This adds birthdays and anniversaries for ${pick.length} customer${pick.length === 1 ? '' : 's'} plus a summary on the 1st of each month. If you added some before, your calendar may show them twice. On iPhone, choose a new calendar called "Customers" so you can replace it later.`
+    : `This adds birthdays and anniversaries for ${pick.length} new or changed customer${pick.length === 1 ? '' : 's'}.`;
+  if (!(await ask('Add to your phone calendar?', esc(msg), 'Download calendar file'))) return;
+  const blob = new Blob([lines.map(icsFold).join('\r\n') + '\r\n'], { type: 'text/calendar' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = all ? 'customer-reminders-all.ics' : 'customer-reminders-new.ics';
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+  pick.forEach(c => { c.calSig = calSig(c); }); saveCustomers(); renderMonth();
+  toast('Calendar file ready. Open it and tap "Add all".');
+}
+
+/* ---------- import from ePartner: photo/screenshot (AI) or CSV, then review before saving ---------- */
+const SCAN_RULES_OWN_KEY = `You read one photo or screenshot of a Malaysian life-insurance agent portal (for example Great Eastern ePartner) showing a list of customers or policies.
+Return JSON only: {"rows": [{"name": "", "dob": "", "commencement": "", "anniversary": ""}], "note": ""}
+- One entry per customer row you can read. Copy names and dates exactly as printed: do not reformat, translate, complete or guess anything.
+- dob = date of birth. commencement = policy commencement / inception / start / issue date. anniversary = policy anniversary date if a separate column shows it.
+- Use "" for anything not shown or not readable. Skip rows that are cut off or blurred rather than guessing.
+- Never output NRIC/IC or passport numbers, policy numbers, phone numbers, emails, addresses, premiums, sums assured, plan names or medical details, even if visible.
+- note: one short sentence if the image is not a customer list, is unreadable, or some rows were skipped; otherwise "".`;
+const MON3 = { jan: 1, feb: 2, mar: 3, apr: 4, may: 5, jun: 6, jul: 7, aug: 8, sep: 9, oct: 10, nov: 11, dec: 12 };
+// Malaysian portals print day first (DD/MM/YYYY); anything else is flagged instead of guessed
+function parseListDate(s) {
+  s = String(s || '').trim(); if (!s) return { iso: '', note: '' };
+  let y, m, d, x;
+  if ((x = /^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})$/.exec(s))) [y, m, d] = [+x[1], +x[2], +x[3]];
+  else if ((x = /^(\d{1,2})[-\/. ](\d{1,2})[-\/. ](\d{2,4})$/.exec(s))) [d, m, y] = [+x[1], +x[2], +x[3]];
+  else if ((x = /^(\d{1,2})[-\/. ]?([A-Za-z]{3,9})[-\/. ,]*(\d{2,4})$/.exec(s))) [d, m, y] = [+x[1], MON3[x[2].slice(0, 3).toLowerCase()], +x[3]];
+  else if ((x = /^([A-Za-z]{3,9})[ .-]*(\d{1,2}),?\s*(\d{4})$/.exec(s))) [m, d, y] = [MON3[x[1].slice(0, 3).toLowerCase()], +x[2], +x[3]];
+  else return { iso: '', note: `Couldn\u2019t read the date "${s}".` };
+  if (y < 100) return { iso: '', note: `"${s}" has a 2-digit year. Enter the full date.` };
+  const iso = m ? `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}` : '';
+  return parseDob(iso) ? { iso, note: '' } : { iso: '', note: `"${s}" is not a real date.` };
+}
+const KEEP_LOWER = new Set(['bin', 'binti', 'bt', 'a/l', 'a/p', 'al', 'ap', 'van', 'de']);
+const tidyName = s => { // "TAN AH KOW" -> "Tan Ah Kow"; mixed-case names are left as typed
+  s = String(s || '').replace(/\s+/g, ' ').trim();
+  return s === s.toUpperCase() ? s.toLowerCase().split(' ').map(w => KEEP_LOWER.has(w) ? w : w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : s;
+};
+const nameKey = s => String(s || '').toUpperCase().replace(/[^A-Z]/g, '');
+let review = [];
+function addFound(rawRows, from) { // merge rows for the same person (several policies) and match existing customers
+  let added = 0;
+  rawRows.forEach(r => {
+    const name = tidyName(r.name); if (!name) return;
+    const dob = parseListDate(r.dob), com = parseListDate(r.commencement), ann = parseListDate(r.anniversary);
+    const notes = [dob.note, com.note].filter(Boolean);
+    if (!r.dob) notes.push('No date of birth on the list. Enter it to save.');
+    if (!com.iso && ann.iso) notes.push('Only an anniversary date was shown, so the years with you are unknown. Enter the commencement date if you have it.');
+    const same = review.find(v => v.key === nameKey(name) && (!v.dob || !dob.iso || v.dob === dob.iso));
+    if (same) { // another policy of the same customer: keep the earliest commencement date
+      if (com.iso && (!same.policyDate || com.iso < same.policyDate)) same.policyDate = com.iso;
+      if (!same.dob && dob.iso) same.dob = dob.iso;
+      same.policies++; return;
+    }
+    review.push({ id: uid(), include: true, key: nameKey(name), fullName: name, nickname: name, dob: dob.iso, policyDate: com.iso, notes, from, policies: 1,
+      raw: [r.dob && `DOB "${r.dob}"`, r.commencement && `commenced "${r.commencement}"`, r.anniversary && `anniversary "${r.anniversary}"`].filter(Boolean).join(' · ') });
+    added++;
+  });
+  return added;
+}
+// same name and birthday first; a name-only match counts only when exactly one saved customer has that name
+function matchExisting(v) {
+  const real = customers.filter(c => !c.sample);
+  const exact = real.find(c => nameKey(c.fullName || c.nickname) === v.key && v.dob && c.dob === v.dob);
+  if (exact) return exact;
+  const byName = real.filter(c => nameKey(c.fullName || c.nickname) === v.key);
+  return byName.length === 1 ? byName[0] : null;
+}
+// what saving this row would change on the saved customer (the newer list wins; nickname, priorities and history are kept)
+function changesFor(m, v) {
+  const out = [];
+  if (v.dob && m.dob !== v.dob) out.push(['dob', `birthday ${m.dob || 'blank'} → ${v.dob}`]);
+  if (v.policyDate && m.policyDate !== v.policyDate) out.push(['policyDate', `policy start ${m.policyDate || 'blank'} → ${v.policyDate}`]);
+  return out;
+}
+let removeIds = new Set(); // saved customers the agent chose to remove because they're not on the new list
+function renderReview() {
+  const box = $('#reviewBox');
+  if (!review.length) { box.hidden = true; return; }
+  box.hidden = false;
+  review.forEach(v => { const m = matchExisting(v); v.match = m ? m.id : null; });
+  const n = review.filter(v => v.include).length;
+  box.innerHTML = `<div class="notice ok"><b>Check before saving.</b> Dates were read as day/month/year, the way ePartner prints them. Change each nickname to what you call them.</div>
+    ${review.map(v => {
+      const m = v.match && customers.find(c => c.id === v.match);
+      const chk = checkCustomer({ nickname: v.nickname, dob: v.dob, policyDate: v.policyDate, priorities: m ? m.priorities : [] });
+      const ch = m ? changesFor(m, v) : [];
+      const status = m ? (ch.length ? `Updates ${esc(m.nickname)}: ${ch.map(x => esc(x[1])).join(', ')}` : `Already saved as ${esc(m.nickname)}. No change.`) : 'New customer';
+      return `<div class="review-row ${v.include ? '' : 'off'}">
+        <div class="top"><input type="checkbox" data-r="${v.id}" data-f="include" ${v.include ? 'checked' : ''} aria-label="Include ${esc(v.fullName)}">
+          <b style="overflow-wrap:anywhere">${esc(v.fullName)}</b><span class="chip ${m ? '' : 'gold'}">${status}</span></div>
+        <div class="two">
+          <label class="mini-label">Nickname<input type="text" data-r="${v.id}" data-f="nickname" value="${esc(v.nickname)}" maxlength="30"></label>
+          <label class="mini-label">Date of birth<input type="date" data-r="${v.id}" data-f="dob" value="${esc(v.dob)}"></label>
+        </div>
+        <label class="mini-label">Policy start date${v.policies > 1 ? ` (earliest of ${v.policies} policies)` : ''}<input type="date" data-r="${v.id}" data-f="policyDate" value="${esc(v.policyDate)}"></label>
+        ${v.raw ? `<div class="raw">Read from ${esc(v.from)}: ${esc(v.raw)}</div>` : ''}
+        ${v.include ? issuesHtml(chk.errors, v.notes) : ''}
+      </div>`;
+    }).join('')}
+    ${(() => { // saved customers that this import didn't include: offered for removal, never removed automatically
+      const seen = new Set(review.map(v => v.match).filter(Boolean));
+      const missing = customers.filter(c => !c.sample && !seen.has(c.id));
+      if (!missing.length) return '';
+      return `<details class="review-row"><summary>${missing.length} saved customer${missing.length === 1 ? ' is' : 's are'} not in this import</summary>
+        <p class="hint" style="margin:6px 0">If this import is your full, latest ePartner list, you can remove customers who are no longer on it. If you only scanned some pages, leave them.</p>
+        ${missing.map(c => `<label class="check"><input type="checkbox" data-remove="${c.id}" ${removeIds.has(c.id) ? 'checked' : ''}> Remove ${esc(c.nickname)}${c.fullName && c.fullName !== c.nickname ? ` (${esc(c.fullName)})` : ''}</label>`).join('')}
+      </details>`;
+    })()}
+    <div class="row"><button class="btn primary grow" type="button" id="reviewSave" ${n || removeIds.size ? '' : 'disabled'}>Save ${n} customer${n === 1 ? '' : 's'}${removeIds.size ? `, remove ${removeIds.size}` : ''}</button>
+      <button class="btn ghost" type="button" id="reviewCancel">Discard</button></div>`;
+  box.querySelectorAll('[data-r]').forEach(el => el.onchange = () => {
+    const v = review.find(x => x.id === el.dataset.r); if (!v) return;
+    v[el.dataset.f] = el.type === 'checkbox' ? el.checked : el.value.trim();
+    if (el.dataset.f !== 'nickname') renderReview();
+  });
+  box.querySelectorAll('[data-remove]').forEach(el => el.onchange = () => { el.checked ? removeIds.add(el.dataset.remove) : removeIds.delete(el.dataset.remove); renderReview(); });
+  $('#reviewCancel').onclick = async () => { if (await ask('Discard this import?', 'Nothing has been saved yet. The rows you read will be cleared.', 'Discard', true)) { review = []; removeIds.clear(); renderReview(); $('#scanStatus').innerHTML = ''; } };
+  $('#reviewSave').onclick = saveReview;
+}
+async function saveReview() {
+  const rows = review.filter(v => v.include), bad = [];
+  const adds = [], updates = [];
+  rows.forEach(v => {
+    const m = v.match && customers.find(c => c.id === v.match);
+    const chk = checkCustomer({ nickname: v.nickname, dob: v.dob, policyDate: v.policyDate, priorities: m ? m.priorities : [], since: m ? m.since : '' });
+    if (chk.errors.length) { bad.push(v.fullName); return; }
+    if (m) { if (changesFor(m, v).length) updates.push([m, v]); }
+    else adds.push(v);
+  });
+  if (bad.length) return ask('Some rows need fixing', `Fix or untick these first: ${bad.map(esc).join(', ')}.`, 'OK');
+  const removing = customers.filter(c => removeIds.has(c.id));
+  if (!adds.length && !updates.length && !removing.length) return ask('Nothing new', 'Every ticked customer is already saved with the same dates.', 'OK');
+  const parts = [adds.length && `add ${adds.length} new customer${adds.length === 1 ? '' : 's'}`, updates.length && `update the dates of ${updates.length}`,
+    removing.length && `remove ${removing.length} (${removing.map(c => esc(c.nickname)).join(', ')}) and their message history, which can’t be undone`].filter(Boolean);
+  if (!(await ask('Save these changes?', `This will ${parts.join(', ')}. Nicknames, priorities and message history of updated customers are kept.`, 'Save changes', !!removing.length))) return;
+  adds.forEach(v => customers.push({ id: uid(), nickname: v.nickname, fullName: v.fullName, dob: v.dob, gender: '', priorities: [], since: v.policyDate ? +v.policyDate.slice(0, 4) : null,
+    policyDate: v.policyDate, notes: '', history: [], source: 'epartner' }));
+  updates.forEach(([m, v]) => { // the newer ePartner list wins for dates
+    if (v.dob) m.dob = v.dob;
+    if (v.policyDate) { m.policyDate = v.policyDate; if (!m.since || m.since > +v.policyDate.slice(0, 4)) m.since = +v.policyDate.slice(0, 4); }
+    m.fullName = v.fullName; m.updatedFrom = new Date().toISOString().slice(0, 10);
+  });
+  customers = customers.filter(c => !removeIds.has(c.id)); removeIds.clear();
+  saveCustomers(); review = []; renderReview(); renderCustomers();
+  $('#scanStatus').innerHTML = `<div class="notice ok">Saved. Add each customer\u2019s priorities (Edit) so their messages feel personal, then add them to your calendar.</div>`;
+}
+function downscale(file, maxSide = 2000) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file), img = new Image();
+    img.onload = () => {
+      const s = Math.min(1, maxSide / Math.max(img.width, img.height)), c = document.createElement('canvas');
+      c.width = Math.round(img.width * s); c.height = Math.round(img.height * s); c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+      URL.revokeObjectURL(url); resolve(c.toDataURL('image/jpeg', 0.85));
+    };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('That file is not a photo the app can read.')); };
+    img.src = url;
+  });
+}
+async function readListPhoto(file) {
+  const image = await downscale(file);
+  let j;
+  if (team) { try { j = await callJson('api/scan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image }) }, 'team', 120000); } finally { loadTeam(); } }
+  else j = await callJson('https://api.openai.com/v1/chat/completions', {
+    method: 'POST', headers: { Authorization: 'Bearer ' + settings.apiKey, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model: settings.textModel, response_format: { type: 'json_object' },
+      messages: [{ role: 'system', content: SCAN_RULES_OWN_KEY }, { role: 'user', content: [{ type: 'text', text: 'Read this list.' }, { type: 'image_url', image_url: { url: image, detail: 'high' } }] }] })
+  }, settings.textModel, 120000);
+  let out; try { out = JSON.parse(j.choices[0].message.content); } catch { throw new Error('The AI gave an unreadable answer for this photo.'); }
+  return { rows: Array.isArray(out.rows) ? out.rows : [], note: String(out.note || '') };
+}
+$('#scanFile').onchange = async e => {
+  const files = [...e.target.files]; e.target.value = ''; if (!files.length) return;
+  const status = $('#scanStatus');
+  if (!aiReady()) { status.innerHTML = '<div class="notice warn">Reading photos needs team AI (sign in on the team link) or your own OpenAI key in <b>Me</b>. You can import a CSV file instead.</div>'; return; }
+  if (!(await ask('Read this list with AI?', `${files.length} photo${files.length === 1 ? '' : 's'} will be sent to the AI to read names, birthdays and policy dates. Crop out anything you don\u2019t need first. Check that your company allows customer lists to be processed this way.`, 'Read the list'))) return;
+  const msgs = [];
+  for (let i = 0; i < files.length; i++) {
+    status.innerHTML = `<div class="notice ok">Reading photo ${i + 1} of ${files.length}\u2026 (about 10\u201330 seconds each)</div>`;
+    try {
+      const { rows, note } = await readListPhoto(files[i]);
+      const n = addFound(rows, `photo ${i + 1}`);
+      msgs.push(['ok', `Photo ${i + 1}: found ${n} customer${n === 1 ? '' : 's'}.${note ? ' ' + note : ''}`]);
+    } catch (err) { msgs.push(['bad', `Photo ${i + 1}: ${err.message}`]); }
+  }
+  status.innerHTML = msgs.map(([k, m]) => `<div class="notice ${k}">${esc(m)}</div>`).join('');
+  renderReview(); $('#reviewBox').scrollIntoView({ behavior: 'smooth', block: 'start' });
+};
+// CSV export from ePartner or Excel: finds the name, birth date and commencement columns by their headings
+function parseCsv(text) {
+  const lines = text.replace(/^\uFEFF/, '').split(/\r?\n/).filter(l => l.trim());
+  const delim = ['\t', ';', ','].find(d => lines[0] && lines[0].includes(d)) || ',';
+  const split = line => { const out = []; let cur = '', q = false;
+    for (const ch of line) { if (ch === '"') q = !q; else if (ch === delim && !q) { out.push(cur.trim()); cur = ''; } else cur += ch; }
+    out.push(cur.trim()); return out; };
+  const rows = lines.map(split);
+  const hi = rows.findIndex(r => r.some(h => /name/i.test(h)) && r.some(h => /birth|dob/i.test(h)));
+  if (hi < 0) throw new Error('Couldn\u2019t find "Name" and "Date of birth" column headings in this file.');
+  const h = rows[hi], col = re => h.findIndex(x => re.test(x));
+  const ci = { name: col(/name/i), dob: col(/birth|dob/i), commencement: col(/commence|inception|start|issue|effective/i), anniversary: col(/anniv/i) };
+  return rows.slice(hi + 1).map(r => ({ name: r[ci.name] || '', dob: ci.dob >= 0 ? r[ci.dob] || '' : '', commencement: ci.commencement >= 0 ? r[ci.commencement] || '' : '', anniversary: ci.anniversary >= 0 ? r[ci.anniversary] || '' : '' }));
+}
+$('#csvFile').onchange = async e => {
+  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  try {
+    const n = addFound(parseCsv(await f.text()), f.name);
+    $('#scanStatus').innerHTML = `<div class="notice ok">${esc(f.name)}: found ${n} customer${n === 1 ? '' : 's'}.</div>`;
+    renderReview(); $('#reviewBox').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  } catch (err) { $('#scanStatus').innerHTML = `<div class="notice bad">${esc(err.message)}</div>`; }
 };
 
 /* ---------- settings ---------- */

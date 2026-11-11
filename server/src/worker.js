@@ -21,6 +21,7 @@ export default {
       if (url.pathname === '/api/me' && request.method === 'GET') return json(await me(env, email));
       if (url.pathname === '/api/words' && request.method === 'POST') return await words(request, env, email);
       if (url.pathname === '/api/image' && request.method === 'POST') return await image(request, env, email);
+      if (url.pathname === '/api/scan' && request.method === 'POST') return await scan(request, env, email);
       if (url.pathname === '/api/usage' && request.method === 'GET') return await usage(env, email);
       return fail(404, 'Not found.');
     } catch {
@@ -61,9 +62,9 @@ const isOwner = (env, email) => !!env.OWNER_EMAIL && env.OWNER_EMAIL.trim().toLo
 /* ---------- daily limits ---------- */
 function limits(env, email) {
   const owner = isOwner(env, email);
-  return { posters: owner ? num(env.OWNER_DAILY_POSTERS, 20) : num(env.DAILY_POSTERS, 5), words: num(env.DAILY_WORDS, 30) };
+  return { posters: owner ? num(env.OWNER_DAILY_POSTERS, 20) : num(env.DAILY_POSTERS, 5), words: num(env.DAILY_WORDS, 30), scans: num(env.DAILY_SCANS, 20) };
 }
-const getUse = async (env, day, who) => (await env.USAGE.get(`d:${day}:${who}`, 'json')) || { posters: 0, words: 0 };
+const getUse = async (env, day, who) => (await env.USAGE.get(`d:${day}:${who}`, 'json')) || { posters: 0, words: 0, scans: 0 };
 async function addUse(env, day, who, field) {
   for (const key of [who, '_team']) {
     const u = await getUse(env, day, key); u[field] = (u[field] || 0) + 1;
@@ -119,6 +120,33 @@ async function image(request, env, email) {
   const text = await r.text();
   if (!r.ok) return fail(502, openaiError(r.status, text));
   await addUse(env, day, email, 'posters');
+  return passOn(text);
+}
+
+/* ---------- read an ePartner customer/policy list from a photo or screenshot ---------- */
+// The instructions live here, not in the app, so the team key can only be used for this job,
+// and identity numbers, policy numbers and contact details are never sent back to the phone.
+const SCAN_RULES = `You read one photo or screenshot of a Malaysian life-insurance agent portal (for example Great Eastern ePartner) showing a list of customers or policies.
+Return JSON only: {"rows": [{"name": "", "dob": "", "commencement": "", "anniversary": ""}], "note": ""}
+- One entry per customer row you can read. Copy names and dates exactly as printed: do not reformat, translate, complete or guess anything.
+- dob = date of birth. commencement = policy commencement / inception / start / issue date. anniversary = policy anniversary date if a separate column shows it.
+- Use "" for anything not shown or not readable. Skip rows that are cut off or blurred rather than guessing.
+- Never output NRIC/IC or passport numbers, policy numbers, phone numbers, emails, addresses, premiums, sums assured, plan names or medical details, even if visible.
+- note: one short sentence if the image is not a customer list, is unreadable, or some rows were skipped; otherwise "".`;
+async function scan(request, env, email) {
+  const day = today(), lim = limits(env, email), u = await getUse(env, day, email);
+  if ((u.scans || 0) >= lim.scans) return fail(429, `Daily limit reached: ${lim.scans} list scans per agent per day. It resets at midnight.`);
+  const body = await request.json().catch(() => null);
+  const img = String((body && body.image) || '');
+  if (!/^data:image\/(jpeg|png|webp);base64,/.test(img) || img.length > 7e6) return fail(400, 'Send one JPG or PNG image under 5 MB.');
+  const r = await fetch(`${base(env)}/v1/chat/completions`, {
+    method: 'POST', headers: { Authorization: `Bearer ${env.OPENAI_API_KEY}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ model: env.SCAN_MODEL || env.TEXT_MODEL || 'gpt-5-mini', response_format: { type: 'json_object' },
+      messages: [{ role: 'system', content: SCAN_RULES }, { role: 'user', content: [{ type: 'text', text: 'Read this list.' }, { type: 'image_url', image_url: { url: img, detail: 'high' } }] }] })
+  });
+  const text = await r.text();
+  if (!r.ok) return fail(502, openaiError(r.status, text));
+  await addUse(env, day, email, 'scans');
   return passOn(text);
 }
 

@@ -51,6 +51,27 @@ On **Create**, pick the occasion first:
 
 The Customers list shows each customer's next birthday and anniversary, soonest first, with a **Thank-you poster** button when a policy start date is saved. The app won't make an anniversary poster without a real start date, so it never guesses the years.
 
+## Import customers from ePartner
+
+On **Customers → Import from ePartner**:
+- **📷 Photo or screenshot:** take a photo or screenshot of your ePartner customer or policy list (several pages at once is fine). The AI reads only **name, date of birth, commencement date and anniversary**. It is told never to return IC numbers, policy numbers, phone numbers, addresses or premiums.
+- **Import CSV file:** if you can export the list, save it as CSV. The app finds the Name, Date of birth and Commencement columns by their headings. No AI is needed.
+
+Then **check every row** before saving:
+- Dates are read as day/month/year (the way ePartner prints them). Unreadable dates, 2-digit years and missing birthdays are flagged, and those rows can't be saved until fixed or unticked.
+- Change each **nickname** to what you call them.
+- A customer with several policies becomes one customer, using the **earliest** commencement date for "years with you".
+
+**Re-importing a newer list** updates saved customers: birthdays and policy dates are replaced with the new values, while your nicknames, priorities and message history are kept. Customers who aren't in the new list are shown so you can remove them, but nothing is ever removed unless you tick it and confirm.
+
+Before using photos, check that Great Eastern's data rules allow customer lists to be processed by an AI service. Crop out anything you don't need.
+
+## Reminders
+
+- **Inside the app:** every time you open it, **Coming up in the next 7 days** shows at the top, followed by **This month**. Each has a Create button. On phones that support it, the app icon shows a count.
+- **Phone calendar:** **Add new customers to my calendar** creates yearly birthday and anniversary entries that remind you 3 days before and at 9am on the day. **Full calendar + monthly summaries** also adds a summary on the 1st of each month. On iPhone, import into a new calendar called "Customers" so you can replace it later.
+- Your customer list stays only on your phone. Keep a backup (Customers → Backup & restore).
+
 ## Adding a customer
 
 - **Nickname, date of birth and at least one priority** are needed. Gender is optional.

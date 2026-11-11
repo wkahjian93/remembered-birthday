@@ -19,6 +19,7 @@ DAILY_POSTERS = "5"
 OWNER_DAILY_POSTERS = "20"
 DAILY_WORDS = "30"
 TEAM_DAILY_POSTERS = "60"
+DAILY_SCANS = "20"
 
 [[kv_namespaces]]
 binding = "USAGE"

@@ -15,7 +15,11 @@ http.createServer((req, res) => {
     console.log(req.method, req.url, `auth=${req.headers.authorization}`, `bytes=${size}`,
       req.url.includes('images') ? `model=${field('model')} size=${field('size')} quality=${field('quality')}` : '');
     res.writeHead(200, { 'Content-Type': 'application/json' });
-    if (req.url.endsWith('/chat/completions')) {
+    if (req.url.endsWith('/chat/completions') && body.includes('image_url')) { // list scan: a fixed made-up list
+      res.end(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ note: '', rows: [
+        { name: 'CHONG WEI LIANG', dob: '09/12/1979', commencement: '14/02/2017', anniversary: '' },
+        { name: 'SITI HAJAR BINTI OMAR', dob: '30/11/1990', commencement: '01/11/2022', anniversary: '' }] }) } }] }));
+    } else if (req.url.endsWith('/chat/completions')) {
       res.end(JSON.stringify({ choices: [{ message: { content: JSON.stringify({ posterLine: 'Mock line from the team server', message: 'Happy birthday from the mock team server!' }) } }] }));
     } else res.end(JSON.stringify({ data: [{ b64_json: png }] }));
   });
