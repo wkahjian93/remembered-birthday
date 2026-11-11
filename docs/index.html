@@ -353,7 +353,14 @@ code { font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border
         <small>Shown at the bottom of the message and poster.</small>
       </label>
     </div>
-    <div class="panel">
+    <div class="panel" id="teamPanel" hidden>
+      <h2>Team AI</h2>
+      <p class="hint" style="margin:0" id="teamInfo"></p>
+      <div class="chips" id="teamChips"></div>
+      <button class="btn small" type="button" id="usageBtn" hidden>See team usage this month</button>
+      <div id="usageTable" style="overflow-x:auto"></div>
+    </div>
+    <div class="panel" id="keyPanel">
       <h2>ChatGPT connection</h2>
       <label class="field">OpenAI API key
         <input type="password" id="s-key" autocomplete="off" placeholder="sk-…">
@@ -708,20 +715,18 @@ $('#cakePhotoFile').onchange = async e => {
 $('#cakeAiBtn').onclick = async () => {
   const key = $('#s-key').value.trim(), face = pendingPhoto || settings.photo, btn = $('#cakeAiBtn');
   if (!face) return ask('Add your face photo first', 'The AI uses your face photo to make the cake photo.', 'OK');
-  if (!key) return ask('Add your OpenAI key first', 'Paste your API key below, then try again.', 'OK');
-  if (!(await ask('Make a cake photo with AI?', 'This uses your face photo and one OpenAI image, which costs a small amount on your OpenAI account. It takes 30–90 seconds. You only need to do it once.', 'Make it'))) return;
+  if (!team && !key) return ask('Add your OpenAI key first', 'Paste your API key below, then try again.', 'OK');
+  const cost = team ? `This uses 1 of your ${team.limits.posters} AI pictures for today.` : 'This uses one OpenAI image, which costs a small amount on your OpenAI account.';
+  if (!(await ask('Make a cake photo with AI?', `${cost} It takes 30–90 seconds. You only need to do it once.`, 'Make it'))) return;
   const prompt = `Use the person in the reference photo. Keep their face, facial features, skin tone and hairstyle exactly recognisable as the same real person.
 Photorealistic studio photo: the person stands facing the camera, smiling warmly, holding a beautiful birthday cake with lit candles out toward the camera in both hands at chest height, wearing smart formal clothes.
 Waist-up framing with the whole head, both hands and the cake fully in frame.
 Plain, evenly lit, light grey seamless studio background with nothing else in it. No text, letters or logos anywhere.`;
   btn.disabled = true; btn.textContent = 'Making your cake photo… (30–90s)';
   try {
-    const fd = new FormData();
-    fd.append('model', $('#s-imodel').value.trim() || settings.imageModel); fd.append('prompt', prompt);
-    fd.append('image', await (await fetch(face)).blob(), 'me.jpg'); fd.append('size', '1024x1536'); fd.append('quality', $('#s-quality').value);
-    const j = await callJson('https://api.openai.com/v1/images/edits', { method: 'POST', headers: { Authorization: 'Bearer ' + key }, body: fd }, settings.imageModel, 240000);
-    const b64 = j.data && j.data[0] && j.data[0].b64_json; if (!b64) throw new Error('The image model returned no picture.');
-    await useCakeImage(await loadImage('data:image/png;base64,' + b64), 'AI cake photo made');
+    const img = await aiImage(prompt, await (await fetch(face)).blob(), '1024x1536',
+      { key, model: $('#s-imodel').value.trim() || settings.imageModel, quality: $('#s-quality').value });
+    await useCakeImage(img, 'AI cake photo made');
   } catch (e) { $('#cakeHint').textContent = e.message; }
   finally { btn.disabled = false; btn.textContent = 'Make one with AI from my face photo'; }
 };
@@ -736,8 +741,56 @@ $('#testKeyBtn').onclick = async () => {
   } catch { out.textContent = 'No internet connection, or OpenAI could not be reached.'; }
 };
 
+/* ---------- team AI: on the team site, AI goes through the team server (no key on the phone) ---------- */
+let team = null; // { email, owner, limits, used } when signed in on the team site
+const aiReady = () => !!team || !!settings.apiKey;
+async function loadTeam() {
+  try {
+    const r = await fetch('api/me', { cache: 'no-store', credentials: 'same-origin' });
+    team = r.ok && /json/.test(r.headers.get('Content-Type') || '') ? await r.json() : null;
+  } catch { team = null; }
+  renderTeam();
+}
+function renderTeam() {
+  $('#teamPanel').hidden = !team; $('#keyPanel').hidden = !!team;
+  if (!team) return;
+  const left = n => Math.max(0, team.limits[n] - (team.used[n] || 0));
+  $('#teamInfo').textContent = `Signed in as ${team.email}. AI is paid for by the team, so you don’t need your own key.`;
+  $('#teamChips').innerHTML = `<span class="chip gold">${left('posters')} of ${team.limits.posters} AI pictures left today</span>
+    <span class="chip">${left('words')} of ${team.limits.words} AI messages left today</span><span class="chip">Resets at midnight</span>`;
+  $('#usageBtn').hidden = !team.owner;
+}
+$('#usageBtn').onclick = async () => {
+  const out = $('#usageTable'); out.textContent = 'Loading…';
+  try {
+    const u = await callJson('api/usage', {}, 'team', 30000);
+    out.innerHTML = `<p class="hint">Today the team used ${u.team.posters || 0} of ${u.limits.team} AI pictures. Limit per agent: ${u.limits.agent} a day (you: ${u.limits.owner}).</p>
+      <table style="width:100%;border-collapse:collapse;font-size:13.5px;font-variant-numeric:tabular-nums">
+      <tr><th style="text-align:left">Agent</th><th>Pictures today</th><th>This month</th><th>Messages</th></tr>
+      ${u.agents.map(a => `<tr><td style="overflow-wrap:anywhere">${esc(a.email)}</td><td style="text-align:center">${a.today}</td><td style="text-align:center">${a.month}</td><td style="text-align:center">${a.words}</td></tr>`).join('') || '<tr><td colspan="4">No AI use yet this month.</td></tr>'}</table>`;
+  } catch (e) { out.textContent = e.message; }
+};
+// one picture from the face photo, through the team server or the agent's own key
+async function aiImage(prompt, photoBlob, size, own = {}) {
+  const fd = new FormData(); fd.append('prompt', prompt); fd.append('image', photoBlob, 'me.jpg'); fd.append('size', size);
+  let j;
+  try {
+    if (team) j = await callJson('api/image', { method: 'POST', body: fd }, 'team', 240000);
+    else {
+      const model = own.model || settings.imageModel;
+      fd.append('model', model); fd.append('quality', own.quality || settings.quality);
+      j = await callJson('https://api.openai.com/v1/images/edits', { method: 'POST', headers: { Authorization: 'Bearer ' + (own.key || settings.apiKey) }, body: fd }, model, 240000);
+    }
+  } finally { if (team) loadTeam(); }
+  const b64 = j.data && j.data[0] && j.data[0].b64_json; if (!b64) throw new Error('The image model returned no picture.');
+  return loadImage('data:image/png;base64,' + b64);
+}
+
 /* ---------- OpenAI calls ---------- */
 function explainApiError(status, body, model) {
+  if (model === 'team') { // the team server already explains its errors in plain words
+    try { return JSON.parse(body).error || `Team server error ${status}.`; } catch { return status === 401 || status === 403 ? 'Your sign-in expired. Reload the app and sign in again.' : `Team server error ${status}.`; }
+  }
   let msg = ''; try { msg = JSON.parse(body).error.message || ''; } catch {}
   if (status === 401) return 'The API key is wrong or was revoked. Paste a fresh key in Me.';
   if (status === 403) return 'OpenAI blocked this request. Image models need Organization Verification in your OpenAI dashboard. ' + msg;
@@ -780,7 +833,11 @@ Rules:
 - posterLine: one heartfelt line for the poster, max 16 words, references one priority without private details, no emojis, no hashtags.
 Return JSON only: {"posterLine": "...", "message": "..."}`;
   const user = customerBrief(c) + `\nSign-off: ${settings.signoff || settings.name || ''}`;
-  const j = await callJson('https://api.openai.com/v1/chat/completions', {
+  let j;
+  if (team) {
+    try { j = await callJson('api/words', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ system: sys, user }) }, 'team', 60000); }
+    finally { loadTeam(); }
+  } else j = await callJson('https://api.openai.com/v1/chat/completions', {
     method: 'POST', headers: { Authorization: 'Bearer ' + settings.apiKey, 'Content-Type': 'application/json' },
     body: JSON.stringify({ model: settings.textModel, response_format: { type: 'json_object' }, messages: [{ role: 'system', content: sys }, { role: 'user', content: user }] })
   }, settings.textModel, 60000);
@@ -1200,10 +1257,12 @@ function renderSummary() {
   const ai = val('c-art') === 'ai';
   const setup = [];
   if (!settings.photo) setup.push(['warn', 'No face photo yet, so a placeholder is used. Add yours in <b>Me</b>.']);
-  if (!settings.apiKey) setup.push(['warn', 'No OpenAI key yet, so you get a Quick design and template wording. Add a key in <b>Me</b> for AI.']);
-  if (ai && !settings.photo && settings.apiKey) setup.push(['bad', 'AI artwork needs your face photo. Add it in <b>Me</b> or choose Quick design.']);
+  if (team) { const left = Math.max(0, team.limits.posters - (team.used.posters || 0));
+    if (ai) setup.push([left ? 'ok' : 'warn', left ? `Team AI: ${left} of ${team.limits.posters} AI pictures left today.` : 'You’ve used today’s AI pictures, so you get a Quick design. It resets at midnight.']); }
+  else if (!settings.apiKey) setup.push(['warn', 'No OpenAI key yet, so you get a Quick design and template wording. Add a key in <b>Me</b> for AI.']);
+  if (ai && !settings.photo && aiReady()) setup.push(['bad', 'AI artwork needs your face photo. Add it in <b>Me</b> or choose Quick design.']);
   if (!settings.name && !settings.signoff) setup.push(['warn', 'Add your name in <b>Me</b> so the poster and message are signed.']);
-  if (!settings.cakePhoto && !(ai && settings.apiKey)) setup.push(['warn', 'Tip: add a photo of you holding a cake in <b>Me</b>. The Quick design then shows you holding the cake.']);
+  if (!settings.cakePhoto && !(ai && aiReady())) setup.push(['warn', 'Tip: add a photo of you holding a cake in <b>Me</b>. The Quick design then shows you holding the cake.']);
   if (c.sample) setup.push(['warn', 'Kelly is a made-up example customer for testing. Edit or delete her in Birthdays.']);
   $('#c-summary').innerHTML = `
     <div class="chips">
@@ -1240,13 +1299,7 @@ Background: a festive celebration scene with balloons, soft confetti and glowing
 Colour palette: ${pal.desc}.
 Composition: landscape, waist-up, the person centred, with their whole head, both hands and the cake fully in frame and not cropped, and a little space above the head.
 Absolutely no text, letters, numbers, signs or logos anywhere in the image.`;
-  const fd = new FormData();
-  fd.append('model', settings.imageModel); fd.append('prompt', prompt);
-  fd.append('image', await (await fetch(settings.photo)).blob(), 'me.jpg');
-  fd.append('size', '1536x1024'); fd.append('quality', settings.quality);
-  const j = await callJson('https://api.openai.com/v1/images/edits', { method: 'POST', headers: { Authorization: 'Bearer ' + settings.apiKey }, body: fd }, settings.imageModel, 240000);
-  const b64 = j.data && j.data[0] && j.data[0].b64_json; if (!b64) throw new Error('The image model returned no picture.');
-  return loadImage('data:image/png;base64,' + b64);
+  return aiImage(prompt, await (await fetch(settings.photo)).blob(), '1536x1024');
 }
 
 async function render(wordsOverride) {
@@ -1264,7 +1317,7 @@ async function create(wordsOnly) {
   const chk = checkCustomer(c); if (chk.errors.length) { renderSummary(); return; }
   busy = true; $('#createBtn').disabled = true; $('#rewordBtn').disabled = true; resetSend();
   const notes = [];
-  const hasKey = !!settings.apiKey, wantAi = val('c-art') === 'ai';
+  const hasKey = aiReady(), wantAi = val('c-art') === 'ai';
   try {
     progress('Writing a wish only you could send…');
     if (hasKey) { try { lastWords = await aiWords(c); } catch (e) { notes.push(['warn', `AI wording failed, so a template was used instead. ${e.message}`]); lastWords = templateWords(c); } }
@@ -1280,7 +1333,7 @@ async function create(wordsOnly) {
     progress('Putting it all together…');
     await render();
     $('#w-line').value = lastWords.posterLine; $('#w-msg').value = lastWords.message;
-    $('#w-src').textContent = lastWords.source === 'ai' ? `Written by ${settings.textModel} from ${c.nickname}'s priorities. Check every fact before sending.` : 'Written from a template using their priorities. Add an OpenAI key for fully personal AI wording.';
+    $('#w-src').textContent = lastWords.source === 'ai' ? `Written by ${team ? 'team AI' : settings.textModel} from ${c.nickname}'s priorities. Check every fact before sending.` : `Written from a template using their priorities.${team ? '' : ' Add an OpenAI key for fully personal AI wording.'}`;
     $('#wordsPanel').hidden = false; $('#singPanel').hidden = false; $('#sendPanel').hidden = false; renderLyrics();
   } catch (e) { notes.push(['bad', e.message || 'Something went wrong. Try again.']); }
   finally {
@@ -1516,6 +1569,7 @@ $('#sentBtn').onclick = async () => {
 
 /* ---------- boot ---------- */
 loadSettingsForm(); renderCustomers();
+loadTeam().then(() => { if (!$('#view-create').hidden) renderSummary(); });
 (async () => { // draw a preview of the next birthday straight away so the app never opens empty
   renderCreate(); const c = current(); if (!c) return;
   lastWords = templateWords(c); await render();
