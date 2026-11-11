@@ -1,4 +1,4 @@
-# Remembered: how to use it
+# Customer Relationship App: how to use it
 
 **The problem:** your birthday wishes sound like every other agent's, so customers reply "thank you" and the conversation stops.
 **The fix:** each wish carries a poster with your face, mentions 2 things that customer actually cares about, and ends with one specific question, so they reply with real news instead of "thanks".
@@ -38,6 +38,18 @@ The poster shows you holding a birthday cake out to the customer, with "from <yo
 Optional: open **Use my own voice instead of music** to record or upload a short voice note. It replaces the tune.
 
 If your phone makes a **WebM** video (some Android browsers), the app warns you. If WhatsApp won't send it, choose **Poster image** instead.
+
+## Three occasions
+
+On **Create**, pick the occasion first:
+
+| Occasion | When | What the poster shows | The message |
+| --- | --- | --- | --- |
+| 🎂 **Birthday** | Their date of birth | You holding a cake (your cake photo) or a drawn cake | Mentions 2 things they care about, ends with a question |
+| 🤝 **Policy anniversary** | Each year from the **policy start date** (add it under Customers → Edit) | "Thank You", a gold laurel medal with the years together | A sincere thank-you for N years of trust. It never says why they bought, what the policy covers, or offers anything. |
+| 🧧 **Chinese New Year** | The coming New Year (2027: 6 Feb, Year of the Goat) | 新年快乐 in gold, red lanterns, mandarin oranges and ang pao, zodiac medal | A personal blessing tied to what they care about, wishes only, no promises |
+
+The Customers list shows each customer's next birthday and anniversary, soonest first, with a **Thank-you poster** button when a policy start date is saved. The app won't make an anniversary poster without a real start date, so it never guesses the years.
 
 ## Adding a customer
 

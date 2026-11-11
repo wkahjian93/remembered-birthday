@@ -6,13 +6,13 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#2a1830">
-<title>Remembered</title>
+<title>Customer Relationship App</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" type="image/png" href="icons/icon-192.png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Allura&family=Cormorant+Garamond:ital,wght@1,600&family=Gloock&family=Manrope:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Allura&family=Cormorant+Garamond:ital,wght@1,600&family=Gloock&family=Ma+Shan+Zheng&family=Manrope:wght@400;500;600;700;800&display=swap">
 <style>
 /* Layout: one-column phone app, sticky header, bottom tab bar; poster preview is the hero of the Create tab. */
 :root {
@@ -43,8 +43,8 @@ header.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; b
 body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
 .wrap { max-width: 640px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
 header .wrap { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding-block: 12px; }
-.brand { font-family: var(--display); font-size: 26px; letter-spacing: .01em; }
-.brand em { font-family: var(--script); font-style: normal; color: var(--accent); font-size: 30px; margin-left: 2px; }
+.brand { font-family: var(--display); font-size: clamp(19px, 5.4vw, 26px); letter-spacing: .01em; }
+.brand em { font-family: var(--script); font-style: normal; color: var(--accent); font-size: 1.2em; margin-left: 2px; }
 .tagline { color: var(--muted); font-size: 12.5px; text-align: right; }
 @media (max-width: 440px) { .tagline { display: none; } }
 
@@ -154,8 +154,8 @@ code { font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border
 
 <header class="top">
   <div class="wrap">
-    <div class="brand">Remembered<em>.</em></div>
-    <div class="tagline">Birthday wishes they'll reply to</div>
+    <div class="brand">Customer Relationship<em> App</em></div>
+    <div class="tagline">Messages customers reply to</div>
   </div>
 </header>
 
@@ -163,8 +163,8 @@ code { font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border
   <!-- ============ CUSTOMERS ============ -->
   <section id="view-customers" class="wrap">
     <div>
-      <h1>Upcoming birthdays</h1>
-      <p class="lede">Each customer card holds what they care about, so every wish sounds like you remembered.</p>
+      <h1>Upcoming occasions</h1>
+      <p class="lede">Birthdays and policy anniversaries, soonest first. Each card holds what the customer cares about, so every message sounds like you remembered.</p>
     </div>
     <div id="custList" style="display:grid;gap:10px"></div>
     <button class="btn primary big" id="addCustBtn" type="button">+ Add a customer</button>
@@ -198,6 +198,10 @@ code { font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border
           <input type="text" id="f-notes" maxlength="140" placeholder="e.g. just got promoted">
         </label>
       </div>
+      <label class="field">Policy start date (for the anniversary thank-you)
+        <input type="date" id="f-policy">
+        <small>Optional. Use the date their first policy with you started. The app counts the years and reminds you each year.</small>
+      </label>
       <p class="hint">Don't enter IC numbers, policy numbers or medical details. Nickname, birthday and these notes are sent to OpenAI to write the wish.</p>
       <div id="custFormIssues" style="display:grid;gap:8px"></div>
       <div class="row">
@@ -221,11 +225,17 @@ code { font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border
   <!-- ============ CREATE ============ -->
   <section id="view-create" class="wrap" hidden>
     <div>
-      <h1>Create a birthday poster</h1>
-      <p class="lede">Pick a customer, tap create, check it, then send.</p>
+      <h1 id="createTitle">Create a birthday poster</h1>
+      <p class="lede">Pick the occasion and customer, tap create, check it, then send.</p>
     </div>
 
     <div class="panel">
+      <div class="eyebrow">Occasion</div>
+      <div class="seg" role="radiogroup" aria-label="Occasion">
+        <input type="radio" name="occ" id="occ-birthday" value="birthday" checked><label for="occ-birthday">🎂 Birthday</label>
+        <input type="radio" name="occ" id="occ-anniversary" value="anniversary"><label for="occ-anniversary">🤝 Policy anniversary</label>
+        <input type="radio" name="occ" id="occ-cny" value="cny"><label for="occ-cny">🧧 Chinese New Year</label>
+      </div>
       <label class="field">Customer
         <select id="c-cust"></select>
       </label>
@@ -246,7 +256,7 @@ code { font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border
       <div class="seg" id="c-style" role="radiogroup" aria-label="Artwork style"></div>
       <div class="eyebrow">My pose</div>
       <div class="seg" id="c-pose" role="radiogroup" aria-label="My pose"></div>
-      <label class="check"><input type="checkbox" id="c-age"> Show the age they're turning on the poster</label>
+      <label class="check" id="c-age-row"><input type="checkbox" id="c-age"> <span id="c-age-label">Show the age they're turning on the poster</span></label>
     </div>
 
     <button class="btn primary big" type="button" id="createBtn">Create birthday poster</button>
@@ -396,7 +406,7 @@ code { font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border
   <div class="wrap" role="tablist">
     <button type="button" role="tab" data-view="customers" aria-selected="true">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>
-      Birthdays</button>
+      Customers</button>
     <button type="button" role="tab" data-view="create" aria-selected="false">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21h16M5 21v-7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v7"/><path d="M5 16c2 1.5 4 1.5 7 0s5-1.5 7 0"/><path d="M12 12V8M12 5.5c.8-.8.8-1.7 0-2.5-.8.8-.8 1.7 0 2.5z"/></svg>
       Create</button>
@@ -420,9 +430,10 @@ let customers = store.get(KEY_C, null);
 if (!Array.isArray(customers)) {
   customers = [{ id: 'sample-kelly', sample: true, nickname: 'Kelly', dob: '1990-11-02', gender: 'female',
     priorities: ['Chloe starting Primary 1 next year', 'the Penang Bridge half marathon', 'saving up for a first home in Bayan Lepas'],
-    since: 2019, notes: 'Just moved to a new role at her company', history: [] }];
+    since: 2019, policyDate: '2019-11-20', notes: 'Just moved to a new role at her company', history: [] }];
   store.set(KEY_C, customers);
 }
+customers.forEach(c => { if (c.sample && c.policyDate === undefined) c.policyDate = '2019-11-20'; }); // older copies of the example
 const saveCustomers = () => store.set(KEY_C, customers);
 
 /* ---------- small helpers ---------- */
@@ -471,6 +482,24 @@ function chineseZodiac(p) {
   if (p.mo === 1 || (p.mo === 2 && p.d <= 20)) return null;
   return ['Rat', 'Ox', 'Tiger', 'Rabbit', 'Dragon', 'Snake', 'Horse', 'Goat', 'Monkey', 'Rooster', 'Dog', 'Pig'][((p.y - 4) % 12 + 12) % 12];
 }
+// policy anniversary: same day each year from the policy start date; the first one is a year after it starts
+function nextAnniversary(start) {
+  const p = parseDob(start); if (!p) return null; const t = today0();
+  const mk = y => new Date(y, p.mo - 1, (p.mo === 2 && p.d === 29 && !isLeap(y)) ? 28 : p.d);
+  let when = mk(t.getFullYear()); if (when < t) when = mk(t.getFullYear() + 1);
+  if (when.getFullYear() <= p.y) when = mk(p.y + 1);
+  return { date: when, days: Math.round((when - t) / 864e5), years: when.getFullYear() - p.y };
+}
+// Chinese New Year dates (first day of the lunar year). Add the next ones before 2030 ends.
+const CNY_DATES = [['2026-02-17', 'Horse', '马'], ['2027-02-06', 'Goat', '羊'], ['2028-01-26', 'Monkey', '猴'], ['2029-02-13', 'Rooster', '鸡'], ['2030-02-03', 'Dog', '狗']];
+function nextCny() { // the coming New Year, or the current one during its 15 days of celebration
+  const t = today0();
+  for (const [d, animal, zh] of CNY_DATES) {
+    const p = parseDob(d), date = new Date(p.y, p.mo - 1, p.d);
+    if ((t - date) / 864e5 <= 15) return { date, animal, zh, year: p.y, days: Math.max(0, Math.round((date - t) / 864e5)) };
+  }
+  return null;
+}
 const ordinal = n => n + (['th', 'st', 'nd', 'rd'][(n % 100 > 10 && n % 100 < 14) ? 0 : (n % 10 < 4 ? n % 10 : 0)] || 'th');
 
 /* ---------- clean + validate a customer (never guess) ---------- */
@@ -501,8 +530,15 @@ function checkCustomer(raw) {
   const thisYear = new Date().getFullYear();
   if (since !== null && !(Number.isInteger(since) && since >= 1960 && since <= thisYear)) errors.push(`"Customer since" must be a year between 1960 and ${thisYear}, or left empty.`);
   const gender = ['female', 'male'].includes(raw.gender) ? raw.gender : '';
+  const policyDate = String(raw.policyDate || '').trim(), pp = parseDob(policyDate);
+  if (policyDate) {
+    if (!pp) errors.push('The policy start date is not a real date.');
+    else if (new Date(pp.y, pp.mo - 1, pp.d) > today0()) errors.push('The policy start date is in the future.');
+    else if (p && (pp.y < p.y || (pp.y === p.y && (pp.mo < p.mo || (pp.mo === p.mo && pp.d < p.d))))) errors.push('The policy start date is before their date of birth.');
+    else if (since !== null && pp.y < since) warnings.push(`The policy started in ${pp.y}, before "Customer since" ${since}. Check which is right.`);
+  }
   if (/\b\d{6}-?\d{2}-?\d{4}\b/.test(priorities.join(' ') + ' ' + (raw.notes || ''))) errors.push('That looks like an IC number. Remove it before saving.');
-  return { errors, warnings, data: { nickname, dob: raw.dob, gender, priorities, since, notes: String(raw.notes || '').trim() } };
+  return { errors, warnings, data: { nickname, dob: raw.dob, gender, priorities, since, policyDate, notes: String(raw.notes || '').trim() } };
 }
 function issuesHtml(errors, warnings) {
   return errors.map(e => `<div class="notice bad"><b>Fix:</b> ${esc(e)}</div>`).join('') + warnings.map(w => `<div class="notice warn"><b>Check:</b> ${esc(w)}</div>`).join('');
@@ -521,23 +557,30 @@ document.querySelectorAll('nav.tabs button').forEach(b => b.onclick = () => show
 /* ---------- customers ---------- */
 function renderCustomers() {
   const list = $('#custList');
-  if (!customers.length) { list.innerHTML = '<div class="empty">No customers yet. Add your first one to get birthday reminders here.</div>'; return; }
-  const yr = new Date().getFullYear();
-  const rows = customers.map(c => ({ c, nb: nextBirthday(c.dob) })).sort((a, b) => (a.nb ? a.nb.days : 9999) - (b.nb ? b.nb.days : 9999));
-  list.innerHTML = rows.map(({ c, nb }) => {
-    const sent = (c.history || []).some(h => h.date.startsWith(String(yr)));
-    const whenBox = !nb ? `<div class="when"><b>?</b><span>date</span></div>`
-      : nb.days === 0 ? `<div class="when today"><b>🎂</b><span>Today</span></div>`
-      : `<div class="when"><b>${nb.date.getDate()}</b><span>${MONTHS[nb.date.getMonth()]}</span></div>`;
-    const soon = !nb ? 'Birthday needs fixing' : nb.days === 0 ? `Turns ${nb.turning} today` : `Turns ${nb.turning} in ${nb.days} day${nb.days === 1 ? '' : 's'}`;
+  if (!customers.length) { list.innerHTML = '<div class="empty">No customers yet. Add your first one to get birthday and anniversary reminders here.</div>'; return; }
+  const inDays = n => n === 0 ? 'today' : `in ${n} day${n === 1 ? '' : 's'}`;
+  const rows = customers.map(c => {
+    const nb = nextBirthday(c.dob), na = nextAnniversary(c.policyDate);
+    const next = na && (!nb || na.days < nb.days) ? { occ: 'anniversary', ...na } : nb ? { occ: 'birthday', ...nb } : null;
+    return { c, nb, na, next };
+  }).sort((a, b) => (a.next ? a.next.days : 9999) - (b.next ? b.next.days : 9999));
+  list.innerHTML = rows.map(({ c, nb, na, next }) => {
+    const sentThisYear = occ => (c.history || []).some(h => (h.occasion || 'birthday') === occ && h.date.startsWith(String(new Date().getFullYear())));
+    const whenBox = !next ? `<div class="when"><b>?</b><span>date</span></div>`
+      : next.days === 0 ? `<div class="when today"><b>${next.occ === 'birthday' ? '🎂' : '🤝'}</b><span>Today</span></div>`
+      : `<div class="when"><b>${next.date.getDate()}</b><span>${MONTHS[next.date.getMonth()]}</span></div>`;
+    const lines = [nb ? `🎂 Turns ${nb.turning} ${inDays(nb.days)}${sentThisYear('birthday') ? ' · sent' : ''}` : 'Birthday needs fixing'];
+    if (na) lines.push(`🤝 ${na.years} year${na.years === 1 ? '' : 's'} with you ${inDays(na.days)}${sentThisYear('anniversary') ? ' · sent' : ''}`);
     return `<article class="cust">${whenBox}<div style="min-width:0">
       <h3>${esc(c.nickname)}${c.sample ? '<span class="tag-sample">Example</span>' : ''}</h3>
-      <div class="meta">${soon}${sent ? ' · ' : ''}${sent ? `<span class="chip ok">Sent ${yr}</span>` : ''}</div>
+      <div class="meta">${lines.map(esc).join('<br>')}</div>
       <div class="chips" style="margin-top:6px">${(c.priorities || []).slice(0, 3).map(p => `<span class="chip">${esc(p)}</span>`).join('') || '<span class="chip">No priorities yet</span>'}</div>
-      <div class="actions"><button class="btn small primary" data-make="${c.id}">Create poster</button><button class="btn small" data-edit="${c.id}">Edit</button></div>
+      <div class="actions"><button class="btn small primary" data-make="${c.id}" data-occ="birthday">Birthday poster</button>
+        ${na ? `<button class="btn small primary" data-make="${c.id}" data-occ="anniversary">Thank-you poster</button>` : ''}
+        <button class="btn small" data-edit="${c.id}">Edit</button></div>
     </div></article>`;
   }).join('');
-  list.querySelectorAll('[data-make]').forEach(b => b.onclick = () => { selectedId = b.dataset.make; show('create'); });
+  list.querySelectorAll('[data-make]').forEach(b => b.onclick = () => { selectedId = b.dataset.make; setOccasion(b.dataset.occ); show('create'); });
   list.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => openForm(b.dataset.edit));
 }
 let editingId = null;
@@ -546,6 +589,7 @@ function openForm(id) {
   $('#custFormTitle').textContent = id ? `Edit ${c.nickname}` : 'New customer';
   $('#f-nick').value = c.nickname || ''; $('#f-dob').value = c.dob || ''; $('#f-gender').value = c.gender || '';
   $('#f-pri').value = (c.priorities || []).join('\n'); $('#f-since').value = c.since || ''; $('#f-notes').value = c.notes || '';
+  $('#f-policy').value = c.policyDate || '';
   $('#custFormIssues').innerHTML = ''; $('#custDeleteBtn').hidden = !id;
   $('#custForm').hidden = false; $('#addCustBtn').hidden = true; $('#f-nick').focus();
   $('#custForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -556,7 +600,7 @@ $('#custCancelBtn').onclick = closeForm;
 $('#custForm').onsubmit = async e => {
   e.preventDefault();
   const { errors, warnings, data } = checkCustomer({ nickname: $('#f-nick').value, dob: $('#f-dob').value, gender: $('#f-gender').value,
-    priorities: $('#f-pri').value, since: $('#f-since').value, notes: $('#f-notes').value });
+    priorities: $('#f-pri').value, since: $('#f-since').value, notes: $('#f-notes').value, policyDate: $('#f-policy').value });
   $('#custFormIssues').innerHTML = issuesHtml(errors, warnings);
   if (errors.length) return;
   if (warnings.length && !(await ask('Save with these notes?', warnings.map(esc).join('<br>'), 'Save anyway'))) return;
@@ -573,15 +617,15 @@ $('#custDeleteBtn').onclick = async () => {
   customers = customers.filter(x => x.id !== editingId); saveCustomers(); closeForm(); renderCustomers(); toast('Customer deleted');
 };
 $('#exportBtn').onclick = () => {
-  const blob = new Blob([JSON.stringify({ app: 'Remembered', exported: new Date().toISOString(), customers }, null, 2)], { type: 'application/json' });
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `remembered-backup-${new Date().toISOString().slice(0, 10)}.json`;
+  const blob = new Blob([JSON.stringify({ app: 'Customer Relationship App', exported: new Date().toISOString(), customers }, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `customer-app-backup-${new Date().toISOString().slice(0, 10)}.json`;
   document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
 };
 $('#importFile').onchange = async e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return;
   let incoming;
   try { const j = JSON.parse(await f.text()); incoming = Array.isArray(j) ? j : j.customers; if (!Array.isArray(incoming)) throw 0; }
-  catch { return ask('Not a backup file', 'This file is not a Remembered backup. Nothing was changed.', 'OK'); }
+  catch { return ask('Not a backup file', 'This file is not a Customer Relationship App backup. Nothing was changed.', 'OK'); }
   const good = [], bad = [];
   incoming.forEach(r => { const chk = checkCustomer(r || {}); (chk.errors.length ? bad : good).push(chk.errors.length ? (r && r.nickname) || 'Unnamed' : Object.assign({ id: r.id || uid(), history: Array.isArray(r.history) ? r.history : [] }, chk.data)); });
   const dupes = good.filter(g => customers.some(c => c.id === g.id)).length;
@@ -812,27 +856,46 @@ async function callJson(url, opts, model, timeoutMs) {
     throw e;
   } finally { clearTimeout(t); }
 }
-function customerBrief(c) {
-  const p = parseDob(c.dob), nb = nextBirthday(c.dob);
-  const lastYear = (c.history || []).slice(-1)[0];
-  return [`Nickname: ${c.nickname}`, `Gender: ${c.gender || 'not stated'}`, nb ? `Turning: ${nb.turning} on ${nb.date.getDate()} ${MONTHS[nb.date.getMonth()]}` : '',
+function customerBrief(c, occ) {
+  const p = parseDob(c.dob), nb = nextBirthday(c.dob), na = nextAnniversary(c.policyDate), cny = nextCny();
+  const last = (c.history || []).filter(h => (h.occasion || 'birthday') === occ).slice(-1)[0];
+  const zodiac = p && chineseZodiac(p);
+  return [`Nickname: ${c.nickname}`, `Gender: ${c.gender || 'not stated'}`,
+    occ === 'birthday' && nb ? `Turning: ${nb.turning} on ${nb.date.getDate()} ${MONTHS[nb.date.getMonth()]}` : '',
+    occ === 'anniversary' && na ? `Policy anniversary: ${na.years} year${na.years === 1 ? '' : 's'} with me on ${na.date.getDate()} ${MONTHS[na.date.getMonth()]} ${na.date.getFullYear()}` : '',
+    occ === 'cny' && cny ? `New year: Year of the ${cny.animal} (${cny.year})` : '',
+    occ === 'cny' && zodiac ? `Their own Chinese zodiac: ${zodiac}` : '',
     `Things they care about and prioritise:\n- ${(c.priorities || []).join('\n- ') || '(none recorded)'}`,
     c.notes ? `Recent news: ${c.notes}` : '', c.since ? `My customer since: ${c.since}` : '',
-    p ? `Star sign: ${westernSign(p.mo, p.d)}` : '', lastYear ? `Message I sent last time (do not repeat its wording or the same main topic):\n${lastYear.message}` : ''].filter(Boolean).join('\n');
+    occ === 'birthday' && p ? `Star sign: ${westernSign(p.mo, p.d)}` : '',
+    last ? `Message I sent for this occasion last time (do not repeat its wording or the same main topic):\n${last.message}` : ''].filter(Boolean).join('\n');
 }
-async function aiWords(c) {
-  const sys = `You write birthday messages that a Malaysian life-insurance agent sends personally to a client on WhatsApp.
+// what each occasion's message is for; the shared rules below keep every message truthful
+const OCCASION_RULES = {
+  birthday: `You write birthday messages that a Malaysian life-insurance agent sends personally to a client on WhatsApp.
 Goal: the client feels genuinely remembered, not like they got a mass greeting from "just an agent".
-Rules:
+- If the age is a milestone (30, 40, 50, 60...) you may acknowledge it gracefully; otherwise do not mention the age.`,
+  anniversary: `You write policy-anniversary thank-you messages that a Malaysian life-insurance agent sends personally to a client on WhatsApp.
+Goal: a sincere, humble thank-you for the client's trust over the stated number of years, so they feel valued as a person, not as a sale.
+- Say plainly how many years it has been, using the number given. Thank them for their trust.
+- Do not claim why they bought the policy, what it covers, or what it will do. Do not mention premiums, payments, renewals, reviews, top-ups, upgrades, referrals or any product.
+- You may say the agent is always there if anything in their life changes. No other offer.`,
+  cny: `You write Chinese New Year greetings that a Malaysian life-insurance agent sends personally to a client on WhatsApp.
+Goal: a warm, personal blessing for the new year that shows the agent remembers what matters to this client.
+- Mention the new year's animal. You may open with "新年快乐" or "Gong Xi Fa Cai". If their own zodiac is given you may mention it kindly, without predictions or fortune-telling.
+- Blessings are wishes, never promises of wealth, luck or outcomes.`
+};
+const SHARED_RULES = `Rules for every message:
 - Natural Malaysian English, warm, confident, sincere. Sounds like a real friend who pays attention. No corporate tone.
-- Weave in 2 of the client's priorities as specific things the agent remembers. Use only facts given. Never invent names, events or numbers.
-- Never mention insurance, policies, products, coverage, financial plans, money advice or any sales call to action.
+- Weave in 2 of the client's priorities as specific things the agent remembers. Use only facts given. Never invent names, events, dates or numbers.
+- Never mention insurance products, coverage, financial plans, money advice or any sales call to action.
 - End the WhatsApp message with ONE light, specific question about one priority, so they naturally reply with more than "thank you".
 - WhatsApp message: 60-110 words, 2-3 short paragraphs, at most 2 emojis, then a final line with the sign-off exactly as given.
-- If the age is a milestone (30, 40, 50, 60...) you may acknowledge it gracefully; otherwise do not mention the age.
 - posterLine: one heartfelt line for the poster, max 16 words, references one priority without private details, no emojis, no hashtags.
 Return JSON only: {"posterLine": "...", "message": "..."}`;
-  const user = customerBrief(c) + `\nSign-off: ${settings.signoff || settings.name || ''}`;
+async function aiWords(c, occ = occasion) {
+  const sys = OCCASION_RULES[occ] + '\n' + SHARED_RULES;
+  const user = customerBrief(c, occ) + `\nSign-off: ${settings.signoff || settings.name || ''}`;
   let j;
   if (team) {
     try { j = await callJson('api/words', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ system: sys, user }) }, 'team', 60000); }
@@ -845,6 +908,7 @@ Return JSON only: {"posterLine": "...", "message": "..."}`;
   if (!out.posterLine || !out.message) throw new Error('The writing model left parts empty.');
   return { posterLine: String(out.posterLine).trim(), message: String(out.message).trim(), source: 'ai' };
 }
+
 
 /* category detection for templates, colour and artwork motifs */
 const CATS = [
@@ -859,14 +923,31 @@ const CATS = [
 const catOf = s => (CATS.find(([, re]) => re.test(s)) || ['other'])[0];
 // lower-case only ordinary leading words ("The…", "Saving…"); names like "Chloe" keep their capital
 const lowerFirst = s => /^(the|a|an|my|her|his|their|your|our|new|first|being|\w+ing)\b/i.test(s) ? s.charAt(0).toLowerCase() + s.slice(1) : s;
-function templateWords(c) {
-  const pr = (c.priorities || []).slice(0, 3), nb = nextBirthday(c.dob);
-  const sign = settings.signoff || settings.name || '';
+function templateWords(c, occ = occasion) {
+  const pr = (c.priorities || []).slice(0, 3), sign = settings.signoff || settings.name || '';
+  const first = pr[0] ? catOf(pr[0]) : 'other';
+  const q = pr[0] ? `\n\nBy the way, how's everything with ${lowerFirst(pr[0])}?` : '';
+  const end = `${q}${sign ? `\n\n${sign}` : ''}`;
+  if (occ === 'anniversary') {
+    const na = nextAnniversary(c.policyDate), n = na ? na.years : 0, yrs = `${n} year${n === 1 ? '' : 's'}`;
+    const remember = pr.length ? ` I still remember how much ${lowerFirst(pr[0])} means to you${pr[1] ? `, and ${lowerFirst(pr[1])} too` : ''}.` : '';
+    return { posterLine: n ? `${yrs} of trust. Thank you for walking this journey with me` : 'Thank you for your trust',
+      message: `Hi ${c.nickname}, today marks ${yrs} since you first trusted me with your plan. 🙏\n\nThank you, sincerely.${remember} It's an honour to be part of your journey, and if anything in your life changes, I'm always here.${end}`, source: 'template' };
+  }
+  if (occ === 'cny') {
+    const cny = nextCny(), animal = cny ? cny.animal : '';
+    const lines = { family: 'May your home be full of laughter and love this new year', parents: 'Wishing your whole family good health and many happy reunions',
+      health: 'Wishing you strength, good health and many happy miles ahead', home: 'May the new year bring warmth and good news to your home',
+      travel: 'May the new year open the door to beautiful journeys', career: 'Wishing you a year of steady growth and proud moments', faith: 'Wishing you peace, purpose and blessings in the new year',
+      other: 'Wishing you good health, peace and joy in the new year' };
+    const body = pr.length ? `May the Year of the ${animal} bring good news for ${lowerFirst(pr[0])}${pr[1] ? `, and plenty of joy with ${lowerFirst(pr[1])}` : ''}.` : `May the Year of the ${animal} bring you good health, peace and many happy moments.`;
+    return { posterLine: lines[first], message: `新年快乐, ${c.nickname}! 🧧\n\n${body} Thank you for your trust${c.since ? ` since ${c.since}` : ''}. Wishing you and your loved ones a warm reunion and a beautiful year ahead.${end}`, source: 'template' };
+  }
+  const nb = nextBirthday(c.dob);
   const lines = { family: 'Here’s to more beautiful moments with the people you love most', parents: 'May this year give you more precious time with your loved ones',
     health: 'Stronger, healthier and happier. This is your year', home: 'To a year of building the home you’ve been dreaming of',
     travel: 'May this new year take you somewhere unforgettable', career: 'Here’s to your boldest, proudest year yet', faith: 'May this year be full of peace, purpose and blessings',
     other: 'Here’s to everything that matters most to you' };
-  const first = pr[0] ? catOf(pr[0]) : 'other';
   let body;
   if (!pr.length) body = `Wishing you a year full of good health, good people and many reasons to smile.`;
   else {
@@ -875,8 +956,7 @@ function templateWords(c) {
   }
   const milestone = nb && nb.turning % 10 === 0 && nb.turning >= 30 ? ` ${nb.turning} looks great on you!` : '';
   const thanks = c.since ? `Thank you for trusting me since ${c.since}. It means a lot.` : 'Thank you for letting me be part of your journey.';
-  const q = pr[0] ? `\n\nBy the way, how's everything with ${lowerFirst(pr[0])}?` : '';
-  return { posterLine: lines[first], message: `Happy birthday, ${c.nickname}! 🎉${milestone}\n\n${body} ${thanks}${q}${sign ? `\n\n${sign}` : ''}`, source: 'template' };
+  return { posterLine: lines[first], message: `Happy birthday, ${c.nickname}! 🎉${milestone}\n\n${body} ${thanks}${end}`, source: 'template' };
 }
 
 /* ---------- poster design ---------- */
@@ -885,7 +965,8 @@ const PALETTES = {
   champagne: { label: 'Black & gold', deep: '#120c08', mid: '#3d2c1b', soft: '#f3e3c0', gold: '#d9b45a', text: '#fff6e6', desc: 'black velvet, ivory and polished gold' },
   midnight: { label: 'Navy & gold', deep: '#0a1230', mid: '#1f2f6b', soft: '#d6dcf5', gold: '#d9b45a', text: '#fbf7ec', desc: 'royal navy velvet, ivory and polished gold' },
   coral: { label: 'Burgundy & gold', deep: '#33081a', mid: '#7a1632', soft: '#f5dccb', gold: '#e0bb63', text: '#fff6ee', desc: 'deep burgundy velvet, ivory and polished gold' },
-  jade: { label: 'Emerald & gold', deep: '#05261d', mid: '#0f5a44', soft: '#d3efe2', gold: '#dcbc6a', text: '#f6fff9', desc: 'emerald velvet, ivory and polished gold' }
+  jade: { label: 'Emerald & gold', deep: '#05261d', mid: '#0f5a44', soft: '#d3efe2', gold: '#dcbc6a', text: '#f6fff9', desc: 'emerald velvet, ivory and polished gold' },
+  cny: { label: 'Red & gold', deep: '#3d0306', mid: '#a3121b', soft: '#ffe3b5', gold: '#f2c14e', text: '#fff6e6', desc: 'Chinese New Year red, warm ivory and polished gold' }
 };
 const PATTERNS = { confetti: 'Confetti', rays: 'Gold rays', bokeh: 'Party lights', sparkle: 'Sparkles' };
 const STYLES = { classic3d: ['Classic 3D', 'a classic, elegant 3D render with realistic depth: rich velvet drapes, polished gold balloons and ornate gold details, soft cinematic studio lighting and glossy highlights, while the person stays photo-realistic and clearly recognisable'],
@@ -898,7 +979,10 @@ const POSES = {
   presenting: ['Presenting a cake', `The person is smiling warmly and holding a beautiful birthday cake with lit candles out toward the viewer in both hands, clearly offering it to them. ${NOT_CELEBRANT}`],
   singing: ['Singing to them', `The person is joyfully singing "Happy Birthday" to the viewer, mouth open mid-song, while holding a beautiful birthday cake with lit candles out toward the viewer in both hands. A few golden musical notes float in the air. ${NOT_CELEBRANT}`]
 };
+const BUBBLE = { birthday: n => `Happy birthday, ${n}!`, anniversary: n => `Thank you, ${n}!`, cny: n => `Gong Xi Fa Cai, ${n}!` };
 function autoPalette(c) {
+  if (occasion === 'cny') return 'cny';
+  if (occasion === 'anniversary') return 'midnight';
   const cat = c.priorities && c.priorities[0] ? catOf(c.priorities[0]) : 'other';
   return { family: 'coral', parents: 'champagne', health: 'jade', home: 'champagne', travel: 'midnight', career: 'midnight', faith: 'champagne' }[cat]
     || (c.gender === 'female' ? 'coral' : c.gender === 'male' ? 'midnight' : 'champagne');
@@ -1071,6 +1155,73 @@ function drawCake(g, cx, base, pal) {
   });
   g.restore();
 }
+// gold laurel medal with the number of years together (anniversary thank-you)
+function drawLaurel(g, cx, cy, years, pal) {
+  g.save();
+  g.shadowColor = 'rgba(0,0,0,.55)'; g.shadowBlur = 30; g.shadowOffsetY = 12;
+  g.fillStyle = goldFoil(g, cx - 130, cy - 130, cx + 130, cy + 130); g.beginPath(); g.arc(cx, cy, 128, 0, 7); g.fill();
+  g.shadowColor = 'transparent';
+  g.fillStyle = pal.deep; g.beginPath(); g.arc(cx, cy, 108, 0, 7); g.fill();
+  g.strokeStyle = 'rgba(255,240,200,.5)'; g.lineWidth = 2; g.beginPath(); g.arc(cx, cy, 100, 0, 7); g.stroke();
+  [-1, 1].forEach(side => {                                                     // two laurel branches
+    for (let i = 0; i < 9; i++) {
+      const a = Math.PI / 2 + side * (0.35 + i * 0.27), r = 158, x = cx + Math.cos(a) * r, y = cy + Math.sin(a) * r;
+      g.save(); g.translate(x, y); g.rotate(a + side * Math.PI / 2 + side * 0.5);
+      g.fillStyle = goldFoil(g, -20, -8, 20, 8); g.beginPath(); g.ellipse(0, 0, 24 - i, 9, 0, 0, 7); g.fill();
+      g.restore();
+    }
+  });
+  text3D(g, String(years), cx, cy + 34, '108px Gloock, Georgia, serif', 108);
+  g.fillStyle = pal.gold; g.font = '700 14px Manrope, sans-serif'; g.textAlign = 'center';
+  if ('letterSpacing' in g) g.letterSpacing = '2px';
+  g.fillText(years === 1 ? 'YEAR OF TRUST' : 'YEARS OF TRUST', cx, cy + 70);
+  g.restore();
+}
+// a pair of mandarin oranges and an ang pao on a gold plate (Chinese New Year)
+function drawOranges(g, cx, base, pal) {
+  g.save();
+  g.save(); g.translate(cx + 120, base - 150); g.rotate(0.18);                 // red packet behind
+  g.shadowColor = 'rgba(0,0,0,.5)'; g.shadowBlur = 20; g.shadowOffsetY = 8;
+  const rp = g.createLinearGradient(-70, 0, 70, 0); rp.addColorStop(0, '#9e0f17'); rp.addColorStop(0.5, '#d91e2a'); rp.addColorStop(1, '#8a0c13');
+  g.fillStyle = rp; g.beginPath(); g.roundRect(-70, -110, 140, 220, 12); g.fill();
+  g.shadowColor = 'transparent'; g.fillStyle = goldFoil(g, -40, -40, 40, 40); g.beginPath(); g.arc(0, -10, 42, 0, 7); g.fill();
+  g.fillStyle = '#b5121b'; g.font = '58px "Ma Shan Zheng", "KaiTi", serif'; g.textAlign = 'center'; g.fillText('福', 0, 10);
+  g.restore();
+  g.shadowColor = 'rgba(0,0,0,.55)'; g.shadowBlur = 30; g.shadowOffsetY = 14;
+  g.fillStyle = '#5e400f'; g.beginPath(); g.ellipse(cx, base + 9, 220, 34, 0, 0, 7); g.fill();
+  g.shadowColor = 'transparent';
+  g.fillStyle = goldFoil(g, cx - 220, 0, cx + 220, 0); g.beginPath(); g.ellipse(cx, base, 220, 34, 0, 0, 7); g.fill();
+  [[-78, 92], [78, 86]].forEach(([dx, r]) => {
+    const x = cx + dx, y = base - r + 6;
+    g.save(); g.shadowColor = 'rgba(0,0,0,.45)'; g.shadowBlur = 18; g.shadowOffsetY = 8;
+    const og = g.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.1, x, y, r * 1.05);
+    og.addColorStop(0, '#ffd27a'); og.addColorStop(0.35, '#ff9a1f'); og.addColorStop(0.8, '#e06a05'); og.addColorStop(1, '#9a4400');
+    g.fillStyle = og; g.beginPath(); g.ellipse(x, y, r, r * 0.92, 0, 0, 7); g.fill(); g.restore();
+    g.fillStyle = 'rgba(255,255,255,.45)'; g.beginPath(); g.ellipse(x - r * 0.38, y - r * 0.4, r * 0.18, r * 0.11, -0.6, 0, 7); g.fill();
+    g.fillStyle = '#4a6b1c'; g.beginPath(); g.arc(x, y - r * 0.9, 6, 0, 7); g.fill();                       // stem
+    g.fillStyle = '#3f8a2e'; g.beginPath(); g.ellipse(x + 26, y - r * 0.95, 30, 12, -0.5, 0, 7); g.fill(); // leaf
+    g.strokeStyle = 'rgba(20,60,10,.5)'; g.lineWidth = 2; g.beginPath(); g.moveTo(x + 4, y - r * 0.9); g.lineTo(x + 50, y - r * 1.08); g.stroke();
+  });
+  g.restore();
+}
+// red paper lantern with gold caps and tassel, hanging from the top edge
+function drawLantern(g, x, y, s, pal) {
+  g.save();
+  g.strokeStyle = 'rgba(255,220,150,.6)'; g.lineWidth = 2; g.beginPath(); g.moveTo(x, 0); g.lineTo(x, y - 70 * s); g.stroke();
+  g.shadowColor = 'rgba(255,60,40,.55)'; g.shadowBlur = 40;
+  const body = g.createRadialGradient(x - 20 * s, y - 15 * s, 8 * s, x, y, 80 * s);
+  body.addColorStop(0, '#ff6b4a'); body.addColorStop(0.5, '#d61a1f'); body.addColorStop(1, '#7d0a0e');
+  g.fillStyle = body; g.beginPath(); g.ellipse(x, y, 78 * s, 62 * s, 0, 0, 7); g.fill();
+  g.shadowColor = 'transparent';
+  g.strokeStyle = 'rgba(255,200,120,.45)'; g.lineWidth = 2;
+  [-0.6, -0.25, 0.25, 0.6].forEach(k => { g.beginPath(); g.ellipse(x, y, Math.abs(k) * 78 * s, 62 * s, 0, 0, 7); g.stroke(); });
+  g.fillStyle = goldFoil(g, x - 40 * s, 0, x + 40 * s, 0);
+  g.beginPath(); g.roundRect(x - 34 * s, y - 72 * s, 68 * s, 14 * s, 4); g.fill();
+  g.beginPath(); g.roundRect(x - 34 * s, y + 58 * s, 68 * s, 14 * s, 4); g.fill();
+  g.strokeStyle = pal.gold; g.lineWidth = 3;
+  for (let i = -3; i <= 3; i++) { g.beginPath(); g.moveTo(x + i * 3 * s, y + 72 * s); g.lineTo(x + i * 4 * s, y + 120 * s); g.stroke(); }
+  g.restore();
+}
 // ivory speech bubble with a gold edge, pointing at the agent's portrait
 function drawBubble(g, text, x, y, w, tipX, tipY, pal) {
   const font = 'italic 600 {px}px "Cormorant Garamond", Georgia, serif';
@@ -1109,7 +1260,7 @@ function fitText(g, text, font, startPx, minPx, maxW, maxLines) {
   g.font = font.replace('{px}', minPx); return { px: minPx, lines: wrapLines(g, text, maxW, 99).slice(0, maxLines) };
 }
 async function fontsReady() {
-  const faces = ['120px Allura', '120px Gloock', '700 40px Manrope', '600 30px Manrope', 'italic 600 50px "Cormorant Garamond"'];
+  const faces = ['120px Allura', '120px Gloock', '700 40px Manrope', '600 30px Manrope', 'italic 600 50px "Cormorant Garamond"', '100px "Ma Shan Zheng"'];
   try { await Promise.race([Promise.all(faces.map(f => document.fonts.load(f))), new Promise(r => setTimeout(r, 3000))]); } catch {}
 }
 // where the AI picture sits on the 1080x1350 poster (3:2, matching the 1536x1024 image we ask for)
@@ -1158,15 +1309,14 @@ function drawPoster(canvas, o) {
     // fade the lower body into the velvet so the quote stays readable
     const fade = g.createLinearGradient(0, H - 470, 0, H); fade.addColorStop(0, pal.deep + '00'); fade.addColorStop(0.45, pal.deep + 'd0'); fade.addColorStop(1, pal.deep + 'fa');
     g.fillStyle = fade; g.fillRect(0, H - 470, W, 470);
-    drawBubble(g, `Happy birthday, ${o.customer.nickname}!`, 660, 420, 360, 640, 560, pal);
+    drawBubble(g, BUBBLE[o.occasion](o.customer.nickname), 660, 420, 360, 640, 560, pal);
   } else {
     velvet(g, W, H, pal);
     drawPattern(g, o.pattern, pal, rnd, W, H, null);
     curtains(g, W, pal);
-    balloon(g, 128, 700, 56, 70, GOLD_BALLOON);
-    balloon(g, 968, 760, 54, 68, PEARL_BALLOON);
-    balloon(g, 112, 930, 48, 61, [pal.soft, pal.mid, pal.deep]);
-    // the agent (left) offering the cake (right) and saying the wish (bubble)
+    if (o.occasion === 'cny') { drawLantern(g, 120, 640, 1, pal); drawLantern(g, 968, 700, 0.85, pal); drawLantern(g, 96, 900, 0.7, pal); }
+    else { balloon(g, 128, 700, 56, 70, GOLD_BALLOON); balloon(g, 968, 760, 54, 68, PEARL_BALLOON); balloon(g, 112, 930, 48, 61, [pal.soft, pal.mid, pal.deep]); }
+    // the agent (left) offering the cake / thanks / oranges (right) and saying the wish (bubble)
     const cx = 390, cy = 665, r = 178;
     const glow = g.createRadialGradient(cx, cy, r * 0.8, cx, cy, r * 1.6); glow.addColorStop(0, 'rgba(255,225,150,.35)'); glow.addColorStop(1, 'rgba(255,225,150,0)');
     g.fillStyle = glow; g.beginPath(); g.arc(cx, cy, r * 1.6, 0, 7); g.fill();
@@ -1176,13 +1326,16 @@ function drawPoster(canvas, o) {
     g.fillStyle = inner; g.fillRect(cx - r, cy - r, 2 * r, 2 * r);
     g.restore();
     goldRing(g, cx, cy, r, 18);
-    drawCake(g, 664, 1012, pal);
-    if (o.pose === 'singing') drawNotes(g, cx, cy, r, pal, rnd);
-    drawBubble(g, `Happy birthday, ${o.customer.nickname}!`, 610, 418, 400, 560, 560, pal);
+    if (o.occasion === 'anniversary') drawLaurel(g, 680, 880, o.years || 0, pal);
+    else if (o.occasion === 'cny') drawOranges(g, 664, 1010, pal);
+    else drawCake(g, 664, 1012, pal);
+    if (o.occasion === 'birthday' && o.pose === 'singing') drawNotes(g, cx, cy, r, pal, rnd);
+    drawBubble(g, BUBBLE[o.occasion](o.customer.nickname), 610, 418, 400, 560, 560, pal);
   }
   ornateFrame(g, W, H);
   // headline + name in embossed gold and pearl
-  text3D(g, 'Happy Birthday', W / 2, 172, '128px Allura, cursive', 128);
+  if (o.occasion === 'cny') text3D(g, '新年快乐', W / 2, 166, '118px "Ma Shan Zheng", "STKaiti", "KaiTi", serif', 118);
+  else text3D(g, o.occasion === 'anniversary' ? 'Thank You' : 'Happy Birthday', W / 2, 172, '128px Allura, cursive', 128);
   const nameFit = fitText(g, o.customer.nickname, '{px}px Gloock, Georgia, serif', 150, 64, W - 200, 1);
   const nameBase = 172 + 30 + nameFit.px * 0.82;
   const pearl = g.createLinearGradient(0, nameBase - nameFit.px * 0.8, 0, nameBase); pearl.addColorStop(0, '#ffffff'); pearl.addColorStop(0.55, pal.text); pearl.addColorStop(1, shade(pal.soft, -0.15));
@@ -1196,16 +1349,17 @@ function drawPoster(canvas, o) {
       g.fillStyle = goldFoil(g, 0, ly - 6, 0, ly + 6); g.beginPath(); const dx = W / 2 + d * (tw / 2 + 128); g.moveTo(dx, ly - 6); g.lineTo(dx + 6, ly); g.lineTo(dx, ly + 6); g.lineTo(dx - 6, ly); g.fill(); });
     g.restore();
   }
-  // age medallion
-  if (o.showAge && o.turning) {
+  // occasion medal: age turning, years together, or the zodiac year (the Quick anniversary laurel already shows the years)
+  if (o.showMedal && o.medal && !(o.occasion === 'anniversary' && !o.art && !o.cake)) {
     const bx = W - 130, by = o.art ? 318 : 905; // AI layout: in the title band, clear of the picture
     g.save(); g.shadowColor = 'rgba(0,0,0,.55)'; g.shadowBlur = 22; g.shadowOffsetY = 8;
     g.fillStyle = goldFoil(g, bx - 80, by - 80, bx + 80, by + 80); g.beginPath(); g.arc(bx, by, 80, 0, 7); g.fill();
     g.shadowColor = 'transparent'; g.strokeStyle = 'rgba(60,38,8,.6)'; g.lineWidth = 2; g.beginPath(); g.arc(bx, by, 66, 0, 7); g.stroke();
     g.strokeStyle = 'rgba(255,248,215,.7)'; g.beginPath(); g.arc(bx, by, 69, Math.PI * 1.1, Math.PI * 1.7); g.stroke();
-    g.fillStyle = '#4a3009'; g.font = '700 20px Manrope, sans-serif'; g.fillText('TURNING', bx, by - 22);
-    g.fillStyle = 'rgba(255,245,210,.6)'; g.font = '64px Gloock, Georgia, serif'; g.fillText(String(o.turning), bx + 1, by + 41);
-    g.fillStyle = '#4a3009'; g.fillText(String(o.turning), bx, by + 39);
+    g.fillStyle = '#4a3009'; g.font = `700 ${o.medal.top.length > 8 ? 15 : 20}px Manrope, sans-serif`; g.fillText(o.medal.top, bx, by - 22);
+    g.font = o.medal.zh ? '66px "Ma Shan Zheng", "KaiTi", serif' : '64px Gloock, Georgia, serif';
+    g.fillStyle = 'rgba(255,245,210,.6)'; g.fillText(o.medal.big, bx + 1, by + 41);
+    g.fillStyle = '#4a3009'; g.fillText(o.medal.big, bx, by + 39);
     g.restore();
   }
   // poster line in classic italic serif
@@ -1242,32 +1396,77 @@ radios($('#c-pose'), 'pose', POSES, 'presenting');
 const val = name => (document.querySelector(`input[name="${name}"]:checked`) || {}).value;
 
 function current() { return customers.find(c => c.id === selectedId); }
+
+/* ---------- occasions: birthday, policy anniversary thank-you, Chinese New Year ---------- */
+let occasion = 'birthday';
+const OCC = {
+  birthday: { title: 'Create a birthday poster', medal: 'Show the age they’re turning on the poster', file: 'happy-birthday', poses: POSES, pose: 'presenting' },
+  anniversary: { title: 'Create a thank-you poster', medal: 'Show the years-together medal', file: 'thank-you',
+    poses: { gift: ['Presenting a gift', 'The person is smiling warmly and holding a small, elegant gift box tied with a gold ribbon out toward the viewer in both hands, as a heartfelt thank-you to a valued client (the viewer). Sincere, grateful, calm expression.'],
+      heart: ['Hand on heart', 'The person is smiling warmly with one hand on their heart and a slight, respectful nod toward the viewer, expressing sincere gratitude.'] }, pose: 'gift' },
+  cny: { title: 'Create a Chinese New Year poster', medal: 'Show the zodiac year medal', file: 'chinese-new-year',
+    poses: { oranges: ['Presenting mandarin oranges', 'The person is smiling warmly and presenting a pair of fresh mandarin oranges with green leaves toward the viewer in both hands, the traditional Chinese New Year gesture of good wishes.'],
+      greet: ['Gong Xi greeting', 'The person is smiling and making the traditional Chinese New Year fist-and-palm greeting gesture toward the viewer.'] }, pose: 'oranges' }
+};
+// when this occasion next happens for the customer, plus what the poster shows for it
+function occasionInfo(c, occ = occasion) {
+  if (occ === 'anniversary') {
+    const na = nextAnniversary(c.policyDate); if (!na) return null;
+    return { ...na, dateLabel: `${na.date.getDate()} ${MONTHS[na.date.getMonth()]} ${na.date.getFullYear()}`, medal: { top: na.years === 1 ? 'YEAR' : 'YEARS', big: String(na.years) },
+      chip: `${na.days === 0 ? 'Anniversary today' : `In ${na.days} day${na.days === 1 ? '' : 's'}`} · ${na.date.getDate()} ${MONTHS[na.date.getMonth()]}`, extra: `${na.years} year${na.years === 1 ? '' : 's'} together` };
+  }
+  if (occ === 'cny') {
+    const cy = nextCny(); if (!cy) return null;
+    return { ...cy, dateLabel: `Chinese New Year ${cy.year}`, medal: { top: 'YEAR OF THE', big: cy.zh, zh: true },
+      chip: `${cy.days === 0 ? 'Chinese New Year now' : `In ${cy.days} days`} · ${cy.date.getDate()} ${MONTHS[cy.date.getMonth()]} ${cy.year}`, extra: `Year of the ${cy.animal}` };
+  }
+  const nb = nextBirthday(c.dob); if (!nb) return null;
+  return { ...nb, dateLabel: `${nb.date.getDate()} ${MONTHS[nb.date.getMonth()]} ${nb.date.getFullYear()}`, medal: { top: 'TURNING', big: String(nb.turning) },
+    chip: `${nb.days === 0 ? 'Birthday today' : `In ${nb.days} day${nb.days === 1 ? '' : 's'}`} · ${nb.date.getDate()} ${MONTHS[nb.date.getMonth()]}`, extra: `Turning ${nb.turning}` };
+}
+function setOccasion(o) {
+  occasion = OCC[o] ? o : 'birthday';
+  $(`#occ-${occasion}`).checked = true;
+  $('#createTitle').textContent = OCC[occasion].title;
+  $('#c-age-label').textContent = OCC[occasion].medal;
+  $('#c-age').checked = occasion !== 'birthday';
+  radios($('#c-pose'), 'pose', OCC[occasion].poses, OCC[occasion].pose);
+}
+document.querySelectorAll('input[name="occ"]').forEach(r => r.onchange = () => {
+  setOccasion(r.value); lastArt = null; lastWords = null; clearVoice(); resetSend();
+  $('#wordsPanel').hidden = true; $('#singPanel').hidden = true; $('#sendPanel').hidden = true; renderCreate();
+});
+
 function renderCreate() {
   const sel = $('#c-cust');
   if (!customers.length) { sel.innerHTML = '<option value="">Add a customer first</option>'; $('#c-summary').innerHTML = ''; $('#createBtn').disabled = true; return; }
-  const sorted = customers.map(c => ({ c, nb: nextBirthday(c.dob) })).sort((a, b) => (a.nb ? a.nb.days : 9999) - (b.nb ? b.nb.days : 9999));
+  const sorted = customers.map(c => ({ c, info: occasionInfo(c) }))
+    .sort((a, b) => occasion === 'cny' ? a.c.nickname.localeCompare(b.c.nickname) : (a.info ? a.info.days : 9999) - (b.info ? b.info.days : 9999));
   if (!current()) selectedId = sorted[0].c.id;
-  sel.innerHTML = sorted.map(({ c, nb }) => `<option value="${c.id}" ${c.id === selectedId ? 'selected' : ''}>${esc(c.nickname)}${nb ? ` (${nb.date.getDate()} ${MONTHS[nb.date.getMonth()]})` : ''}${c.sample ? ' · example' : ''}</option>`).join('');
+  sel.innerHTML = sorted.map(({ c, info }) => `<option value="${c.id}" ${c.id === selectedId ? 'selected' : ''}>${esc(c.nickname)}${
+    occasion === 'cny' ? '' : info ? ` (${info.date.getDate()} ${MONTHS[info.date.getMonth()]})` : occasion === 'anniversary' ? ' (no policy date)' : ''}${c.sample ? ' · example' : ''}</option>`).join('');
   renderSummary();
 }
 function renderSummary() {
   const c = current(); if (!c) return;
-  const chk = checkCustomer(c), nb = nextBirthday(c.dob), p = parseDob(c.dob);
+  const chk = checkCustomer(c), info = occasionInfo(c), p = parseDob(c.dob);
   const zh = p && chineseZodiac(p);
   const ai = val('c-art') === 'ai';
   const setup = [];
+  if (occasion === 'anniversary' && !info) chk.errors.push(`Add ${c.nickname}’s policy start date first (Customers → Edit). The app won’t guess how many years it has been.`);
+  if (occasion === 'cny' && !info) chk.errors.push('This app only knows Chinese New Year dates up to 2030. Ask for an update.');
   if (!settings.photo) setup.push(['warn', 'No face photo yet, so a placeholder is used. Add yours in <b>Me</b>.']);
   if (team) { const left = Math.max(0, team.limits.posters - (team.used.posters || 0));
     if (ai) setup.push([left ? 'ok' : 'warn', left ? `Team AI: ${left} of ${team.limits.posters} AI pictures left today.` : 'You’ve used today’s AI pictures, so you get a Quick design. It resets at midnight.']); }
   else if (!settings.apiKey) setup.push(['warn', 'No OpenAI key yet, so you get a Quick design and template wording. Add a key in <b>Me</b> for AI.']);
   if (ai && !settings.photo && aiReady()) setup.push(['bad', 'AI artwork needs your face photo. Add it in <b>Me</b> or choose Quick design.']);
   if (!settings.name && !settings.signoff) setup.push(['warn', 'Add your name in <b>Me</b> so the poster and message are signed.']);
-  if (!settings.cakePhoto && !(ai && aiReady())) setup.push(['warn', 'Tip: add a photo of you holding a cake in <b>Me</b>. The Quick design then shows you holding the cake.']);
-  if (c.sample) setup.push(['warn', 'Kelly is a made-up example customer for testing. Edit or delete her in Birthdays.']);
+  if (occasion === 'birthday' && !settings.cakePhoto && !(ai && aiReady())) setup.push(['warn', 'Tip: add a photo of you holding a cake in <b>Me</b>. The Quick design then shows you holding the cake.']);
+  if (c.sample) setup.push(['warn', 'Kelly is a made-up example customer for testing. Edit or delete her in Customers.']);
   $('#c-summary').innerHTML = `
     <div class="chips">
-      ${nb ? `<span class="chip gold">${nb.days === 0 ? 'Birthday today' : `In ${nb.days} day${nb.days === 1 ? '' : 's'}`} · ${nb.date.getDate()} ${MONTHS[nb.date.getMonth()]}</span><span class="chip">Turning ${nb.turning}</span>` : ''}
-      ${p ? `<span class="chip">${westernSign(p.mo, p.d)}</span>` : ''}${zh ? `<span class="chip">Year of the ${zh}</span>` : ''}
+      ${info ? `<span class="chip gold">${info.chip}</span><span class="chip">${esc(info.extra)}</span>` : ''}
+      ${occasion === 'birthday' && p ? `<span class="chip">${westernSign(p.mo, p.d)}</span>` : ''}${zh ? `<span class="chip">Born in the Year of the ${zh}</span>` : ''}
     </div>
     <div class="chips">${(c.priorities || []).map(x => `<span class="chip">${esc(x)}</span>`).join('')}</div>
     ${issuesHtml(chk.errors, chk.warnings)}
@@ -1290,12 +1489,19 @@ function progress(step) {
 function stopProgress() { $('#progress').dataset.started = '0'; progress(null); $('#progTimer').textContent = ''; }
 
 async function aiArtwork(c, pal) {
-  const style = STYLES[val('sty')] || STYLES.classic3d;
+  const style = STYLES[val('sty')] || STYLES.classic3d, occ = OCC[occasion];
   const motifs = (c.priorities || []).slice(0, 3).join('; ') || 'a joyful celebration';
+  const kind = { birthday: 'birthday greeting', anniversary: 'heartfelt thank-you', cny: 'Chinese New Year greeting' }[occasion];
+  const object = { birthday: 'the cake', anniversary: 'the gift and both hands', cny: 'the oranges or greeting gesture and both hands' }[occasion];
+  const scene = {
+    birthday: 'a festive celebration scene with balloons, soft confetti and glowing lights',
+    anniversary: 'an elegant, warm setting with soft golden light, subtle gold ribbons and laurel details, celebratory but calm',
+    cny: 'a festive Chinese New Year scene with red lanterns, plum blossoms, gold accents and soft glowing lights'
+  }[occasion];
   const prompt = `Use the person in the reference photo as the only person and main subject. Keep their face, facial features, skin tone, hairstyle and glasses (if any) clearly recognisable as the same real person.
-Create a horizontal (landscape), premium, "wow" birthday greeting picture in ${style[1]}.
-${(POSES[val('pose')] || POSES.presenting)[1]} Show the cake and both hands clearly; keep the person's face fully visible above the cake.
-Background: a festive celebration scene with balloons, soft confetti and glowing lights, plus tasteful symbolic background details inspired by what the birthday person cares about: ${motifs}. Do not show the birthday person or any other people, only symbolic objects and scenery.
+Create a horizontal (landscape), premium, "wow" ${kind} picture in ${style[1]}.
+${(occ.poses[val('pose')] || Object.values(occ.poses)[0])[1]} Show ${object} clearly; keep the person's face fully visible.
+Background: ${scene}, plus tasteful symbolic background details inspired by what the client cares about: ${motifs}. Do not show the client or any other people, only symbolic objects and scenery.
 Colour palette: ${pal.desc}.
 Composition: landscape, waist-up, the person centred, with their whole head, both hands and the cake fully in frame and not cropped, and a little space above the head.
 Absolutely no text, letters, numbers, signs or logos anywhere in the image.`;
@@ -1303,12 +1509,13 @@ Absolutely no text, letters, numbers, signs or logos anywhere in the image.`;
 }
 
 async function render(wordsOverride) {
-  const c = current(), nb = nextBirthday(c.dob);
+  const c = current(), info = occasionInfo(c);
   let palKey = val('pal'); if (palKey === 'auto') palKey = autoPalette(c);
   await fontsReady();
-  drawPoster($('#poster'), { customer: c, palette: palKey, pattern: val('pat'), pose: val('pose'), art: lastArt, photo: await loadImage(settings.photo || PLACEHOLDER),
-    cake: settings.cakePhoto ? { img: await loadImage(settings.cakePhoto.src), cut: settings.cakePhoto.cut } : null,
-    posterLine: (wordsOverride || lastWords).posterLine, showAge: $('#c-age').checked, turning: nb && nb.turning, dateLabel: nb ? `${nb.date.getDate()} ${MONTHS[nb.date.getMonth()]} ${nb.date.getFullYear()}` : '' });
+  drawPoster($('#poster'), { customer: c, occasion, palette: palKey, pattern: val('pat'), pose: val('pose'), art: lastArt, photo: await loadImage(settings.photo || PLACEHOLDER),
+    cake: occasion === 'birthday' && settings.cakePhoto ? { img: await loadImage(settings.cakePhoto.src), cut: settings.cakePhoto.cut } : null,
+    posterLine: (wordsOverride || lastWords).posterLine, showMedal: $('#c-age').checked, medal: info && info.medal, years: info && info.years,
+    dateLabel: info ? info.dateLabel : '' });
   invalidateVideo(); // a video made from the old poster is out of date
 }
 
@@ -1319,7 +1526,7 @@ async function create(wordsOnly) {
   const notes = [];
   const hasKey = aiReady(), wantAi = val('c-art') === 'ai';
   try {
-    progress('Writing a wish only you could send…');
+    progress('Writing a message only you could send…');
     if (hasKey) { try { lastWords = await aiWords(c); } catch (e) { notes.push(['warn', `AI wording failed, so a template was used instead. ${e.message}`]); lastWords = templateWords(c); } }
     else lastWords = templateWords(c);
     if (!wordsOnly) {
@@ -1359,9 +1566,14 @@ const newAudioContext = () => new (window.AudioContext || window.webkitAudioCont
 function renderLyrics() {
   const c = current(); if (!c) return;
   const pr = (c.priorities || [])[0];
-  $('#lyrics').innerHTML = `<div class="eyebrow">Sing or say this</div>
+  const ask = pr ? ` How’s ${esc(lowerFirst(pr))} going?` : '', info = occasionInfo(c);
+  if (occasion === 'anniversary') $('#lyrics').innerHTML = `<div class="eyebrow">Say this</div>
+    <p class="song">Hi <b>${esc(c.nickname)}</b>, it’s been ${info ? info.years : ''} years since you first trusted me. Thank you, sincerely.${ask}</p>`;
+  else if (occasion === 'cny') $('#lyrics').innerHTML = `<div class="eyebrow">Say this</div>
+    <p class="song">新年快乐, <b>${esc(c.nickname)}</b>! Gong Xi Fa Cai! Wishing you and your family a wonderful Year of the ${info ? info.animal : ''}.${ask}</p>`;
+  else $('#lyrics').innerHTML = `<div class="eyebrow">Sing or say this</div>
     <p class="song">Happy birthday to you<br>Happy birthday to you<br>Happy birthday dear <b>${esc(c.nickname)}</b><br>Happy birthday to you</p>
-    <p class="hint">Then add one line in your normal voice, e.g. “${esc(c.nickname)}, enjoy your day!${pr ? ` How’s ${esc(lowerFirst(pr))} going?` : ''}”</p>`;
+    <p class="hint">Then add one line in your normal voice, e.g. “${esc(c.nickname)}, enjoy your day!${ask}”</p>`;
 }
 function setSingStatus(msg, kind) { $('#singIssues').innerHTML = msg ? `<div class="notice ${kind || 'warn'}">${esc(msg)}</div>` : ''; }
 function syncSendFormat() {
@@ -1532,7 +1744,7 @@ function gateSend() {
 okBoxes.forEach(s => $(s).onchange = gateSend);
 document.querySelectorAll('input[name="fmt"]').forEach(r => r.onchange = gateSend);
 ['#w-line', '#w-msg'].forEach(s => $(s).addEventListener('input', resetSend));
-const fileName = (ext = 'jpg') => `happy-birthday-${current().nickname.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.${ext}`;
+const fileName = (ext = 'jpg') => `${OCC[occasion].file}-${current().nickname.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.${ext}`;
 const posterBlob = () => new Promise(r => $('#poster').toBlob(r, 'image/jpeg', 0.93));
 const shareFile = async () => sendingVideo() ? new File([video.blob], fileName(video.ext), { type: video.type })
   : new File([await posterBlob()], fileName(), { type: 'image/jpeg' });
@@ -1563,8 +1775,8 @@ $('#shareBtn').onclick = async () => {
 $('#sentBtn').onclick = async () => {
   const c = current();
   if (!(await ask(`Mark ${esc(c.nickname)} as sent?`, 'Saves today’s date and this message, so next year’s wish talks about something new.', 'Mark as sent'))) return;
-  c.history = (c.history || []).concat({ date: new Date().toISOString().slice(0, 10), message: $('#w-msg').value, sang: sendingVideo() });
-  saveCustomers(); toast(`Logged. ${c.nickname} won't get the same wish next year.`);
+  c.history = (c.history || []).concat({ date: new Date().toISOString().slice(0, 10), message: $('#w-msg').value, occasion, sang: sendingVideo() });
+  saveCustomers(); toast(`Logged. ${c.nickname} won't get the same message next time.`);
 };
 
 /* ---------- boot ---------- */

@@ -1,7 +1,7 @@
 {
-  "name": "Remembered",
-  "short_name": "Remembered",
-  "description": "Birthday posters and singing videos that show customers you remember what matters to them.",
+  "name": "Customer Relationship App",
+  "short_name": "Customer App",
+  "description": "Birthday, policy anniversary and Chinese New Year posters with personal messages customers reply to.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
