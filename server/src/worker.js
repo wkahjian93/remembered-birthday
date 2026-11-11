@@ -127,8 +127,9 @@ async function image(request, env, email) {
 // The instructions live here, not in the app, so the team key can only be used for this job,
 // and identity numbers, policy numbers and contact details are never sent back to the phone.
 const SCAN_RULES = `You read one photo or screenshot of a Malaysian life-insurance agent portal (for example Great Eastern ePartner) showing a list of customers or policies.
-Return JSON only: {"rows": [{"name": "", "dob": "", "commencement": "", "anniversary": ""}], "note": ""}
-- One entry per customer row you can read. Copy names and dates exactly as printed: do not reformat, translate, complete or guess anything.
+Return JSON only: {"rows": [{"name": "", "dob": "", "commencement": "", "anniversary": "", "status": ""}], "note": ""}
+- Great Eastern ePartner lists have the columns No. | Policy No. | Policy Holder | DOB | Life Assured | Commencement Date | Premium Due Date | Last payment date | Premium Amount | Payment Mode | Payment Method | Plan Type | Status | GJA Option | Issuing Agent Name. There, name = Policy Holder (not Life Assured), dob = DOB, commencement = Commencement Date, status = Status (for example "Inforce (Regular)" or "Terminated (Freelook Others)").
+- One entry per policy row you can read. Copy names and dates exactly as printed: do not reformat, translate, complete or guess anything.
 - dob = date of birth. commencement = policy commencement / inception / start / issue date. anniversary = policy anniversary date if a separate column shows it.
 - Use "" for anything not shown or not readable. Skip rows that are cut off or blurred rather than guessing.
 - Never output NRIC/IC or passport numbers, policy numbers, phone numbers, emails, addresses, premiums, sums assured, plan names or medical details, even if visible.

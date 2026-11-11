@@ -104,7 +104,9 @@ textarea { min-height: 110px; resize: vertical; line-height: 1.45; }
 .month-list .d { font-weight: 800; font-variant-numeric: tabular-nums; }
 .review-row { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; display: grid; gap: 8px; background: var(--bg); }
 .review-row.off { opacity: .55; }
-.review-row .top { display: flex; gap: 10px; align-items: center; }
+.review-row .top { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; }
+.review-row .top b { flex: 1 1 150px; min-width: 0; }
+.review-row .top .chip { margin-left: 32px; }
 .review-row .raw { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
 .review-row input[type=text], .review-row input[type=date] { padding: 8px 10px; font-size: 15px; }
 .mini-label { font-size: 12px; font-weight: 700; color: var(--muted); display: grid; gap: 4px; }
@@ -181,10 +183,14 @@ code { font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border
     <div class="panel" id="importPanel">
       <div>
         <h2>Import from ePartner</h2>
-        <p class="hint" style="margin:4px 0 0">Take a photo or screenshot of your customer or policy list. Only names, birthdays and policy dates are read. IC and policy numbers are ignored. You check every row before anything is saved.</p>
+        <p class="hint" style="margin:4px 0 0">Best: in ePartner, select the whole policy list table, copy it, and paste it here. It’s read on this phone only, with no AI, and works for hundreds of policies at once. Only Policy Holder, DOB, Commencement Date and Status are kept. You check every row before anything is saved.</p>
       </div>
+      <label class="field">Paste ePartner list
+        <textarea id="pasteBox" placeholder="Long-press here and tap Paste" style="min-height:90px"></textarea>
+      </label>
+      <button class="btn primary" type="button" id="pasteBtn">Read pasted list</button>
       <div class="row">
-        <label class="btn small primary" for="scanFile">📷 Photo or screenshot</label>
+        <label class="btn small" for="scanFile">📷 Photo or screenshot (AI)</label>
         <input type="file" id="scanFile" accept="image/*" multiple hidden>
         <label class="btn small" for="csvFile">Import CSV file</label>
         <input type="file" id="csvFile" accept=".csv,text/csv,.txt,text/plain" hidden>
@@ -758,8 +764,9 @@ async function exportCalendar(all) {
 
 /* ---------- import from ePartner: photo/screenshot (AI) or CSV, then review before saving ---------- */
 const SCAN_RULES_OWN_KEY = `You read one photo or screenshot of a Malaysian life-insurance agent portal (for example Great Eastern ePartner) showing a list of customers or policies.
-Return JSON only: {"rows": [{"name": "", "dob": "", "commencement": "", "anniversary": ""}], "note": ""}
-- One entry per customer row you can read. Copy names and dates exactly as printed: do not reformat, translate, complete or guess anything.
+Return JSON only: {"rows": [{"name": "", "dob": "", "commencement": "", "anniversary": "", "status": ""}], "note": ""}
+- Great Eastern ePartner lists have the columns No. | Policy No. | Policy Holder | DOB | Life Assured | Commencement Date | Premium Due Date | Last payment date | Premium Amount | Payment Mode | Payment Method | Plan Type | Status | GJA Option | Issuing Agent Name. There, name = Policy Holder (not Life Assured), dob = DOB, commencement = Commencement Date, status = Status (for example "Inforce (Regular)" or "Terminated (Freelook Others)").
+- One entry per policy row you can read. Copy names and dates exactly as printed: do not reformat, translate, complete or guess anything.
 - dob = date of birth. commencement = policy commencement / inception / start / issue date. anniversary = policy anniversary date if a separate column shows it.
 - Use "" for anything not shown or not readable. Skip rows that are cut off or blurred rather than guessing.
 - Never output NRIC/IC or passport numbers, policy numbers, phone numbers, emails, addresses, premiums, sums assured, plan names or medical details, even if visible.
@@ -784,24 +791,50 @@ const tidyName = s => { // "TAN AH KOW" -> "Tan Ah Kow"; mixed-case names are le
   return s === s.toUpperCase() ? s.toLowerCase().split(' ').map(w => KEEP_LOWER.has(w) ? w : w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : s;
 };
 const nameKey = s => String(s || '').toUpperCase().replace(/[^A-Z]/g, '');
-let review = [];
-function addFound(rawRows, from) { // merge rows for the same person (several policies) and match existing customers
-  let added = 0;
+let review = [], reviewFilter = 'attention';
+const isInforce = s => /in\s*-?\s*force/i.test(s || '');
+const looksLikeMe = name => { // the agent's own policies (their name in Me) come in unticked
+  const mine = nameKey(settings.name).length >= 4 ? String(settings.name).toUpperCase().split(/\s+/).map(nameKey).filter(Boolean) : [];
+  const theirs = String(name).toUpperCase().split(/\s+/).map(nameKey);
+  return mine.length && mine.every(w => theirs.includes(w));
+};
+// rows: [{ name (policy holder), dob, commencement, anniversary, status }]; one row per policy
+function addFound(rawRows, from) {
+  const t = today0(); let added = 0;
   rawRows.forEach(r => {
     const name = tidyName(r.name); if (!name) return;
     const dob = parseListDate(r.dob), com = parseListDate(r.commencement), ann = parseListDate(r.anniversary);
-    const notes = [dob.note, com.note].filter(Boolean);
-    if (!r.dob) notes.push('No date of birth on the list. Enter it to save.');
-    if (!com.iso && ann.iso) notes.push('Only an anniversary date was shown, so the years with you are unknown. Enter the commencement date if you have it.');
-    const same = review.find(v => v.key === nameKey(name) && (!v.dob || !dob.iso || v.dob === dob.iso));
-    if (same) { // another policy of the same customer: keep the earliest commencement date
-      if (com.iso && (!same.policyDate || com.iso < same.policyDate)) same.policyDate = com.iso;
-      if (!same.dob && dob.iso) same.dob = dob.iso;
-      same.policies++; return;
+    const status = String(r.status || '').replace(/\s+/g, ' ').trim();
+    let v = review.find(x => x.key === nameKey(name) && (!x.dob || !dob.iso || x.dob === dob.iso));
+    if (!v) {
+      v = { id: uid(), include: true, key: nameKey(name), fullName: name, nickname: name, dob: dob.iso, from, policies: 0, inforce: 0,
+        inforceDates: [], anyDates: [], statuses: [], notes: [], rawDob: r.dob || '' };
+      review.push(v); added++;
     }
-    review.push({ id: uid(), include: true, key: nameKey(name), fullName: name, nickname: name, dob: dob.iso, policyDate: com.iso, notes, from, policies: 1,
-      raw: [r.dob && `DOB "${r.dob}"`, r.commencement && `commenced "${r.commencement}"`, r.anniversary && `anniversary "${r.anniversary}"`].filter(Boolean).join(' · ') });
-    added++;
+    v.policies++;
+    if (!v.dob && dob.iso) v.dob = dob.iso;
+    if (dob.note && !v.notes.includes(dob.note)) v.notes.push(dob.note);
+    if (com.note && !v.notes.includes(com.note)) v.notes.push(com.note);
+    if (status) v.statuses.push(status);
+    if (status && isInforce(status)) v.inforce++;
+    if (com.iso) {
+      const future = new Date(com.iso) > t;
+      v.anyDates.push(com.iso);
+      if (future && (!status || isInforce(status))) v.notes.push(`A policy starts on ${com.iso}, after today, so its anniversaries start next year.`);
+      else if (!future && (!status || isInforce(status))) v.inforceDates.push(com.iso);
+    } else if (ann.iso) v.notes.push('Only an anniversary date was shown, so the years with you are unknown. Enter the commencement date if you have it.');
+  });
+  review.forEach(v => { // settle each person once all their policies are in
+    v.notes = [...new Set(v.notes)];
+    v.policyDate = v.inforceDates.sort()[0] || '';
+    v.since = v.anyDates.length ? +v.anyDates.sort()[0].slice(0, 4) : null;
+    v.noInforce = v.statuses.length > 0 && v.inforce === 0;
+    v.mine = looksLikeMe(v.fullName);
+    if (v.firstPass !== false) { // decide the default tick only the first time a row appears
+      if (v.noInforce) v.include = false;
+      if (v.mine) v.include = false;
+      v.firstPass = false;
+    }
   });
   return added;
 }
@@ -821,36 +854,55 @@ function changesFor(m, v) {
   return out;
 }
 let removeIds = new Set(); // saved customers the agent chose to remove because they're not on the new list
+function reviewState(v) {
+  const m = v.match && customers.find(c => c.id === v.match);
+  const chk = checkCustomer({ nickname: v.nickname, dob: v.dob, policyDate: v.policyDate, priorities: m ? m.priorities : [] });
+  const ch = m ? changesFor(m, v) : [];
+  const kind = chk.errors.length || v.notes.length || v.noInforce || v.mine ? 'attention' : m ? (ch.length ? 'update' : 'same') : 'new';
+  return { m, chk, ch, kind };
+}
 function renderReview() {
   const box = $('#reviewBox');
   if (!review.length) { box.hidden = true; return; }
   box.hidden = false;
-  review.forEach(v => { const m = matchExisting(v); v.match = m ? m.id : null; });
+  review.forEach(v => { const m = matchExisting(v); v.match = m ? m.id : null; v.state = reviewState(v); });
+  const count = k => review.filter(v => k === 'all' || v.state.kind === k).length;
   const n = review.filter(v => v.include).length;
-  box.innerHTML = `<div class="notice ok"><b>Check before saving.</b> Dates were read as day/month/year, the way ePartner prints them. Change each nickname to what you call them.</div>
-    ${review.map(v => {
-      const m = v.match && customers.find(c => c.id === v.match);
-      const chk = checkCustomer({ nickname: v.nickname, dob: v.dob, policyDate: v.policyDate, priorities: m ? m.priorities : [] });
-      const ch = m ? changesFor(m, v) : [];
-      const status = m ? (ch.length ? `Updates ${esc(m.nickname)}: ${ch.map(x => esc(x[1])).join(', ')}` : `Already saved as ${esc(m.nickname)}. No change.`) : 'New customer';
+  const tabs = [['attention', 'Needs a look'], ['new', 'New'], ['update', 'Updates'], ['same', 'No change'], ['all', 'All']];
+  if (reviewFilter !== 'all' && !count(reviewFilter)) reviewFilter = ['attention', 'new', 'update', 'same'].find(k => count(k)) || 'all';
+  const shown = review.filter(v => reviewFilter === 'all' || v.state.kind === reviewFilter);
+  box.innerHTML = `<div class="notice ok"><b>Check before saving.</b> ${review.length} policy holder${review.length === 1 ? '' : 's'} found. Dates are read as day/month/year. Only Inforce policies count for anniversaries. Nicknames can be changed now or later.</div>
+    <div class="seg" role="radiogroup" aria-label="Show">${tabs.map(([k, l]) => `<input type="radio" name="rvf" id="rvf-${k}" value="${k}" ${k === reviewFilter ? 'checked' : ''}><label for="rvf-${k}">${l} (${count(k)})</label>`).join('')}</div>
+    <div class="row"><button class="btn small" type="button" data-bulk="1">Tick all shown</button><button class="btn small" type="button" data-bulk="0">Untick all shown</button></div>
+    ${shown.map(v => {
+      const { m, chk, ch } = v.state;
+      const status = m ? (ch.length ? `Updates ${esc(m.nickname)}: ${ch.map(x => esc(x[1])).join(', ')}` : `Already saved as ${esc(m.nickname)}`) : 'New';
+      const facts = [v.dob ? `Born ${v.dob}` : 'No birthday', v.policyDate ? `In force since ${v.policyDate}` : v.noInforce ? 'No in-force policy' : v.inforce ? 'In force, starts soon' : 'No policy date',
+        `${v.policies} polic${v.policies === 1 ? 'y' : 'ies'}${v.inforce ? `, ${v.inforce} in force` : ''}`].join(' · ');
+      const flags = [...chk.errors.map(e => ['bad', e]), ...v.notes.map(e => ['warn', e]),
+        ...(v.noInforce ? [['warn', `None of their policies is in force (${[...new Set(v.statuses)].join(', ')}). Unticked.`]] : []),
+        ...(v.mine ? [['warn', 'This looks like your own policy. Unticked.']] : [])];
       return `<div class="review-row ${v.include ? '' : 'off'}">
         <div class="top"><input type="checkbox" data-r="${v.id}" data-f="include" ${v.include ? 'checked' : ''} aria-label="Include ${esc(v.fullName)}">
           <b style="overflow-wrap:anywhere">${esc(v.fullName)}</b><span class="chip ${m ? '' : 'gold'}">${status}</span></div>
-        <div class="two">
-          <label class="mini-label">Nickname<input type="text" data-r="${v.id}" data-f="nickname" value="${esc(v.nickname)}" maxlength="30"></label>
-          <label class="mini-label">Date of birth<input type="date" data-r="${v.id}" data-f="dob" value="${esc(v.dob)}"></label>
-        </div>
-        <label class="mini-label">Policy start date${v.policies > 1 ? ` (earliest of ${v.policies} policies)` : ''}<input type="date" data-r="${v.id}" data-f="policyDate" value="${esc(v.policyDate)}"></label>
-        ${v.raw ? `<div class="raw">Read from ${esc(v.from)}: ${esc(v.raw)}</div>` : ''}
-        ${v.include ? issuesHtml(chk.errors, v.notes) : ''}
+        <div class="raw">${esc(facts)}</div>
+        ${flags.map(([k, t]) => `<div class="notice ${k}" style="padding:6px 10px">${esc(t)}</div>`).join('')}
+        <details ${flags.length ? 'open' : ''}><summary class="hint">Edit nickname or dates</summary>
+          <div style="display:grid;gap:8px;margin-top:8px">
+            <div class="two">
+              <label class="mini-label">Nickname<input type="text" data-r="${v.id}" data-f="nickname" value="${esc(v.nickname)}" maxlength="30"></label>
+              <label class="mini-label">Date of birth<input type="date" data-r="${v.id}" data-f="dob" value="${esc(v.dob)}"></label>
+            </div>
+            <label class="mini-label">Policy start date (earliest in force)<input type="date" data-r="${v.id}" data-f="policyDate" value="${esc(v.policyDate)}"></label>
+          </div></details>
       </div>`;
-    }).join('')}
+    }).join('') || '<p class="hint">Nothing in this group.</p>'}
     ${(() => { // saved customers that this import didn't include: offered for removal, never removed automatically
       const seen = new Set(review.map(v => v.match).filter(Boolean));
       const missing = customers.filter(c => !c.sample && !seen.has(c.id));
       if (!missing.length) return '';
       return `<details class="review-row"><summary>${missing.length} saved customer${missing.length === 1 ? ' is' : 's are'} not in this import</summary>
-        <p class="hint" style="margin:6px 0">If this import is your full, latest ePartner list, you can remove customers who are no longer on it. If you only scanned some pages, leave them.</p>
+        <p class="hint" style="margin:6px 0">If this import is your full, latest ePartner list, you can remove customers who are no longer on it. If you only imported part of it, leave them.</p>
         ${missing.map(c => `<label class="check"><input type="checkbox" data-remove="${c.id}" ${removeIds.has(c.id) ? 'checked' : ''}> Remove ${esc(c.nickname)}${c.fullName && c.fullName !== c.nickname ? ` (${esc(c.fullName)})` : ''}</label>`).join('')}
       </details>`;
     })()}
@@ -861,6 +913,8 @@ function renderReview() {
     v[el.dataset.f] = el.type === 'checkbox' ? el.checked : el.value.trim();
     if (el.dataset.f !== 'nickname') renderReview();
   });
+  box.querySelectorAll('input[name="rvf"]').forEach(el => el.onchange = () => { reviewFilter = el.value; renderReview(); });
+  box.querySelectorAll('[data-bulk]').forEach(el => el.onclick = () => { shown.forEach(v => { v.include = el.dataset.bulk === '1'; }); renderReview(); });
   box.querySelectorAll('[data-remove]').forEach(el => el.onchange = () => { el.checked ? removeIds.add(el.dataset.remove) : removeIds.delete(el.dataset.remove); renderReview(); });
   $('#reviewCancel').onclick = async () => { if (await ask('Discard this import?', 'Nothing has been saved yet. The rows you read will be cleared.', 'Discard', true)) { review = []; removeIds.clear(); renderReview(); $('#scanStatus').innerHTML = ''; } };
   $('#reviewSave').onclick = saveReview;
@@ -875,22 +929,43 @@ async function saveReview() {
     if (m) { if (changesFor(m, v).length) updates.push([m, v]); }
     else adds.push(v);
   });
-  if (bad.length) return ask('Some rows need fixing', `Fix or untick these first: ${bad.map(esc).join(', ')}.`, 'OK');
+  if (bad.length) return ask('Some rows need fixing', `Fix or untick these first: ${bad.slice(0, 8).map(esc).join(', ')}${bad.length > 8 ? ` and ${bad.length - 8} more (see Needs a look)` : ''}.`, 'OK');
   const removing = customers.filter(c => removeIds.has(c.id));
   if (!adds.length && !updates.length && !removing.length) return ask('Nothing new', 'Every ticked customer is already saved with the same dates.', 'OK');
   const parts = [adds.length && `add ${adds.length} new customer${adds.length === 1 ? '' : 's'}`, updates.length && `update the dates of ${updates.length}`,
-    removing.length && `remove ${removing.length} (${removing.map(c => esc(c.nickname)).join(', ')}) and their message history, which can’t be undone`].filter(Boolean);
+    removing.length && `remove ${removing.length} (${removing.slice(0, 6).map(c => esc(c.nickname)).join(', ')}${removing.length > 6 ? '…' : ''}) and their message history, which can’t be undone`].filter(Boolean);
   if (!(await ask('Save these changes?', `This will ${parts.join(', ')}. Nicknames, priorities and message history of updated customers are kept.`, 'Save changes', !!removing.length))) return;
-  adds.forEach(v => customers.push({ id: uid(), nickname: v.nickname, fullName: v.fullName, dob: v.dob, gender: '', priorities: [], since: v.policyDate ? +v.policyDate.slice(0, 4) : null,
+  adds.forEach(v => customers.push({ id: uid(), nickname: v.nickname, fullName: v.fullName, dob: v.dob, gender: '', priorities: [], since: v.since,
     policyDate: v.policyDate, notes: '', history: [], source: 'epartner' }));
   updates.forEach(([m, v]) => { // the newer ePartner list wins for dates
     if (v.dob) m.dob = v.dob;
-    if (v.policyDate) { m.policyDate = v.policyDate; if (!m.since || m.since > +v.policyDate.slice(0, 4)) m.since = +v.policyDate.slice(0, 4); }
+    if (v.policyDate) m.policyDate = v.policyDate;
+    if (v.since && (!m.since || m.since > v.since)) m.since = v.since;
     m.fullName = v.fullName; m.updatedFrom = new Date().toISOString().slice(0, 10);
   });
   customers = customers.filter(c => !removeIds.has(c.id)); removeIds.clear();
-  saveCustomers(); review = []; renderReview(); renderCustomers();
-  $('#scanStatus').innerHTML = `<div class="notice ok">Saved. Add each customer\u2019s priorities (Edit) so their messages feel personal, then add them to your calendar.</div>`;
+  if (!store.set(KEY_C, customers)) return;
+  review = []; renderReview(); renderCustomers();
+  $('#scanStatus').innerHTML = `<div class="notice ok">Saved. Add each customer’s priorities (Edit) so their messages feel personal, then add them to your calendar.</div>`;
+}
+// ePartner policy list copied straight from the web page: one record per policy, cells separated by tabs.
+// Columns: No. | Policy No. | Policy Holder | DOB | Life Assured | Commencement Date | Premium Due Date | Last payment date |
+//          Premium Amount | Payment Mode | Payment Method | Plan Type | Status | GJA Option | Issuing Agent Name
+// Only Policy Holder, DOB, Commencement Date and Status are kept; everything else is dropped right here.
+function parseEpartner(text) {
+  const t = String(text || '').replace(/\r\n?/g, '\n');
+  const starts = [...t.matchAll(/(?:^|\n)[ \t]*(\d{1,5})\t+[ \t]*([A-Z0-9]{6,15})\t/gi)].map(x => x.index);
+  if (!starts.length) return null;
+  const rows = [];
+  starts.forEach((s, i) => {
+    const cells = t.slice(s, starts[i + 1] ?? t.length).replace(/\n+/g, ' ').split('\t').map(c => c.replace(/\s+/g, ' ').trim());
+    if (cells[0] === '') cells.shift();
+    const status = cells[12] && /[a-z]/i.test(cells[12]) ? cells[12]
+      : cells.slice(9).find(c => /inforce|in force|terminat|waiting|lapse|surrender|matur|claim|withdrawn|declined|paid.?up/i.test(c)) || '';
+    rows.push({ name: cells[2] || '', dob: cells[3] || '', commencement: cells[5] || '', status });
+  });
+  const dated = rows.filter(r => parseListDate(r.dob).iso || parseListDate(r.commencement).iso).length;
+  return dated >= Math.max(1, rows.length / 2) ? rows : null;
 }
 function downscale(file, maxSide = 2000) {
   return new Promise((resolve, reject) => {
@@ -944,15 +1019,28 @@ function parseCsv(text) {
   const hi = rows.findIndex(r => r.some(h => /name/i.test(h)) && r.some(h => /birth|dob/i.test(h)));
   if (hi < 0) throw new Error('Couldn\u2019t find "Name" and "Date of birth" column headings in this file.');
   const h = rows[hi], col = re => h.findIndex(x => re.test(x));
-  const ci = { name: col(/name/i), dob: col(/birth|dob/i), commencement: col(/commence|inception|start|issue|effective/i), anniversary: col(/anniv/i) };
-  return rows.slice(hi + 1).map(r => ({ name: r[ci.name] || '', dob: ci.dob >= 0 ? r[ci.dob] || '' : '', commencement: ci.commencement >= 0 ? r[ci.commencement] || '' : '', anniversary: ci.anniversary >= 0 ? r[ci.anniversary] || '' : '' }));
+  const holder = col(/policy\s*holder|owner/i);
+  const ci = { name: holder >= 0 ? holder : col(/name/i), dob: col(/birth|dob/i), commencement: col(/commence|inception|start|issue|effective/i), anniversary: col(/anniv/i), status: col(/status/i) };
+  const cell = (r, k) => ci[k] >= 0 ? r[ci[k]] || '' : '';
+  return rows.slice(hi + 1).map(r => ({ name: cell(r, 'name'), dob: cell(r, 'dob'), commencement: cell(r, 'commencement'), anniversary: cell(r, 'anniversary'), status: cell(r, 'status') }));
 }
+function readListText(text, from) { // pasted ePartner table first, then any CSV/tab file with headings
+  const rows = parseEpartner(text) || parseCsv(text);
+  const n = addFound(rows, from);
+  const holders = review.length, policies = rows.length;
+  $('#scanStatus').innerHTML = `<div class="notice ok">${esc(from)}: read ${policies} polic${policies === 1 ? 'y' : 'ies'}, ${n} new policy holder${n === 1 ? '' : 's'} (${holders} in this import).</div>`;
+  renderReview(); $('#reviewBox').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+$('#pasteBtn').onclick = () => {
+  const text = $('#pasteBox').value;
+  if (!text.trim()) { $('#scanStatus').innerHTML = '<div class="notice warn">Paste the list first: in ePartner select the table from "No." to the last row, copy, then long-press the box above and tap Paste.</div>'; return; }
+  try { readListText(text, 'pasted list'); $('#pasteBox').value = ''; } // the pasted text (with policy numbers) isn't kept
+  catch (err) { $('#scanStatus').innerHTML = `<div class="notice bad">${esc(err.message)} Copy the whole table, including the heading row.</div>`; }
+};
 $('#csvFile').onchange = async e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return;
   try {
-    const n = addFound(parseCsv(await f.text()), f.name);
-    $('#scanStatus').innerHTML = `<div class="notice ok">${esc(f.name)}: found ${n} customer${n === 1 ? '' : 's'}.</div>`;
-    renderReview(); $('#reviewBox').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    readListText(await f.text(), f.name);
   } catch (err) { $('#scanStatus').innerHTML = `<div class="notice bad">${esc(err.message)}</div>`; }
 };
 

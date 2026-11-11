@@ -53,18 +53,24 @@ The Customers list shows each customer's next birthday and anniversary, soonest 
 
 ## Import customers from ePartner
 
-On **Customers → Import from ePartner**:
-- **📷 Photo or screenshot:** take a photo or screenshot of your ePartner customer or policy list (several pages at once is fine). The AI reads only **name, date of birth, commencement date and anniversary**. It is told never to return IC numbers, policy numbers, phone numbers, addresses or premiums.
-- **Import CSV file:** if you can export the list, save it as CSV. The app finds the Name, Date of birth and Commencement columns by their headings. No AI is needed.
+**Best way: copy and paste (no AI, nothing leaves your phone)**
+1. In ePartner, open the policy list ("There are a total of … records").
+2. Select the whole table from "No." to the last row and copy it.
+3. In the app: **Customers → Import from ePartner → Paste ePartner list**, then **Read pasted list**.
 
-Then **check every row** before saving:
-- Dates are read as day/month/year (the way ePartner prints them). Unreadable dates, 2-digit years and missing birthdays are flagged, and those rows can't be saved until fixed or unticked.
-- Change each **nickname** to what you call them.
-- A customer with several policies becomes one customer, using the **earliest** commencement date for "years with you".
+The app keeps only **Policy Holder, DOB, Commencement Date and Status**. Policy numbers, premiums, payment details, plan codes and Life Assured are read past and never saved, and the pasted text is cleared.
 
-**Re-importing a newer list** updates saved customers: birthdays and policy dates are replaced with the new values, while your nicknames, priorities and message history are kept. Customers who aren't in the new list are shown so you can remove them, but nothing is ever removed unless you tick it and confirm.
+How it reads the list:
+- **Policy Holder** is the customer, and **DOB** is their birthday.
+- **Anniversary = earliest Commencement Date of an Inforce policy.** Terminated, Withdrawn and Declined policies don't count. A policy starting after today counts from next year.
+- Several policies for one holder become one customer.
+- Holders with **no in-force policy**, and **your own policies**, come in unticked.
 
-Before using photos, check that Great Eastern's data rules allow customer lists to be processed by an AI service. Crop out anything you don't need.
+Then **check before saving**. Use the filters (Needs a look / New / Updates / No change / All) and Tick all / Untick all. Dates are read as day/month/year. Rows with unreadable dates or 2-digit years must be fixed or unticked.
+
+**Re-import a newer list** the same way: birthdays and policy dates are replaced with the new values, while your nicknames, priorities and message history are kept. Customers not on the new list are shown so you can remove them, but nothing is removed unless you tick it and confirm.
+
+Other ways: **Photo or screenshot (AI)**, for a few rows when you can't copy (it sends the image to the AI, so crop out what you don't need), or **Import CSV file**.
 
 ## Reminders
 
