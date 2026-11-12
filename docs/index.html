@@ -1811,8 +1811,7 @@ let occasion = 'birthday';
 const OCC = {
   birthday: { title: 'Create a birthday poster', medal: 'Show the age they’re turning on the poster', file: 'happy-birthday', poses: POSES, pose: 'presenting' },
   anniversary: { title: 'Create a thank-you poster', medal: 'Show the years-together medal', file: 'thank-you',
-    poses: { gift: ['Presenting a gift', 'The person is smiling warmly and holding a small, elegant gift box tied with a gold ribbon out toward the viewer in both hands, as a heartfelt thank-you to a valued client (the viewer). Sincere, grateful, calm expression.'],
-      heart: ['Hand on heart', 'The person is smiling warmly with one hand on their heart and a slight, respectful nod toward the viewer, expressing sincere gratitude.'] }, pose: 'gift' },
+    poses: { heart: ['Hand on heart', 'The person is smiling warmly with one hand on their heart and a slight, respectful nod toward the viewer, expressing sincere gratitude.'] }, pose: 'heart' },
   cny: { title: 'Create a Chinese New Year poster', medal: 'Show the zodiac year medal', file: 'chinese-new-year',
     poses: { oranges: ['Presenting mandarin oranges', 'The person is smiling warmly and presenting a pair of fresh mandarin oranges with green leaves toward the viewer in both hands, the traditional Chinese New Year gesture of good wishes.'],
       greet: ['Gong Xi greeting', 'The person is smiling and making the traditional Chinese New Year fist-and-palm greeting gesture toward the viewer.'] }, pose: 'oranges' }
@@ -1901,7 +1900,7 @@ async function aiArtwork(c, pal) {
   const style = STYLES[val('sty')] || STYLES.classic3d, occ = OCC[occasion];
   const motifs = (c.priorities || []).slice(0, 3).join('; ') || 'a joyful celebration';
   const kind = { birthday: 'birthday greeting', anniversary: 'heartfelt thank-you', cny: 'Chinese New Year greeting' }[occasion];
-  const object = { birthday: 'the cake', anniversary: 'the gift and both hands', cny: 'the oranges or greeting gesture and both hands' }[occasion];
+  const object = { birthday: 'the cake', anniversary: 'the hand on the heart', cny: 'the oranges or greeting gesture and both hands' }[occasion];
   const scene = {
     birthday: 'a festive celebration scene with balloons, soft confetti and glowing lights',
     anniversary: 'an elegant, warm setting with soft golden light, subtle gold ribbons and laurel details, celebratory but calm',
