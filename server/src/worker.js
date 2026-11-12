@@ -17,7 +17,7 @@ export default {
     if (!url.pathname.startsWith('/api/')) {
       // phones must check for a new version of the page every time, so updates show on the next open
       const res = await env.ASSETS.fetch(request);
-      if (!/text\/html|manifest/.test(res.headers.get('Content-Type') || '')) return res;
+      if (!/text\/html|manifest|javascript/.test(res.headers.get('Content-Type') || '')) return res;
       const fresh = new Response(res.body, res);
       fresh.headers.set('Cache-Control', 'no-cache');
       return fresh;
@@ -30,6 +30,8 @@ export default {
       if (url.pathname === '/api/image' && request.method === 'POST') return await image(request, env, email);
       if (url.pathname === '/api/scan' && request.method === 'POST') return await scan(request, env, email);
       if (url.pathname === '/api/usage' && request.method === 'GET') return await usage(env, email);
+      if (url.pathname === '/api/stats' && request.method === 'POST') return await saveStats(request, env, email);
+      if (url.pathname === '/api/team-stats' && request.method === 'GET') return await teamStats(env, email);
       return fail(404, 'Not found.');
     } catch {
       return fail(500, 'The team server had a problem. Try again in a minute.');
@@ -150,12 +152,53 @@ async function scan(request, env, email) {
   const r = await fetch(`${base(env)}/v1/chat/completions`, {
     method: 'POST', headers: { Authorization: `Bearer ${env.OPENAI_API_KEY}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ model: env.SCAN_MODEL || env.TEXT_MODEL || 'gpt-5-mini', response_format: { type: 'json_object' },
-      messages: [{ role: 'system', content: SCAN_RULES }, { role: 'user', content: [{ type: 'text', text: 'Read this list.' }, { type: 'image_url', image_url: { url: img, detail: 'high' } }] }] })
+      messages: [{ role: 'system', content: body.kind === 'prospects' ? PROSPECT_RULES : SCAN_RULES }, { role: 'user', content: [{ type: 'text', text: 'Read this list.' }, { type: 'image_url', image_url: { url: img, detail: 'high' } }] }] })
   });
   const text = await r.text();
   if (!r.ok) return fail(502, openaiError(r.status, text));
   await addUse(env, day, email, 'scans');
   return passOn(text);
+}
+
+// prospects for 定联: names of people the agent knows, read from a chat list, contacts, followers, name card or handwritten list
+const PROSPECT_RULES = `You read one screenshot or photo that lists people an insurance agent knows, for example a WhatsApp chat list, phone contacts, Instagram or Facebook followers/friends, a name card, or a handwritten name list.
+Return JSON only: {"rows": [{"name": "", "platform": ""}], "note": ""}
+- One entry per person you can read. Copy each name exactly as shown (nicknames and emojis are fine); do not translate, complete or guess.
+- platform: "whatsapp", "instagram", "facebook", "contacts" or "other", judged from the app shown; "" if unclear.
+- Skip group chats, channels, businesses, brand pages, the phone owner's own profile, and names that are cut off.
+- Never output phone numbers, emails, addresses, message text or anything else about the person.
+- note: one short sentence if the image has no people list or is unreadable; otherwise "".`;
+
+/* ---------- 定联 numbers per agent per week: counts only, never prospect names ---------- */
+const weekStart = (offsetWeeks = 0) => { // Monday of this week (Malaysia time), as YYYY-MM-DD
+  const d = new Date(Date.now() + 8 * 3600e3); const day = (d.getUTCDay() + 6) % 7;
+  d.setUTCDate(d.getUTCDate() - day - 7 * offsetWeeks); return d.toISOString().slice(0, 10);
+};
+const cnt = v => Math.max(0, Math.min(100000, Math.round(Number(v) || 0)));
+async function saveStats(request, env, email) {
+  const body = await request.json().catch(() => null);
+  const allowed = [weekStart(0), weekStart(1), weekStart(2)];
+  const weeks = Array.isArray(body && body.weeks) ? body.weeks.filter(w => w && allowed.includes(w.week)) : [];
+  if (!weeks.length) return fail(400, 'No weekly numbers to save.');
+  const name = String((body && body.name) || '').slice(0, 40);
+  for (const w of weeks) {
+    const g = k => ({ A: cnt(w[k] && w[k].A), B: cnt(w[k] && w[k].B), C: cnt(w[k] && w[k].C), D: cnt(w[k] && w[k].D) });
+    const rec = { email, name, week: w.week, updated: new Date().toISOString(), touches: cnt(w.touches), byGroup: g('byGroup'), prospects: g('prospects'),
+      opens: cnt(w.opens), presents: cnt(w.presents), closes: cnt(w.closes), noc: cnt(w.noc), anp: Math.max(0, Math.min(1e8, Number(w.anp) || 0)), activeDays: cnt(w.activeDays) };
+    await env.USAGE.put(`w:${w.week}:${email}`, JSON.stringify(rec), { expirationTtl: 60 * 60 * 24 * 120 });
+  }
+  return json({ ok: true });
+}
+async function teamStats(env, email) {
+  if (!isOwner(env, email)) return fail(403, 'Only the team owner can see team numbers.');
+  const out = {};
+  for (const [label, week] of [['thisWeek', weekStart(0)], ['lastWeek', weekStart(1)]]) {
+    const page = await env.USAGE.list({ prefix: `w:${week}:` });
+    out[label] = { week, agents: [] };
+    for (const k of page.keys) { const r = await env.USAGE.get(k.name, 'json'); if (r) out[label].agents.push(r); }
+    out[label].agents.sort((a, b) => b.touches - a.touches);
+  }
+  return json(out);
 }
 
 /* ---------- owner: who used how much (counts only, never customer details) ---------- */

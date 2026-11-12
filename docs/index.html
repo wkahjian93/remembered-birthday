@@ -139,7 +139,8 @@ textarea { min-height: 110px; resize: vertical; line-height: 1.45; }
 /* tab bar */
 nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--surface); border-top: 1px solid var(--line);
   padding-bottom: env(safe-area-inset-bottom, 0px); padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px); }
-nav.tabs .wrap { display: grid; grid-template-columns: repeat(3, 1fr); padding-block: 6px; }
+nav.tabs .wrap { display: grid; grid-template-columns: repeat(4, 1fr); padding-block: 6px; }
+.tab-count { background: var(--accent); color: var(--accent-ink); border-radius: 999px; font-size: 10.5px; padding: 0 6px; margin-left: 2px; }
 nav.tabs button { appearance: none; background: none; border: 0; padding: 8px 4px; border-radius: 12px; font-weight: 700; font-size: 12.5px; color: var(--muted); display: grid; justify-items: center; gap: 2px; cursor: pointer; }
 nav.tabs button svg { width: 24px; height: 24px; }
 nav.tabs button[aria-selected="true"] { color: var(--accent); background: color-mix(in srgb, var(--accent) 9%, transparent); }
@@ -364,6 +365,9 @@ code { font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border
   </section>
 
   <!-- ============ SETTINGS ============ -->
+  <!-- ============ 定联 (ROUTINE ENGAGEMENT) ============ -->
+  <section id="view-routine" class="wrap" hidden></section>
+
   <section id="view-settings" class="wrap" hidden>
     <div>
       <h1>Your details</h1>
@@ -443,6 +447,9 @@ code { font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border
     <button type="button" role="tab" data-view="create" aria-selected="false">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21h16M5 21v-7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v7"/><path d="M5 16c2 1.5 4 1.5 7 0s5-1.5 7 0"/><path d="M12 12V8M12 5.5c.8-.8.8-1.7 0-2.5-.8.8-.8 1.7 0 2.5z"/></svg>
       Create</button>
+    <button type="button" role="tab" data-view="routine" aria-selected="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/><path d="M9 12h6M9 9h4"/></svg>
+      <span>定联<span class="tab-count" id="routineCount" hidden></span></span></button>
     <button type="button" role="tab" data-view="settings" aria-selected="false">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/></svg>
       Me</button>
@@ -583,6 +590,8 @@ function show(view) {
   document.querySelectorAll('nav.tabs button').forEach(b => b.setAttribute('aria-selected', String(b.dataset.view === view)));
   if (view === 'create') renderCreate();
   if (view === 'customers') renderCustomers();
+  if (view === 'routine' && window.renderRoutine) window.renderRoutine();
+  updateRoutineCount();
   window.scrollTo(0, 0);
 }
 document.querySelectorAll('nav.tabs button').forEach(b => b.onclick = () => show(b.dataset.view));
@@ -2198,6 +2207,12 @@ loadTeam().then(() => { if (!$('#view-create').hidden) renderSummary(); });
   $('#w-src').textContent = `Preview from a template. Tap "${OCC[occasion].button}" for the full version.`;
   $('#wordsPanel').hidden = false; $('#singPanel').hidden = false; $('#sendPanel').hidden = false; renderLyrics();
 })();
+function updateRoutineCount() { // how many prospects are due, shown on the 定联 tab
+  const n = window.routineDueCount ? window.routineDueCount() : 0, el = $('#routineCount');
+  if (el) { el.hidden = !n; el.textContent = n > 99 ? '99+' : n; }
+}
 </script>
+<script src="routine.js"></script>
+<script>updateRoutineCount();</script>
 </body>
 </html>

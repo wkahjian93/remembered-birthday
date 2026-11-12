@@ -76,6 +76,37 @@ Other ways: **Photo or screenshot (AI)**, for a few rows when you can't copy (it
 - **Phone calendar:** **Add new customers to my calendar** creates yearly birthday and anniversary entries that remind you 3 days before and at 9am on the day. **Full calendar + monthly summaries** also adds a summary on the 1st of each month. On iPhone, import into a new calendar called "Customers" so you can replace it later.
 - Your customer list stays only on your phone. Keep a backup (Customers → Backup & restore).
 
+## 定联 (Routine Engagement)
+
+**The problem it fixes:** agents give up on 定联 because recording is tedious and nobody tells them who to talk to next, so prospects go cold and get lost.
+
+Open the **定联** tab. The red number on it is how many prospects are due.
+
+**Every day (5 minutes)**
+1. The top shows today's target, **3 D · 3 C · 2 B · 1 A**, and your streak.
+2. Below are the exact people to talk to today: overdue first, ⭐ favourites on top, each with a chat idea (their remark, or this month's festival). If not enough people are due, it suggests some ahead of schedule so you can still hit your target.
+3. After chatting, tap **✓ Talked**, pick the platform (WhatsApp / Instagram / Facebook / Call / Met up), and optionally type one line. That's it. The app works out when they're due next.
+4. Talk first, open later. **No sales intention** in 定联 chats.
+
+**How often each group comes back:** A every week · B every 3 weeks · C every 6 weeks · D every 8 weeks.
+
+**Adding prospects (no long forms)**
+- **+ Add prospects**: type or paste names, one per line, then pick the group (A/B/C/D). Names already in your list are skipped.
+- **📷 Photo / screenshot**: screenshot your WhatsApp chat list, contacts, or Instagram/Facebook followers, or photograph a name card or handwritten list. The AI reads **names only**, never phone numbers or messages, and you check the list before it's added.
+
+**Prospect details** (tap a name or **Details**)
+- **Group A/B/C/D**: you decide. Upgrade people as you get closer. Moves are kept in their history.
+- **⭐ Favourite**: always shown first.
+- **Remark**: a note to remind yourself (e.g. "Getting married in March"). It becomes their chat idea.
+- **Results**: **Opened**, **Presented**, **Closed** (with **ANP in RM** and **NOC**). Each asks you to confirm, and the date is today.
+- **Delete** asks first and can't be undone.
+
+**This week** shows your 定联 chats, active days, opened, presented, closed, NOC and ANP.
+
+**Reminder:** tap **📅 Add daily 9pm 定联 reminder** once to put a daily reminder in your phone calendar.
+
+**For the Group Manager:** each agent's weekly numbers (chats, active days, open, present, close, NOC, ANP, group counts) are sent to the team server. **Prospect names never leave the agent's phone.** On your phone, open the 定联 tab and tap **Show team this week** to see everyone for this week and last week.
+
 ## Adding a customer
 
 - **Nickname, date of birth and at least one priority** are needed. Gender is optional.
