@@ -14,7 +14,14 @@ const KEEP = 60 * 60 * 24 * 40; // usage records expire after 40 days
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
-    if (!url.pathname.startsWith('/api/')) return env.ASSETS.fetch(request);
+    if (!url.pathname.startsWith('/api/')) {
+      // phones must check for a new version of the page every time, so updates show on the next open
+      const res = await env.ASSETS.fetch(request);
+      if (!/text\/html|manifest/.test(res.headers.get('Content-Type') || '')) return res;
+      const fresh = new Response(res.body, res);
+      fresh.headers.set('Cache-Control', 'no-cache');
+      return fresh;
+    }
     const email = await agentEmail(request, env);
     if (!email) return fail(401, 'Sign in with your approved email to use team AI.');
     try {

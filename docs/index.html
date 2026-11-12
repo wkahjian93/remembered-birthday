@@ -1809,10 +1809,10 @@ function current() { return customers.find(c => c.id === selectedId); }
 /* ---------- occasions: birthday, policy anniversary thank-you, Chinese New Year ---------- */
 let occasion = 'birthday';
 const OCC = {
-  birthday: { title: 'Create a birthday poster', medal: 'Show the age they’re turning on the poster', file: 'happy-birthday', poses: POSES, pose: 'presenting' },
-  anniversary: { title: 'Create a thank-you poster', medal: 'Show the years-together medal', file: 'thank-you',
+  birthday: { title: 'Create a birthday poster', button: 'Create birthday poster', medal: 'Show the age they’re turning on the poster', file: 'happy-birthday', poses: POSES, pose: 'presenting' },
+  anniversary: { title: 'Create a thank-you poster', button: 'Create thank-you poster', medal: 'Show the years-together medal', file: 'thank-you',
     poses: { heart: ['Hand on heart', 'The person is smiling warmly with one hand on their heart and a slight, respectful nod toward the viewer, expressing sincere gratitude.'] }, pose: 'heart' },
-  cny: { title: 'Create a Chinese New Year poster', medal: 'Show the zodiac year medal', file: 'chinese-new-year',
+  cny: { title: 'Create a Chinese New Year poster', button: 'Create Chinese New Year poster', medal: 'Show the zodiac year medal', file: 'chinese-new-year',
     poses: { oranges: ['Presenting mandarin oranges', 'The person is smiling warmly and presenting a pair of fresh mandarin oranges with green leaves toward the viewer in both hands, the traditional Chinese New Year gesture of good wishes.'],
       greet: ['Gong Xi greeting', 'The person is smiling and making the traditional Chinese New Year fist-and-palm greeting gesture toward the viewer.'] }, pose: 'oranges' }
 };
@@ -1836,6 +1836,7 @@ function setOccasion(o) {
   occasion = OCC[o] ? o : 'birthday';
   $(`#occ-${occasion}`).checked = true;
   $('#createTitle').textContent = OCC[occasion].title;
+  $('#createBtn').textContent = OCC[occasion].button;
   $('#c-age-label').textContent = OCC[occasion].medal;
   $('#c-age').checked = occasion !== 'birthday';
   radios($('#c-pose'), 'pose', OCC[occasion].poses, OCC[occasion].pose);
@@ -2194,7 +2195,7 @@ loadTeam().then(() => { if (!$('#view-create').hidden) renderSummary(); });
   renderCreate(); const c = current(); if (!c) return;
   lastWords = templateWords(c); await render();
   $('#w-line').value = lastWords.posterLine; $('#w-msg').value = lastWords.message;
-  $('#w-src').textContent = 'Preview from a template. Tap "Create birthday poster" for the full version.';
+  $('#w-src').textContent = `Preview from a template. Tap "${OCC[occasion].button}" for the full version.`;
   $('#wordsPanel').hidden = false; $('#singPanel').hidden = false; $('#sendPanel').hidden = false; renderLyrics();
 })();
 </script>
