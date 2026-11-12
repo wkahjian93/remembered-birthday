@@ -5,19 +5,17 @@
 
 ## One-time setup (5 minutes)
 
-1. **Open the app on your phone:** https://wkahjian93.github.io/remembered-birthday/
+1. **Open the team app on your phone:** https://remembered.dwz-rooms-server.workers.dev
+   - Sign in with your email and the 6-digit code sent to you. You stay signed in for 7 days. Only emails your team leader has approved can get in.
    - Open it in Chrome (Android) or Safari (iPhone), then **Add to Home Screen**. It opens like an app with its own candle icon.
-   - Your customers, photo and key stay on that phone only. Anyone else opening the link sees an empty app (just the Kelly example).
-   - To update the app: edit `docs/index.html`, commit, and push to GitHub. Pages republishes it in about a minute.
-2. **Get an OpenAI API key** at platform.openai.com → API keys. Then:
-   - Add billing credit and **set a monthly spending limit** (e.g. USD 10).
-   - Complete **Organization Verification**. OpenAI requires it before image models work.
-3. In the app, tap **Me**:
+   - Your customers and photos stay on your phone only. AI is paid for by the team, with daily limits, so you don't need your own key.
+2. In the app, tap **Me**:
    - Choose your face photo (clear, front-facing, just you).
-   - **Best poster:** add **My cake photo**, a photo of you holding a birthday cake on a plain background. Tap **Choose my cake photo**, or **Make one with AI from my face photo** (one OpenAI image, done once). The app removes the background, so you stand on the poster holding the cake. If the background isn't plain, the photo goes in a gold arch frame instead.
+   - **Best poster:** add **My cake photo**, a photo of you holding a birthday cake on a plain background. Tap **Choose my cake photo**, or **Make one with AI from my face photo** (uses 1 of your daily AI pictures, done once). The app removes the background, so you stand on the poster holding the cake. If the background isn't plain, the photo goes in a gold arch frame instead.
    - Enter your name and sign-off (e.g. `Kah Jian · REDEFINE`).
-   - Paste your API key and tap **Test connection**. It should say `gpt-image-2 is available`.
    - Tap **Save my details**.
+
+**For the team leader:** add a teammate in Cloudflare under **Zero Trust → Access controls → Policies → Remembered team → Include → Emails**. Change daily limits in `server/wrangler.toml`, then redeploy. To update the app, edit `docs/index.html`, commit, and redeploy the Worker from `server/` (GitHub Pages is switched off).
 
 ## Every birthday (about 2 minutes)
 
