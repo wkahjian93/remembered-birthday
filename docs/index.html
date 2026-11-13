@@ -591,6 +591,7 @@ function show(view) {
   if (view === 'create') renderCreate();
   if (view === 'customers') renderCustomers();
   if (view === 'routine' && window.renderRoutine) window.renderRoutine();
+  if (view !== 'routine' && window.routineLeave) window.routineLeave();
   updateRoutineCount();
   window.scrollTo(0, 0);
 }

@@ -33,5 +33,33 @@ r = await call('/api/scan', env('agent1@x.com', 'boss@x.com'), { kind: 'prospect
 const scan = await r.json();
 check('prospect photo uses the names-only rules', sentToAi.includes('people an insurance agent knows') && sentToAi.includes('Never output phone numbers'));
 check('prospect names come back', scan.choices && JSON.parse(scan.choices[0].message.content).rows[0].name === 'Daniel Ooi');
+// --- ranking, pop-up sign-up, reminder counts and the hourly sender ---
+const myt = new Date(Date.now() + 8 * 3600e3), todayStr = myt.toISOString().slice(0, 10), md = todayStr.slice(5);
+await call('/api/stats', env('agent2@x.com', 'boss@x.com'), { name: 'Agent Two', weeks: [{ week, touches: 20 }],
+  reminders: { day: todayStr, dueBy: { [todayStr]: 4, '2026-01-01': 2 }, occ: { [md]: { b: 1, a: 0 } }, doneToday: 3, targetToday: 9, names: ['nope'] } });
+r = await call('/api/team-rank', env('agent1@x.com', 'boss@x.com'));
+const rank = await r.json();
+check('agents see team ranking by chats', rank.rows[0].name === 'Agent Two' && rank.rows[0].touches === 20 && rank.myRank === 2 && !('anp' in rank.rows[0]), JSON.stringify(rank));
+check('reminder counts stored without names', !(kv.get('p:agent2@x.com') || '').includes('nope'));
+r = await call('/api/push-reg', env('agent2@x.com', 'boss@x.com'), { token: 'tok-123', hour: myt.getUTCHours() < 6 || myt.getUTCHours() > 22 ? 9 : myt.getUTCHours(), nudge: true });
+check('phone registers for pop-ups', r.status === 200);
+// a throwaway service-account key, so the Google sign-in can be signed for real (but answered by the stub)
+const kp = await crypto.subtle.generateKey({ name: 'RSASSA-PKCS1-v1_5', modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: 'SHA-256' }, true, ['sign', 'verify']);
+const pk = Buffer.from(await crypto.subtle.exportKey('pkcs8', kp.privateKey)).toString('base64');
+const sa = JSON.stringify({ client_email: 'x@y.iam.gserviceaccount.com', project_id: 'redefine-calendar', private_key: `-----BEGIN PRIVATE KEY-----\n${pk.match(/.{1,64}/g).join('\n')}\n-----END PRIVATE KEY-----\n` });
+const sent = [];
+globalThis.fetch = async (url, opts) => {
+  if (String(url).includes('oauth2')) return new Response(JSON.stringify({ access_token: 'at', expires_in: 3600 }));
+  sent.push(JSON.parse(opts.body).message); return new Response('{}');
+};
+const hourEnv = Object.assign(env('x', 'boss@x.com'), { FCM_SERVICE_ACCOUNT: sa });
+const p = JSON.parse(kv.get('p:agent2@x.com')); p.hour = myt.getUTCHours(); kv.set('p:agent2@x.com', JSON.stringify(p));
+let waits = [];
+await worker.scheduled({}, hourEnv, { waitUntil: x => waits.push(x) }); await Promise.all(waits);
+const daily = sent.find(m => m.data.title === '定联 time');
+check('daily pop-up sent at the chosen hour', !!daily && daily.token === 'tok-123' && /6 prospects due/.test(daily.data.body) && /1 customer birthday/.test(daily.data.body), daily && daily.data.body);
+sent.length = 0; waits = [];
+await worker.scheduled({}, hourEnv, { waitUntil: x => waits.push(x) }); await Promise.all(waits);
+check('daily pop-up not repeated the same day', !sent.some(m => m.data.title === '定联 time'));
 console.log(results.join('\n'));
 if (results.some(x => x.startsWith('FAIL'))) process.exit(1);

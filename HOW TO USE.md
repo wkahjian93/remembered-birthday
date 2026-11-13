@@ -80,32 +80,36 @@ Other ways: **Photo or screenshot (AI)**, for a few rows when you can't copy (it
 
 **The problem it fixes:** agents give up on 定联 because recording is tedious and nobody tells them who to talk to next, so prospects go cold and get lost.
 
-Open the **定联** tab. The red number on it is how many prospects are due.
+Open the **定联** tab. The red number on it is how many prospects are due. **Search** is always at the top: type 2–3 letters of a name, remark or last chat.
 
-**Every day (5 minutes)**
-1. The top shows today's target, **3 D · 3 C · 2 B · 1 A**, and your streak.
-2. Below are the exact people to talk to today: overdue first, ⭐ favourites on top, each with a chat idea (their remark, or this month's festival). If not enough people are due, it suggests some ahead of schedule so you can still hit your target.
-3. After chatting, tap **✓ Talked**, pick the platform (WhatsApp / Instagram / Facebook / Call / Met up), and optionally type one line. That's it. The app works out when they're due next.
-4. Talk first, open later. **No sales intention** in 定联 chats.
+**Today** (5 minutes a day)
+1. The ring shows today's target, **3 D · 3 C · 2 B · 1 A** (smaller if a group has fewer people), plus your 🔥 streak.
+2. Below are the exact people to talk to: overdue first, ⭐ favourites on top, each with a chat idea.
+3. After chatting, tap **✓ Talked**, then pick the platform and a one-tap note (*Replied story, Commented post, Liked post, Chatted, Sent info, Festival greeting, Voice note*) or type your own. You can change the date if it was yesterday.
+4. Finish all of today's chats for confetti 🎉. Talk first, open later: **no sales intention** in 定联 chats.
 
 **How often each group comes back:** A every week · B every 3 weeks · C every 6 weeks · D every 8 weeks.
 
-**Adding prospects (no long forms)**
-- **+ Add prospects**: type or paste names, one per line, then pick the group (A/B/C/D). Names already in your list are skipped.
-- **📷 Photo / screenshot**: screenshot your WhatsApp chat list, contacts, or Instagram/Facebook followers, or photograph a name card or handwritten list. The AI reads **names only**, never phone numbers or messages, and you check the list before it's added.
+**All prospects**
+- Group counts plus filters: **All · Due · ⭐ · A · B · C · D · Talked this week**, showing 20 at a time with **Show 20 more**.
+- **✓ Talked** on every row, so you can chat with anyone **before they're due**. It simply resets their next date.
+- **☑ Select many**: tick people, or **Select all**, then in one go **✓ Talked** (same platform and note for everyone, e.g. Instagram · Commented post), **Group** (move all to A/B/C/D), **⭐**, or **🗑** (asks first).
 
-**Prospect details** (tap a name or **Details**)
-- **Group A/B/C/D**: you decide. Upgrade people as you get closer. Moves are kept in their history.
-- **⭐ Favourite**: always shown first.
-- **Remark**: a note to remind yourself (e.g. "Getting married in March"). It becomes their chat idea.
-- **Results**: **Opened**, **Presented**, **Closed** (with **ANP in RM** and **NOC**). Each asks you to confirm, and the date is today.
-- **Delete** asks first and can't be undone.
+**Adding prospects**
+- **+ Add prospects**: type or paste names, one per line, and pick the group. Duplicates are skipped.
+- **📷 Photo / screenshot**: WhatsApp chat list, contacts, followers, name card or handwritten list. The AI reads **names only**, and you check them before they're added.
 
-**This week** shows your 定联 chats, active days, opened, presented, closed, NOC and ANP.
+**Prospect details** (tap a name)
+- **✓ Log a chat**, any time.
+- Group A/B/C/D (you decide), ⭐ favourite, name and remark.
+- **Results**: Opened, Presented, Closed (with **ANP in RM** and **NOC**, and any date up to today).
+- **History, with Edit on every chat and result.** Fix a wrong ANP, NOC, date, type or note, or delete a record that was saved by mistake. Each change asks you to confirm.
 
-**Reminder:** tap **📅 Add daily 9pm 定联 reminder** once to put a daily reminder in your phone calendar.
+**This week**: chats, active days, opened, presented, closed, NOC, ANP, plus **badges** (5 active days, 30 chats, 3 upgrades, 3 opens/presents, a close) and **🏆 Team ranking by chats**. The ranking counts effort, never sales.
 
-**For the Group Manager:** each agent's weekly numbers (chats, active days, open, present, close, NOC, ANP, group counts) are sent to the team server. **Prospect names never leave the agent's phone.** On your phone, open the 定联 tab and tap **Show team this week** to see everyone for this week and last week.
+**Pop-ups** (Reminders box on the Today screen): tap **🔔 Turn on pop-ups**, pick the time for your daily reminder, and keep the **9pm nudge** on if you like. The pop-up says how many prospects are due, plus customer birthdays and anniversaries today. Use **Test in 15 s** to check it. iPhone: add the app to your Home Screen first. Names never leave your phone; only counts are used.
+
+**For the Group Manager:** **Team 定联 (numbers only)** at the bottom of Today shows each agent's chats, days, open, present, close, NOC and ANP for this week and last week.
 
 ## Adding a customer
 

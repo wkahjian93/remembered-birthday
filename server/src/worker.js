@@ -12,7 +12,8 @@ const today = () => new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10)
 const KEEP = 60 * 60 * 24 * 40; // usage records expire after 40 days
 
 export default {
-  async fetch(request, env) {
+  async scheduled(event, env, ctx) { ctx.waitUntil(hourlyReminders(env)); },
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     if (!url.pathname.startsWith('/api/')) {
       // phones must check for a new version of the page every time, so updates show on the next open
@@ -32,6 +33,10 @@ export default {
       if (url.pathname === '/api/usage' && request.method === 'GET') return await usage(env, email);
       if (url.pathname === '/api/stats' && request.method === 'POST') return await saveStats(request, env, email);
       if (url.pathname === '/api/team-stats' && request.method === 'GET') return await teamStats(env, email);
+      if (url.pathname === '/api/team-rank' && request.method === 'GET') return await teamRank(env, email);
+      if (url.pathname === '/api/push-reg' && request.method === 'POST') return await pushReg(request, env, email);
+      if (url.pathname === '/api/push-off' && request.method === 'POST') return await pushOff(request, env, email);
+      if (url.pathname === '/api/push-test' && request.method === 'POST') return await pushTest(env, email, ctx);
       return fail(404, 'Not found.');
     } catch {
       return fail(500, 'The team server had a problem. Try again in a minute.');
@@ -187,7 +192,128 @@ async function saveStats(request, env, email) {
       opens: cnt(w.opens), presents: cnt(w.presents), closes: cnt(w.closes), noc: cnt(w.noc), anp: Math.max(0, Math.min(1e8, Number(w.anp) || 0)), activeDays: cnt(w.activeDays) };
     await env.USAGE.put(`w:${w.week}:${email}`, JSON.stringify(rec), { expirationTtl: 60 * 60 * 24 * 120 });
   }
+  const rem = cleanReminders(body && body.reminders);
+  if (rem) { const p = await getPush(env, email); p.rem = rem; p.name = name; await env.USAGE.put(`p:${email}`, JSON.stringify(p)); }
   return json({ ok: true });
+}
+// counts per date only: { day, dueBy: {YYYY-MM-DD: n}, occ: {MM-DD: {b, a}}, doneToday, targetToday }
+function cleanReminders(r) {
+  if (!r || !/^\d{4}-\d{2}-\d{2}$/.test(r.day || '')) return null;
+  const dueBy = {}, occ = {};
+  Object.entries(r.dueBy || {}).slice(0, 120).forEach(([d, n]) => { if (/^\d{4}-\d{2}-\d{2}$/.test(d)) dueBy[d] = cnt(n); });
+  Object.entries(r.occ || {}).slice(0, 400).forEach(([d, v]) => { if (/^\d{2}-\d{2}$/.test(d)) occ[d] = { b: cnt(v && v.b), a: cnt(v && v.a) }; });
+  return { day: r.day, dueBy, occ, doneToday: cnt(r.doneToday), targetToday: cnt(r.targetToday) };
+}
+// team ranking for agents: names and number of 定联 chats this week only (effort, never sales)
+async function teamRank(env, email) {
+  const page = await env.USAGE.list({ prefix: `w:${weekStart(0)}:` }), rows = [];
+  for (const k of page.keys) { const r = await env.USAGE.get(k.name, 'json'); if (r) rows.push({ name: r.name || 'Agent', touches: r.touches, me: r.email === email }); }
+  rows.sort((a, b) => b.touches - a.touches);
+  return json({ rows, myRank: rows.findIndex(r => r.me) + 1 });
+}
+
+/* ---------- lock-screen pop-ups via Firebase Cloud Messaging (same Firebase project as the team calendar) ---------- */
+const getPush = async (env, email) => (await env.USAGE.get(`p:${email}`, 'json')) || { tokens: [], hour: 9, nudge: true, sent: {} };
+async function pushReg(request, env, email) {
+  const body = await request.json().catch(() => null);
+  const token = String((body && body.token) || '');
+  if (!token || token.length > 4096) return fail(400, 'No pop-up address from this phone.');
+  const p = await getPush(env, email);
+  p.tokens = [token, ...p.tokens.filter(t => t !== token)].slice(0, 5); // up to 5 phones per agent
+  const hour = Number(body.hour); if (Number.isInteger(hour) && hour >= 6 && hour <= 22) p.hour = hour;
+  if (typeof body.nudge === 'boolean') p.nudge = body.nudge;
+  await env.USAGE.put(`p:${email}`, JSON.stringify(p));
+  return json({ ok: true, phones: p.tokens.length });
+}
+async function pushOff(request, env, email) {
+  const body = await request.json().catch(() => ({}));
+  const p = await getPush(env, email);
+  p.tokens = p.tokens.filter(t => t !== String(body.token || ''));
+  await env.USAGE.put(`p:${email}`, JSON.stringify(p));
+  return json({ ok: true });
+}
+async function pushTest(env, email, ctx) {
+  const p = await getPush(env, email);
+  if (!p.tokens.length) return fail(400, 'Turn on pop-ups on this phone first.');
+  if (!env.FCM_SERVICE_ACCOUNT) return fail(503, 'Pop-ups aren’t set up on the team server yet. Tell your team leader.');
+  ctx.waitUntil((async () => { await new Promise(r => setTimeout(r, 15000)); await sendAll(env, email, p, '🔔 Test pop-up', `It works! ${dailyText(p.rem) || 'Your 定联 reminders will look like this.'}`); })());
+  return json({ ok: true });
+}
+const mytNow = () => new Date(Date.now() + 8 * 3600e3);
+function dailyText(rem) {
+  if (!rem) return '';
+  const now = mytNow(), today = now.toISOString().slice(0, 10), md = today.slice(5);
+  const dueCount = Object.entries(rem.dueBy || {}).reduce((n, [d, c]) => n + (d <= today ? c : 0), 0);
+  const o = (rem.occ || {})[md] || { b: 0, a: 0 };
+  const bits = [];
+  if (dueCount) bits.push(`${dueCount} prospect${dueCount === 1 ? '' : 's'} due for a chat`);
+  if (o.b) bits.push(`${o.b} customer birthday${o.b === 1 ? '' : 's'} 🎂`);
+  if (o.a) bits.push(`${o.a} policy anniversar${o.a === 1 ? 'y' : 'ies'} 🤝`);
+  return bits.join(' · ');
+}
+async function hourlyReminders(env) {
+  if (!env.FCM_SERVICE_ACCOUNT) return;
+  const now = mytNow(), hour = now.getUTCHours(), today = now.toISOString().slice(0, 10);
+  let cursor;
+  do {
+    const page = await env.USAGE.list({ prefix: 'p:', cursor });
+    for (const k of page.keys) {
+      const p = await env.USAGE.get(k.name, 'json'); if (!p || !p.tokens || !p.tokens.length) continue;
+      const email = k.name.slice(2); p.sent = p.sent || {};
+      let changed = false;
+      if (hour === (p.hour || 9) && p.sent.daily !== today) {
+        const text = dailyText(p.rem);
+        if (text) await sendAll(env, email, p, '定联 time', `${text}. Open the app for today’s 3-3-2-1.`);
+        p.sent.daily = today; changed = true;
+      }
+      if (hour === 21 && p.nudge !== false && p.sent.nudge !== today) {
+        const r = p.rem || {}, done = r.day === today ? r.doneToday : 0, target = r.targetToday || 9;
+        if (done < target) await sendAll(env, email, p, '定联 reminder', done ? `You’ve done ${done} of ${target} today. ${target - done} more to keep your streak!` : `No 定联 yet today. Even one chat keeps your streak going.`);
+        p.sent.nudge = today; changed = true;
+      }
+      if (changed) await env.USAGE.put(k.name, JSON.stringify(p));
+    }
+    cursor = page.list_complete ? null : page.cursor;
+  } while (cursor);
+}
+async function sendAll(env, email, p, title, body) {
+  const keep = [];
+  for (const token of p.tokens) {
+    const r = await fcmSend(env, token, title, body);
+    if (r !== 'gone') keep.push(token);
+  }
+  if (keep.length !== p.tokens.length) { p.tokens = keep; await env.USAGE.put(`p:${email}`, JSON.stringify(p)); }
+}
+let fcmAuth = null;
+async function fcmAccessToken(env) { // Google service-account sign-in (JWT signed here with WebCrypto), cached ~50 minutes
+  if (fcmAuth && fcmAuth.exp > Date.now() + 60e3) return fcmAuth;
+  const sa = JSON.parse(env.FCM_SERVICE_ACCOUNT);
+  const enc = o => btoa(JSON.stringify(o)).replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_');
+  const now = Math.floor(Date.now() / 1000);
+  const unsigned = `${enc({ alg: 'RS256', typ: 'JWT' })}.${enc({ iss: sa.client_email, scope: 'https://www.googleapis.com/auth/firebase.messaging', aud: 'https://oauth2.googleapis.com/token', iat: now, exp: now + 3600 })}`;
+  const pem = sa.private_key.replace(/-----[^-]+-----/g, '').replace(/\s+/g, '');
+  const der = Uint8Array.from(atob(pem), c => c.charCodeAt(0));
+  const key = await crypto.subtle.importKey('pkcs8', der, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['sign']);
+  const sig = new Uint8Array(await crypto.subtle.sign('RSASSA-PKCS1-v1_5', key, new TextEncoder().encode(unsigned)));
+  const jwt = `${unsigned}.${btoa(String.fromCharCode(...sig)).replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_')}`;
+  const r = await fetch('https://oauth2.googleapis.com/token', { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: `grant_type=${encodeURIComponent('urn:ietf:params:oauth:grant-type:jwt-bearer')}&assertion=${jwt}` });
+  const j = await r.json();
+  if (!j.access_token) throw new Error('Firebase sign-in failed');
+  fcmAuth = { token: j.access_token, exp: Date.now() + (j.expires_in || 3600) * 1000, project: sa.project_id };
+  return fcmAuth;
+}
+async function fcmSend(env, token, title, body) {
+  try {
+    const auth = await fcmAccessToken(env);
+    const r = await fetch(`https://fcm.googleapis.com/v1/projects/${auth.project}/messages:send`, {
+      method: 'POST', headers: { Authorization: `Bearer ${auth.token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: { token, data: { title, body, url: '#routine', tag: 'dinglian' }, webpush: { headers: { Urgency: 'high', TTL: '43200' } } } })
+    });
+    if (r.ok) return 'ok';
+    const t = await r.text();
+    return r.status === 404 || /UNREGISTERED/.test(t) ? 'gone' : 'failed';
+  } catch { return 'failed'; }
 }
 async function teamStats(env, email) {
   if (!isOwner(env, email)) return fail(403, 'Only the team owner can see team numbers.');

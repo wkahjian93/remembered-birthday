@@ -24,3 +24,7 @@ DAILY_SCANS = "20"
 [[kv_namespaces]]
 binding = "USAGE"
 id = "daaa700913d9463e8e447c1c40351177"
+
+# Hourly: sends each agent's daily 定联 reminder at the hour they picked, and the 9pm nudge
+[triggers]
+crons = ["0 * * * *"]
