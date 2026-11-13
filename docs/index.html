@@ -530,6 +530,15 @@ function nextAnniversary(start) {
   if (when.getFullYear() <= p.y) when = mk(p.y + 1);
   return { date: when, days: Math.round((when - t) / 864e5), years: when.getFullYear() - p.y };
 }
+// full years since the customer's earliest policy (their "client since" date), counted up to the occasion's
+// own day (birthday, anniversary or Chinese New Year), so every message for that day says the same number
+function yearsWithMe(c, occ) {
+  const p = parseDob(c && c.policyDate); if (!p) return 0;
+  const info = occ && typeof occasionInfo === 'function' ? occasionInfo(c, occ) : null;
+  const t = info ? info.date : today0(); let y = t.getFullYear() - p.y;
+  if (t.getMonth() + 1 < p.mo || (t.getMonth() + 1 === p.mo && t.getDate() < p.d)) y--;
+  return Math.max(0, y);
+}
 // Chinese New Year dates (first day of the lunar year). Add the next ones before 2030 ends.
 const CNY_DATES = [['2026-02-17', 'Horse', '马'], ['2027-02-06', 'Goat', '羊'], ['2028-01-26', 'Monkey', '猴'], ['2029-02-13', 'Rooster', '鸡'], ['2030-02-03', 'Dog', '狗']];
 function nextCny() { // the coming New Year, or the current one during its 15 days of celebration
@@ -807,6 +816,8 @@ const tidyName = s => { // "TAN AH KOW" -> "Tan Ah Kow"; mixed-case names are le
 const nameKey = s => String(s || '').toUpperCase().replace(/[^A-Z]/g, '');
 let review = [], reviewFilter = 'attention';
 const isInforce = s => /in\s*-?\s*force/i.test(s || '');
+// policies that never really started don't make someone a client: withdrawn, declined, freelook-cancelled, still waiting
+const neverStarted = s => /withdrawn|declined|free\s*-?\s*look|waiting\s+for\s+validat/i.test(s || '');
 const looksLikeMe = name => { // the agent's own policies (their name in Me) come in unticked
   const mine = nameKey(settings.name).length >= 4 ? String(settings.name).toUpperCase().split(/\s+/).map(nameKey).filter(Boolean) : [];
   const theirs = String(name).toUpperCase().split(/\s+/).map(nameKey);
@@ -822,7 +833,7 @@ function addFound(rawRows, from) {
     let v = review.find(x => x.key === nameKey(name) && (!x.dob || !dob.iso || x.dob === dob.iso));
     if (!v) {
       v = { id: uid(), include: true, key: nameKey(name), fullName: name, nickname: name, dob: dob.iso, from, policies: 0, inforce: 0,
-        inforceDates: [], anyDates: [], statuses: [], notes: [], rawDob: r.dob || '' };
+        startDates: [], statuses: [], notes: [], rawDob: r.dob || '' };
       review.push(v); added++;
     }
     v.policies++;
@@ -833,15 +844,16 @@ function addFound(rawRows, from) {
     if (status && isInforce(status)) v.inforce++;
     if (com.iso) {
       const future = new Date(com.iso) > t;
-      v.anyDates.push(com.iso);
-      if (future && (!status || isInforce(status))) v.notes.push(`A policy starts on ${com.iso}, after today, so its anniversaries start next year.`);
-      else if (!future && (!status || isInforce(status))) v.inforceDates.push(com.iso);
+      if (!neverStarted(status)) { // any real policy counts towards "client since", whether still in force or not
+        if (future) v.notes.push(`A policy starts on ${com.iso}, after today, so it isn’t counted yet.`);
+        else v.startDates.push(com.iso);
+      }
     } else if (ann.iso) v.notes.push('Only an anniversary date was shown, so the years with you are unknown. Enter the commencement date if you have it.');
   });
   review.forEach(v => { // settle each person once all their policies are in
     v.notes = [...new Set(v.notes)];
-    v.policyDate = v.inforceDates.sort()[0] || '';
-    v.since = v.anyDates.length ? +v.anyDates.sort()[0].slice(0, 4) : null;
+    v.policyDate = v.startDates.sort()[0] || ''; // earliest real policy = the day they became a client
+    v.since = v.policyDate ? +v.policyDate.slice(0, 4) : null;
     v.noInforce = v.statuses.length > 0 && v.inforce === 0;
     v.mine = looksLikeMe(v.fullName);
     if (v.firstPass !== false) { // decide the default tick only the first time a row appears
@@ -885,13 +897,13 @@ function renderReview() {
   const tabs = [['attention', 'Needs a look'], ['new', 'New'], ['update', 'Updates'], ['same', 'No change'], ['all', 'All']];
   if (reviewFilter !== 'all' && !count(reviewFilter)) reviewFilter = ['attention', 'new', 'update', 'same'].find(k => count(k)) || 'all';
   const shown = review.filter(v => reviewFilter === 'all' || v.state.kind === reviewFilter);
-  box.innerHTML = `<div class="notice ok"><b>Check before saving.</b> ${review.length} policy holder${review.length === 1 ? '' : 's'} found. Dates are read as day/month/year. Only Inforce policies count for anniversaries. Nicknames can be changed now or later.</div>
+  box.innerHTML = `<div class="notice ok"><b>Check before saving.</b> ${review.length} policy holder${review.length === 1 ? '' : 's'} found. Dates are read as day/month/year. Each customer’s start date is their earliest policy (withdrawn, declined and freelook ones don’t count), so the years with you are worked out automatically. Nicknames can be changed now or later.</div>
     <div class="seg" role="radiogroup" aria-label="Show">${tabs.map(([k, l]) => `<input type="radio" name="rvf" id="rvf-${k}" value="${k}" ${k === reviewFilter ? 'checked' : ''}><label for="rvf-${k}">${l} (${count(k)})</label>`).join('')}</div>
     <div class="row"><button class="btn small" type="button" data-bulk="1">Tick all shown</button><button class="btn small" type="button" data-bulk="0">Untick all shown</button></div>
     ${shown.map(v => {
       const { m, chk, ch } = v.state;
       const status = m ? (ch.length ? `Updates ${esc(m.nickname)}: ${ch.map(x => esc(x[1])).join(', ')}` : `Already saved as ${esc(m.nickname)}`) : 'New';
-      const facts = [v.dob ? `Born ${v.dob}` : 'No birthday', v.policyDate ? `In force since ${v.policyDate}` : v.noInforce ? 'No in-force policy' : v.inforce ? 'In force, starts soon' : 'No policy date',
+      const facts = [v.dob ? `Born ${v.dob}` : 'No birthday', v.policyDate ? `Client since ${v.policyDate}` : v.noInforce ? 'No in-force policy' : v.inforce ? 'In force, starts soon' : 'No policy date',
         `${v.policies} polic${v.policies === 1 ? 'y' : 'ies'}${v.inforce ? `, ${v.inforce} in force` : ''}`].join(' · ');
       const flags = [...chk.errors.map(e => ['bad', e]), ...v.notes.map(e => ['warn', e]),
         ...(v.noInforce ? [['warn', `None of their policies is in force (${[...new Set(v.statuses)].join(', ')}). Unticked.`]] : []),
@@ -907,7 +919,7 @@ function renderReview() {
               <label class="mini-label">Nickname<input type="text" data-r="${v.id}" data-f="nickname" value="${esc(v.nickname)}" maxlength="30"></label>
               <label class="mini-label">Date of birth<input type="date" data-r="${v.id}" data-f="dob" value="${esc(v.dob)}"></label>
             </div>
-            <label class="mini-label">Policy start date (earliest in force)<input type="date" data-r="${v.id}" data-f="policyDate" value="${esc(v.policyDate)}"></label>
+            <label class="mini-label">Client since (earliest policy)<input type="date" data-r="${v.id}" data-f="policyDate" value="${esc(v.policyDate)}"></label>
           </div></details>
       </div>`;
     }).join('') || '<p class="hint">Nothing in this group.</p>'}
@@ -1289,7 +1301,7 @@ function customerBrief(c, occ) {
     occ === 'cny' && cny ? `New year: Year of the ${cny.animal} (${cny.year})` : '',
     occ === 'cny' && zodiac ? `Their own Chinese zodiac: ${zodiac}` : '',
     `Things they care about and prioritise:\n- ${(c.priorities || []).join('\n- ') || '(none recorded)'}`,
-    c.notes ? `Recent news: ${c.notes}` : '', c.since ? `My customer since: ${c.since}` : '',
+    c.notes ? `Recent news: ${c.notes}` : '', yearsWithMe(c, occ) ? `My client for ${yearsWithMe(c, occ)} year${yearsWithMe(c, occ) === 1 ? '' : 's'} (since ${c.policyDate || c.since})` : c.since ? `My customer since: ${c.since}` : '',
     occ === 'birthday' && p ? `Star sign: ${westernSign(p.mo, p.d)}` : '',
     last ? `Message I sent for this occasion last time (do not repeat its wording or the same main topic):\n${last.message}` : ''].filter(Boolean).join('\n');
 }
@@ -1364,7 +1376,7 @@ function templateWords(c, occ = occasion) {
       travel: 'May the new year open the door to beautiful journeys', career: 'Wishing you a year of steady growth and proud moments', faith: 'Wishing you peace, purpose and blessings in the new year',
       other: 'Wishing you good health, peace and joy in the new year' };
     const body = pr.length ? `May the Year of the ${animal} bring good news for ${lowerFirst(pr[0])}${pr[1] ? `, and plenty of joy with ${lowerFirst(pr[1])}` : ''}.` : `May the Year of the ${animal} bring you good health, peace and many happy moments.`;
-    return { posterLine: lines[first], message: `新年快乐, ${c.nickname}! 🧧\n\n${body} Thank you for your trust${c.since ? ` since ${c.since}` : ''}. Wishing you and your loved ones a warm reunion and a beautiful year ahead.${end}`, source: 'template' };
+    return { posterLine: lines[first], message: `新年快乐, ${c.nickname}! 🧧\n\n${body} Thank you for ${yearsWithMe(c, 'cny') ? `${yearsWithMe(c, 'cny')} year${yearsWithMe(c, 'cny') === 1 ? '' : 's'} of trust` : `your trust${c.since ? ` since ${c.since}` : ''}`}. Wishing you and your loved ones a warm reunion and a beautiful year ahead.${end}`, source: 'template' };
   }
   const nb = nextBirthday(c.dob);
   const lines = { family: 'Here’s to more beautiful moments with the people you love most', parents: 'May this year give you more precious time with your loved ones',
@@ -1378,7 +1390,8 @@ function templateWords(c, occ = occasion) {
     if (pr[1]) body += ` I'm cheering for you on ${lowerFirst(pr[1])} this year too${pr[2] ? `, and I hope ${lowerFirst(pr[2])} goes exactly the way you want` : ''}.`;
   }
   const milestone = nb && nb.turning % 10 === 0 && nb.turning >= 30 ? ` ${nb.turning} looks great on you!` : '';
-  const thanks = c.since ? `Thank you for trusting me since ${c.since}. It means a lot.` : 'Thank you for letting me be part of your journey.';
+  const yrs = yearsWithMe(c, 'birthday');
+  const thanks = yrs ? `Thank you for ${yrs} year${yrs === 1 ? '' : 's'} of trust. It means a lot.` : c.since ? `Thank you for trusting me since ${c.since}. It means a lot.` : 'Thank you for letting me be part of your journey.';
   return { posterLine: lines[first], message: `Happy birthday, ${c.nickname}! 🎉${milestone}\n\n${body} ${thanks}${end}`, source: 'template' };
 }
 

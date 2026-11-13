@@ -60,7 +60,7 @@ The app keeps only **Policy Holder, DOB, Commencement Date and Status**. Policy 
 
 How it reads the list:
 - **Policy Holder** is the customer, and **DOB** is their birthday.
-- **Anniversary = earliest Commencement Date of an Inforce policy.** Terminated, Withdrawn and Declined policies don't count. A policy starting after today counts from next year.
+- **Client since = their earliest real policy's Commencement Date**, whether it's still in force or was later surrendered or terminated. Policies that never really started don't count (Withdrawn, Declined, Freelook, "waiting for validate"), nor do policies starting after today. You never type it: the policy anniversary falls on that date each year, and the birthday, anniversary and CNY messages all say the same "N years with you", counted to the occasion's day.
 - Several policies for one holder become one customer.
 - Holders with **no in-force policy**, and **your own policies**, come in unticked.
 
