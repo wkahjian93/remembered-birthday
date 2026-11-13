@@ -63,5 +63,17 @@ check('separate customer birthday pop-up, opens Customers', !!occ && /Today: 1 b
 sent.length = 0; waits = [];
 await worker.scheduled({}, hourEnv, { waitUntil: x => waits.push(x) }); await Promise.all(waits);
 check('daily pop-up not repeated the same day', !sent.some(m => m.data.title === '定联 time'));
+// --- names, never emails, in team tables ---
+globalThis.fetch = async () => new Response('{}');
+await call('/api/name', env('agent1@x.com', 'boss@x.com'), { name: 'Mei Ling' });
+r = await call('/api/team-stats', env('boss@x.com', 'boss@x.com'));
+const ts = await r.text();
+check('team 定联 table shows names, no emails', ts.includes('Mei Ling') && !ts.includes('@x.com'), ts.slice(0, 120));
+kv.set('d:' + new Date(Date.now() + 8 * 3600e3).toISOString().slice(0, 10) + ':agent1@x.com', JSON.stringify({ posters: 2, words: 1 }));
+r = await call('/api/usage', env('boss@x.com', 'boss@x.com'));
+const us = await r.text();
+check('AI usage table shows names, no emails', us.includes('Mei Ling') && !us.includes('agent1@x.com'), us.slice(0, 160));
+r = await call('/api/team-rank', env('agent1@x.com', 'boss@x.com'));
+check('ranking uses the saved name', (await r.text()).includes('Mei Ling'));
 console.log(results.join('\n'));
 if (results.some(x => x.startsWith('FAIL'))) process.exit(1);

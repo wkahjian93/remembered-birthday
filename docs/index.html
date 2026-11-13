@@ -1164,7 +1164,7 @@ $('#saveSettingsBtn').onclick = async () => {
   if (changes.length && !(await ask('Save changes?', `This will ${changes.join(' and ')}.`, 'Save'))) return;
   if (next.apiKey && !/^sk-/.test(next.apiKey)) { if (!(await ask('Unusual API key', 'OpenAI keys normally start with "sk-". Save it anyway?', 'Save anyway'))) return; }
   const before = settings; settings = next;
-  if (store.set(KEY_S, settings)) { pendingPhoto = null; pendingCake = undefined; toast('Details saved'); loadSettingsForm(); }
+  if (store.set(KEY_S, settings)) { pendingPhoto = null; pendingCake = undefined; toast('Details saved'); loadSettingsForm(); sendName(); }
   else settings = before;
 };
 
@@ -1276,8 +1276,14 @@ async function loadTeam() {
   try {
     const r = await fetch('api/me', { cache: 'no-store', credentials: 'same-origin' });
     team = r.ok && /json/.test(r.headers.get('Content-Type') || '') ? await r.json() : null;
+    if (team) sendName();
   } catch { team = null; }
   renderTeam();
+}
+// tell the team server this agent's name (from Me), so team tables show names, never email addresses
+function sendName() {
+  if (!team) return;
+  fetch('api/name', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: settings.name || '' }) }).catch(() => {});
 }
 function renderTeam() {
   $('#teamPanel').hidden = !team; $('#keyPanel').hidden = !!team;
@@ -1295,7 +1301,7 @@ $('#usageBtn').onclick = async () => {
     out.innerHTML = `<p class="hint">Today the team used ${u.team.posters || 0} of ${u.limits.team} AI pictures. Limit per agent: ${u.limits.agent} a day (you: ${u.limits.owner}).</p>
       <table style="width:100%;border-collapse:collapse;font-size:13.5px;font-variant-numeric:tabular-nums">
       <tr><th style="text-align:left">Agent</th><th>Pictures today</th><th>This month</th><th>Messages</th></tr>
-      ${u.agents.map(a => `<tr><td style="overflow-wrap:anywhere">${esc(a.email)}</td><td style="text-align:center">${a.today}</td><td style="text-align:center">${a.month}</td><td style="text-align:center">${a.words}</td></tr>`).join('') || '<tr><td colspan="4">No AI use yet this month.</td></tr>'}</table>`;
+      ${u.agents.map(a => `<tr><td style="overflow-wrap:anywhere">${a.name ? esc(a.name) : '<span style="color:var(--muted)">Name not set yet</span>'}</td><td style="text-align:center">${a.today}</td><td style="text-align:center">${a.month}</td><td style="text-align:center">${a.words}</td></tr>`).join('') || '<tr><td colspan="4">No AI use yet this month.</td></tr>'}</table>`;
   } catch (e) { out.textContent = e.message; }
 };
 // one picture from the face photo, through the team server or the agent's own key

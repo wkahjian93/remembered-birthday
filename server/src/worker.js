@@ -37,6 +37,7 @@ export default {
       if (url.pathname === '/api/push-reg' && request.method === 'POST') return await pushReg(request, env, email);
       if (url.pathname === '/api/push-off' && request.method === 'POST') return await pushOff(request, env, email);
       if (url.pathname === '/api/push-test' && request.method === 'POST') return await pushTest(env, email, ctx);
+      if (url.pathname === '/api/name' && request.method === 'POST') return await saveName(request, env, email);
       return fail(404, 'Not found.');
     } catch {
       return fail(500, 'The team server had a problem. Try again in a minute.');
@@ -207,7 +208,7 @@ function cleanReminders(r) {
 // team ranking for agents: names and number of 定联 chats this week only (effort, never sales)
 async function teamRank(env, email) {
   const page = await env.USAGE.list({ prefix: `w:${weekStart(0)}:` }), rows = [];
-  for (const k of page.keys) { const r = await env.USAGE.get(k.name, 'json'); if (r) rows.push({ name: r.name || 'Agent', touches: r.touches, me: r.email === email }); }
+  for (const k of page.keys) { const r = await env.USAGE.get(k.name, 'json'); if (r) rows.push({ name: (await nameOf(env, r.email, r.name)) || 'Agent', touches: r.touches, me: r.email === email }); }
   rows.sort((a, b) => b.touches - a.touches);
   return json({ rows, myRank: rows.findIndex(r => r.me) + 1 });
 }
@@ -320,13 +321,21 @@ async function fcmSend(env, token, title, body, url = '#routine') {
     return r.status === 404 || /UNREGISTERED/.test(t) ? 'gone' : 'failed';
   } catch { return 'failed'; }
 }
+// each agent's display name (from Me on their phone), so team tables never show email addresses
+async function saveName(request, env, email) {
+  const body = await request.json().catch(() => ({}));
+  const name = String(body.name || '').replace(/s+/g, ' ').trim().slice(0, 40);
+  if (name) await env.USAGE.put(`n:${email}`, name); else await env.USAGE.delete(`n:${email}`);
+  return json({ ok: true });
+}
+const nameOf = async (env, email, fallback) => (await env.USAGE.get(`n:${email}`)) || fallback || '';
 async function teamStats(env, email) {
   if (!isOwner(env, email)) return fail(403, 'Only the team owner can see team numbers.');
   const out = {};
   for (const [label, week] of [['thisWeek', weekStart(0)], ['lastWeek', weekStart(1)]]) {
     const page = await env.USAGE.list({ prefix: `w:${week}:` });
     out[label] = { week, agents: [] };
-    for (const k of page.keys) { const r = await env.USAGE.get(k.name, 'json'); if (r) out[label].agents.push(r); }
+    for (const k of page.keys) { const r = await env.USAGE.get(k.name, 'json'); if (r) { r.name = await nameOf(env, r.email, r.name); delete r.email; out[label].agents.push(r); } }
     out[label].agents.sort((a, b) => b.touches - a.touches);
   }
   return json(out);
@@ -349,5 +358,5 @@ async function usage(env, email) {
     cursor = page.list_complete ? null : page.cursor;
   } while (cursor);
   return json({ day, limits: { agent: num(env.DAILY_POSTERS, 5), owner: num(env.OWNER_DAILY_POSTERS, 20), team: num(env.TEAM_DAILY_POSTERS, 60) },
-    team: await getUse(env, day, '_team'), agents: Object.values(rows).sort((a, b) => b.month - a.month) });
+    team: await getUse(env, day, '_team'), agents: (await Promise.all(Object.values(rows).map(async r => { const { email: who, ...rest } = r; return Object.assign(rest, { name: await nameOf(env, who) }); }))).sort((a, b) => b.month - a.month) });
 }
