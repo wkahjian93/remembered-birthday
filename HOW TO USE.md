@@ -107,6 +107,8 @@ Open the **定联** tab. The red number on it is how many prospects are due. **S
 - **Results**: Opened, Presented, Closed (with **ANP in RM** and **NOC**, and any date up to today).
 - **History, with Edit on every chat and result.** Fix a wrong ANP, NOC, date, type or note, or delete a record that was saved by mistake. Each change asks you to confirm.
 
+**Since you started** (bottom of All prospects): total prospects opened, presented and closed, NOC and ANP, closes by group, and a **Closed cases** list showing who closed and which group (A/B/C/D) they were in when they closed. Tap a name to open them.
+
 **This week**: chats, active days, opened, presented, closed, NOC, ANP, plus **badges** (5 active days, 30 chats, 3 upgrades, 3 opens/presents, a close) and **🏆 Team ranking by chats**. The ranking counts effort, never sales.
 
 **Pop-ups** (Reminders box on the Today screen): tap **🔔 Turn on pop-ups**, pick the time for your daily reminder, and keep the **9pm nudge** on if you like. The pop-up says how many prospects are due, plus customer birthdays and anniversaries today. Use **Test in 15 s** to check it. iPhone: add the app to your Home Screen first. Names never leave your phone; only counts are used.
@@ -118,7 +120,8 @@ Open the **定联** tab. The red number on it is how many prospects are due. **S
 - **Coming up in the next 7 days** (top of Customers): who to decide on, each with **🎂 Wish** / **🤝 Thank** (make the poster) or **Skip** (no more reminders for that occasion this year, with Undo). Undecided people come first; a busy week shows 5, with the rest folded below.
 - **This month** shows the totals, with the full list folded when it's long.
 - **📥 Import from ePartner** folds away once you have customers.
-- **My customers**: search (name or what they care about), filters **All · Next 30 days · This month · Not wished yet · 🔕 Reminders off**, 20 at a time.
+- Two tabs at the top of Customers: **Coming up** (the reminders above) and **All customers (N)**. The **📋 View all N customers** button does the same.
+- **All customers**: search (name or what they care about), filters **All · Next 30 days · This month · Not wished yet · 🔕 Reminders off**, 20 at a time. Each customer takes one line (next date, name, 🎂/🤝 days to go, ✓ wished or – skipped), so about 9 fit on a phone screen. Tap the name to edit, **Poster** to make the next occasion's poster.
 - **Turn reminders off for one customer**: Edit, then untick **🔔 Remind me about this customer's birthday and anniversary**.
 - **Pop-ups** only count customers you haven't wished or skipped yet, with reminders on.
 

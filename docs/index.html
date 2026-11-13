@@ -98,6 +98,15 @@ textarea { min-height: 110px; resize: vertical; line-height: 1.45; }
 .cust .meta { color: var(--muted); font-size: 13px; }
 .cust .actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
 .tag-sample { font-size: 11px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; color: var(--warn); background: var(--warn-bg); border-radius: 6px; padding: 2px 6px; margin-left: 6px; vertical-align: 2px; }
+.clist { display: grid; }
+.crow { display: grid; grid-template-columns: 54px 1fr auto; gap: 8px; align-items: center; padding: 6px 2px; border-bottom: 1px solid var(--line); }
+.crow:last-child { border-bottom: 0; }
+.cwhen { font-size: 12px; font-weight: 800; text-align: center; background: var(--surface-2); border-radius: 8px; padding: 4px 2px; font-variant-numeric: tabular-nums; }
+.cwhen.today { background: var(--accent); color: var(--accent-ink); }
+.cname { min-width: 0; display: grid; cursor: pointer; }
+.cname b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14.5px; }
+.cmeta { font-size: 12px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cbtn { border: 1px solid var(--accent); color: var(--accent); background: transparent; border-radius: 999px; padding: 5px 11px; font-size: 12.5px; font-weight: 800; cursor: pointer; }
 .month-list { display: grid; gap: 6px; margin: 0; padding: 0; list-style: none; }
 .month-list li { display: grid; grid-template-columns: 52px 1fr auto; gap: 8px; align-items: center; font-size: 14px; }
 .month-list li.past { opacity: .5; }
@@ -179,6 +188,7 @@ code { font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border
       <h1>Upcoming occasions</h1>
       <p class="lede">Birthdays and policy anniversaries, soonest first. Each card holds what the customer cares about, so every message sounds like you remembered.</p>
     </div>
+    <div class="re-tabs" id="custTabs" role="tablist"><button type="button" data-cm="soon">Coming up</button><button type="button" data-cm="all">All customers</button></div>
     <div class="panel" id="monthPanel"></div>
 
     <details class="panel" id="importPanel">
@@ -645,11 +655,17 @@ function wireOccActions(root) {
     saveCustomers(); renderCustomers(); toast('Reminder back on');
   });
 }
-let custQ = '', custF = 'all', custShown = 20;
+let custQ = '', custF = 'all', custShown = 20, custMode = 'soon'; // Coming up (daily view) or All customers (full list)
 const CUST_FILTERS = [['all', 'All'], ['30', 'Next 30 days'], ['month', 'This month'], ['open', 'Not wished yet'], ['off', '🔕 Reminders off']];
 function renderCustomers() {
   renderMonth();
   const list = $('#custList'), real = customers.filter(c => !c.sample).length;
+  $('#custTabs').querySelectorAll('[data-cm]').forEach(b => {
+    b.classList.toggle('on', b.dataset.cm === custMode);
+    if (b.dataset.cm === 'all') b.textContent = `All customers (${customers.length})`;
+    b.onclick = () => { custMode = b.dataset.cm; renderCustomers(); window.scrollTo({ top: 0 }); };
+  });
+  $('#monthPanel').hidden = custMode !== 'soon'; $('#importPanel').hidden = custMode !== 'soon'; $('#custListPanel').hidden = custMode !== 'all';
   $('#custCount').textContent = `${customers.length} total`;
   $('#custFilters').innerHTML = CUST_FILTERS.map(([k, l]) => `<button type="button" data-cf="${k}" class="${k === custF ? 'on' : ''}">${l}</button>`).join('');
   $('#custFilters').querySelectorAll('[data-cf]').forEach(b => b.onclick = () => { custF = b.dataset.cf; custShown = 20; renderCustomers(); });
@@ -661,20 +677,15 @@ function renderCustomers() {
         || (custF === 'open' && !c.noRemind && occ.some(o => o.days <= 30 && !o.done)) || (custF === 'off' && c.noRemind)))
     .sort((a, b) => (a.next ? a.next.days : 9999) - (b.next ? b.next.days : 9999));
   const inDays = n => n === 0 ? 'today' : `in ${n}d`;
-  list.innerHTML = rows.length ? rows.slice(0, custShown).map(({ c, occ, next }) => {
-    const whenBox = !next ? `<div class="when"><b>?</b><span>date</span></div>`
-      : next.days === 0 ? `<div class="when today"><b>${next.occ === 'birthday' ? '🎂' : '🤝'}</b><span>Today</span></div>`
-      : `<div class="when"><b>${next.date.getDate()}</b><span>${MONTHS[next.date.getMonth()]}</span></div>`;
-    const line = occ.map(o => `${o.occ === 'birthday' ? '🎂' : '🤝'} ${o.what} ${inDays(o.days)}${o.done === 'sent' ? ' ✓' : o.done === 'skipped' ? ' (skipped)' : ''}`).join(' · ') || 'Birthday needs fixing';
-    return `<article class="cust" style="padding:10px 12px">${whenBox}<div style="min-width:0">
-      <h3>${esc(c.nickname)}${c.noRemind ? ' 🔕' : ''}${c.sample ? '<span class="tag-sample">Example</span>' : ''}</h3>
-      <div class="meta">${esc(line)}</div>
-      ${(c.priorities || [])[0] ? `<div class="meta">💭 ${esc(c.priorities[0])}</div>` : ''}
-      <div class="actions"><button class="btn small primary" data-make="${c.id}" data-occ="birthday">Birthday poster</button>
-        ${c.policyDate ? `<button class="btn small primary" data-make="${c.id}" data-occ="anniversary">Thank-you poster</button>` : ''}
-        <button class="btn small" data-edit="${c.id}">Edit</button></div>
-    </div></article>`;
-  }).join('') : `<p class="hint">No customers match${q ? ` “${esc(custQ)}”` : ''}.</p>`;
+  list.innerHTML = rows.length ? '<div class="clist">' + rows.slice(0, custShown).map(({ c, occ, next }) => { // one compact line per customer
+    const when = !next ? '?' : next.days === 0 ? 'Today' : `${next.date.getDate()} ${MONTHS[next.date.getMonth()]}`;
+    const line = occ.map(o => `${o.occ === 'birthday' ? '🎂' : '🤝'} ${o.days === 0 ? 'today' : `${o.days}d`}${o.done === 'sent' ? ' ✓' : o.done === 'skipped' ? ' –' : ''}`).join(' · ') || 'Birthday needs fixing';
+    return `<div class="crow">
+      <span class="cwhen ${next && next.days === 0 ? 'today' : ''}">${esc(when)}</span>
+      <span class="cname" data-edit="${c.id}" role="button" tabindex="0"><b>${esc(c.nickname)}</b>${c.noRemind ? ' 🔕' : ''}${c.sample ? '<span class="tag-sample">Ex</span>' : ''}<span class="cmeta">${esc(line)}${(c.priorities || [])[0] ? ` · ${esc(c.priorities[0])}` : ''}</span></span>
+      ${next ? `<button type="button" class="cbtn" data-make="${c.id}" data-occ="${next.occ}">Poster</button>` : ''}
+    </div>`;
+  }).join('') + '</div>' : `<p class="hint">No customers match${q ? ` “${esc(custQ)}”` : ''}.</p>`;
   $('#custMore').hidden = rows.length <= custShown;
   $('#custMore').textContent = `Show 20 more (${Math.max(0, rows.length - custShown)} left)`;
   wireOccActions(list);
@@ -772,6 +783,7 @@ function renderMonth() {
     }).join('')}</ul></details>`
       : '<p class="hint" style="margin:0">No customer birthdays or policy anniversaries this month.</p>'}
     <p class="hint" style="margin:0">Next month (${MONTH_NAMES[nm]}): ${next.length ? `${next.length} occasion${next.length === 1 ? '' : 's'}` : 'none yet'}.</p>
+    <button class="btn" type="button" id="viewAllCust">📋 View all ${customers.length} customers</button>
     <div class="row">
       <button class="btn small primary" type="button" id="calNewBtn" ${fresh ? '' : 'disabled'}>📅 Add ${fresh ? fresh : 'new'} customer${fresh === 1 ? '' : 's'} to my calendar</button>
       <button class="btn small" type="button" id="calAllBtn">Full calendar + monthly summaries</button>
@@ -781,6 +793,7 @@ function renderMonth() {
       ? '<p class="hint" style="margin:0">🔔 Pop-ups are on: you get a pop-up on the day of each birthday and anniversary, and the day before.</p>'
       : '<button class="btn small" type="button" id="occPushBtn">🔔 Get pop-ups for birthdays and anniversaries</button>') : ''}`;
   wireOccActions($('#monthPanel'));
+  $('#viewAllCust').onclick = () => { custMode = 'all'; renderCustomers(); window.scrollTo({ top: 0 }); };
   $('#calNewBtn').onclick = () => exportCalendar(false);
   if ($('#occPushBtn')) $('#occPushBtn').onclick = () => { show('routine'); setTimeout(() => { const b = $('#rePush'); if (b) b.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 150); };
   $('#calAllBtn').onclick = () => exportCalendar(true);

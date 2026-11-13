@@ -274,8 +274,33 @@
         ${team && !settings.name ? '<div class="notice warn">Add your name in <b>Me</b> so your team leader and the ranking show your name.</div>' : ''}
         ${team ? '<div id="reRank"><button type="button" class="btn small" id="reRankBtn">🏆 Team ranking by chats</button></div><p class="hint" style="margin:0">Your numbers (not prospect names) are shared with your team leader.</p>' : ''}
       </div>
+      ${allTimeHtml()}
       <div class="panel" id="rePush"></div>
       ${team && team.owner ? '<div class="panel"><h2>Team 定联 (numbers only)</h2><button type="button" class="btn small" id="reTeamBtn">Show team this week</button><div id="reTeamOut" style="overflow-x:auto"></div></div>' : ''}`;
+  }
+  // totals since the agent started, plus every closed case with the group the prospect was in at the time
+  function allTimeHtml() {
+    const t = { open: 0, present: 0, close: 0, noc: 0, anp: 0 }, byG = { A: 0, B: 0, C: 0, D: 0 }, closes = [];
+    prospects.forEach(p => (p.results || []).forEach(r => {
+      t[r.stage] = (t[r.stage] || 0) + 1;
+      if (r.stage === 'close') { const g = r.group || p.group; byG[g]++; t.noc += r.noc || 0; t.anp += r.anp || 0; closes.push({ p, r, g }); }
+    }));
+    closes.sort((a, b) => b.r.date.localeCompare(a.r.date));
+    const rm = n => `RM ${Math.round(n).toLocaleString('en-MY')}`;
+    return `<div class="panel">
+      <h2>All-time results</h2>
+      <div class="stat-grid">
+        <div class="stat"><b>${t.open}</b><span>Opened</span></div>
+        <div class="stat"><b>${t.present}</b><span>Presented</span></div>
+        <div class="stat"><b>${t.close}</b><span>Closed</span></div>
+        <div class="stat"><b>${t.noc}</b><span>NOC</span></div>
+        <div class="stat" style="grid-column:span 2"><b>${rm(t.anp)}</b><span>Total ANP</span></div>
+      </div>
+      ${t.close ? `<div class="hint">Closes came from: ${GROUPS.map(g => `<span class="gbadge g${g}" style="width:22px;height:22px;font-size:12px;vertical-align:middle">${g}</span> ${byG[g]}`).join(' &nbsp; ')}</div>
+      <details ${closes.length <= 5 ? 'open' : ''}><summary class="hint">Closed cases (${closes.length})</summary>
+        <div class="hist" style="margin-top:8px">${closes.map(({ p, r, g }) => `<div class="hist-row"><span><b>${esc(r.date)}</b> <span class="gbadge g${g}" style="width:20px;height:20px;font-size:11px;vertical-align:middle">${g}</span> <a href="#" data-open="${p.id}" style="color:inherit;font-weight:700">${esc(p.name)}</a>${p.sample ? ' <span class="tag-sample">Ex</span>' : ''}</span><span class="hint">${rm(r.anp || 0)} · NOC ${r.noc || 0}</span></div>`).join('')}</div>
+      </details>` : '<p class="hint" style="margin:0">No closed cases yet. Record one from a prospect’s page: Opened → Presented → Closed.</p>'}
+    </div>`;
   }
   function badges(wk) {
     const ups = prospects.reduce((n, p) => n + (p.groupHistory || []).filter(h => h.date >= wk.week && GROUPS.indexOf(h.to) < GROUPS.indexOf(h.from)).length, 0);
@@ -328,7 +353,7 @@
   function wireCommon(root) {
     root.querySelectorAll('[data-star]').forEach(b => b.onclick = e => { e.stopPropagation(); const p = byId(b.dataset.star); p.star = !p.star; save(); renderBody(); });
     root.querySelectorAll('[data-talk]').forEach(b => b.onclick = () => openInlineLog(b.dataset.talk));
-    root.querySelectorAll('[data-open]').forEach(b => { b.onclick = () => openProspect(b.dataset.open); b.onkeydown = e => { if (e.key === 'Enter') openProspect(b.dataset.open); }; });
+    root.querySelectorAll('[data-open]').forEach(b => { b.onclick = e => { e.preventDefault(); openProspect(b.dataset.open); }; b.onkeydown = e => { if (e.key === 'Enter') openProspect(b.dataset.open); }; });
     root.querySelectorAll('[data-addname]').forEach(b => b.onclick = () => openAdd(b.dataset.addname));
   }
   function wireToday(root) {
@@ -517,7 +542,7 @@
     q('[data-rsave]').onclick = async () => {
       const date = q('[data-rdate]').value;
       if (!validDay(date)) return err('Pick a date that isn’t in the future.');
-      const out = { id: rec ? rec.id : uid(), date, stage };
+      const out = { id: rec ? rec.id : uid(), date, stage, group: rec && rec.group ? rec.group : p.group };
       if (isClose) {
         out.anp = Number(q('[data-anp]').value); out.noc = Number(q('[data-noc]').value);
         if (!(out.anp > 0)) return err('Enter the ANP in RM (more than 0).');
