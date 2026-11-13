@@ -116,8 +116,14 @@
   .plist-row:last-child { border-bottom:0; }
   .plist-row .n { min-width:0; overflow-wrap:anywhere; font-weight:700; cursor:pointer; }
   .plist-row .s { font-size:12.5px; color:var(--muted); font-weight:500; }
-  .plist-row .n .s { display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; } /* one line per prospect so long lists stay short */
-  .plist-row { padding:8px 2px; }
+  /* one short line per prospect (name, then the remark cut to fit) so hundreds stay easy to scroll */
+  .plist-row { padding:5px 2px; gap:8px; grid-template-columns:auto 22px 1fr auto; }
+  .plist-row .gbadge { width:22px; height:22px; font-size:12px; border-radius:6px; }
+  .plist-row .n { display:flex; align-items:baseline; gap:6px; white-space:nowrap; overflow:hidden; font-size:14.5px; }
+  .plist-row .n .s { flex:1 1 auto; min-width:0; overflow:hidden; text-overflow:ellipsis; }
+  .plist-row .n .tag-sample { font-size:9.5px; padding:1px 4px; margin:0; }
+  .plist-row .mini { border:1px solid var(--line); background:var(--bg); color:var(--ink); border-radius:999px; padding:5px 10px; font-size:12.5px; font-weight:700; cursor:pointer; white-space:nowrap; }
+  .plist-row .mini.done { color:var(--ok); border-color:color-mix(in srgb, var(--ok) 40%, var(--line)); }
   .plist-row input[type=checkbox] { width:22px; height:22px; accent-color:var(--accent); }
   .bulkbar { position:fixed; left:0; right:0; bottom:calc(64px + env(safe-area-inset-bottom,0px)); z-index:7; background:var(--ink); color:var(--bg);
     padding:10px max(16px, env(safe-area-inset-left,0px)); display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
@@ -313,8 +319,8 @@
       <div class="panel" style="padding:4px 12px">${rows.length ? rows.slice(0, shown).map(({ p, d }) => `<div class="plist-row">
           ${selecting ? `<input type="checkbox" data-pick="${p.id}" ${selected.has(p.id) ? 'checked' : ''} aria-label="Select ${esc(p.name)}">` : '<span></span>'}
           <span class="gbadge g${p.group}">${p.group}</span>
-          <span class="n" data-open="${p.id}" role="button" tabindex="0">${p.star ? '⭐ ' : ''}${esc(p.name)}${p.sample ? ' <span class="tag-sample">Example</span>' : ''}<br><span class="s">${esc(p.remark || (p.lastTouch ? `Last chat ${p.lastTouch}` : 'Never contacted'))}</span></span>
-          ${selecting ? `<span class="s">${d.days <= 0 ? 'Due' : `${d.days}d`}</span>` : `<button type="button" class="btn small" data-talk1="${p.id}">${touchedToday(p) ? '✓ Today' : '✓ Talked'}</button>`}
+          <span class="n" data-open="${p.id}" role="button" tabindex="0">${p.star ? '⭐ ' : ''}${esc(p.name)}${p.sample ? '<span class="tag-sample">Ex</span>' : ''}<span class="s">${esc(p.remark || (p.lastTouch ? `Last chat ${p.lastTouch}` : 'Never contacted'))}</span></span>
+          ${selecting ? `<span class="s">${d.days <= 0 ? 'Due' : `${d.days}d`}</span>` : `<button type="button" class="mini ${touchedToday(p) ? 'done' : ''}" data-talk1="${p.id}" aria-label="Log a chat with ${esc(p.name)}">${touchedToday(p) ? '✓ Today' : '✓'}</button>`}
         </div>`).join('') : '<p class="hint">No prospects here yet.</p>'}</div>
       ${rows.length > shown ? `<button type="button" class="btn" id="reMore">Show 20 more (${rows.length - shown} left)</button>` : ''}
       ${prospects.some(p => p.sample) ? '<button type="button" class="btn small ghost" id="reClearSamples">Remove the example prospects</button>' : ''}`;
