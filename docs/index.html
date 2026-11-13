@@ -474,7 +474,7 @@ if (!Array.isArray(customers)) {
   store.set(KEY_C, customers);
 }
 customers.forEach(c => { if (c.sample && c.policyDate === undefined) c.policyDate = '2019-11-20'; }); // older copies of the example
-const saveCustomers = () => store.set(KEY_C, customers);
+const saveCustomers = () => { const ok = store.set(KEY_C, customers); if (window.routineMarkDirty) window.routineMarkDirty(); return ok; };
 
 /* ---------- small helpers ---------- */
 const $ = s => document.querySelector(s);
@@ -718,9 +718,13 @@ function renderMonth() {
       <button class="btn small primary" type="button" id="calNewBtn" ${fresh ? '' : 'disabled'}>📅 Add ${fresh ? fresh : 'new'} customer${fresh === 1 ? '' : 's'} to my calendar</button>
       <button class="btn small" type="button" id="calAllBtn">Full calendar + monthly summaries</button>
     </div>
-    <p class="hint" style="margin:0">Your phone calendar then reminds you 3 days before and at 9am on the day, every year. ${fresh ? `${fresh} customer${fresh === 1 ? ' is' : 's are'} not in your calendar yet.` : 'Everyone is in your calendar.'}</p>`;
+    <p class="hint" style="margin:0">Your phone calendar then reminds you 3 days before and at 9am on the day, every year. ${fresh ? `${fresh} customer${fresh === 1 ? ' is' : 's are'} not in your calendar yet.` : 'Everyone is in your calendar.'}</p>
+    ${team ? (store.get('remembered.pushToken', '') && 'Notification' in window && Notification.permission === 'granted'
+      ? '<p class="hint" style="margin:0">🔔 Pop-ups are on: you get a pop-up on the day of each birthday and anniversary, and the day before.</p>'
+      : '<button class="btn small" type="button" id="occPushBtn">🔔 Get pop-ups for birthdays and anniversaries</button>') : ''}`;
   $('#monthPanel').querySelectorAll('[data-make]').forEach(b => b.onclick = () => { selectedId = b.dataset.make; setOccasion(b.dataset.occ); show('create'); });
   $('#calNewBtn').onclick = () => exportCalendar(false);
+  if ($('#occPushBtn')) $('#occPushBtn').onclick = () => { show('routine'); setTimeout(() => { const b = $('#rePush'); if (b) b.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 150); };
   $('#calAllBtn').onclick = () => exportCalendar(true);
 }
 const calSig = c => `${c.nickname}|${c.dob}|${c.policyDate || ''}`; // what the calendar entries were made from

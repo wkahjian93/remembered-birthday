@@ -696,7 +696,7 @@ Return JSON only: {"rows": [{"name": "", "platform": ""}], "note": ""}
       <label class="check"><input type="checkbox" id="reNudge" ${rset.nudge9pm ? 'checked' : ''}> 9pm nudge if today’s 3-3-2-1 isn’t done</label>
       <div class="row">${pushOn() ? '<button type="button" class="btn small" id="rePushSave">Save times</button><button type="button" class="btn small" id="rePushTest">Test in 15 s (lock your phone)</button><button type="button" class="btn small ghost" id="rePushOff">Turn off</button>'
         : '<button type="button" class="btn primary" id="rePushOn">🔔 Turn on pop-ups</button>'}</div>
-      <p class="hint" style="margin:0">The pop-up says how many prospects are due, plus customer birthdays and anniversaries today. Names never leave your phone.</p>`}
+      <p class="hint" style="margin:0">You get one pop-up for prospects due, and a separate 🎂 pop-up for customer birthdays and policy anniversaries (today, plus tomorrow as a heads-up). Names never leave your phone.</p>`}
       <button type="button" class="btn small ghost" id="reCal">📅 Or add a daily calendar reminder instead</button>`;
     const hourSel = $('#rePushHour'), nudge = $('#reNudge');
     const prefs = () => { rset.pushHour = Number(hourSel.value); rset.nudge9pm = nudge.checked; saveSet(); return { hour: rset.pushHour, nudge: rset.nudge9pm }; };
@@ -741,6 +741,7 @@ Return JSON only: {"rows": [{"name": "", "platform": ""}], "note": ""}
   window.renderRoutine = render;
   window.routineDueCount = () => prospects.filter(p => due(p).days <= 0 && !touchedToday(p)).length;
   window.routineLeave = () => { const bar = $('#reBulk'); if (bar) bar.remove(); };
+  window.routineMarkDirty = () => markDirty(); // customer birthdays/anniversaries feed the pop-up counts too
   if (location.hash === '#routine') setTimeout(() => typeof show === 'function' && show('routine'), 0); // pop-ups open straight here
   setTimeout(markDirty, 8000); // team sign-in loads after this file, so the first sync waits a moment
 })();

@@ -236,7 +236,7 @@ async function pushTest(env, email, ctx) {
   const p = await getPush(env, email);
   if (!p.tokens.length) return fail(400, 'Turn on pop-ups on this phone first.');
   if (!env.FCM_SERVICE_ACCOUNT) return fail(503, 'Pop-ups aren’t set up on the team server yet. Tell your team leader.');
-  ctx.waitUntil((async () => { await new Promise(r => setTimeout(r, 15000)); await sendAll(env, email, p, '🔔 Test pop-up', `It works! ${dailyText(p.rem) || 'Your 定联 reminders will look like this.'}`); })());
+  ctx.waitUntil((async () => { await new Promise(r => setTimeout(r, 15000)); await sendAll(env, email, p, '🔔 Test pop-up', `It works! ${[dailyText(p.rem), occasionText(p.rem)].filter(Boolean).join(' · ') || 'Your reminders will look like this.'}`); })());
   return json({ ok: true });
 }
 const mytNow = () => new Date(Date.now() + 8 * 3600e3);
@@ -244,12 +244,15 @@ function dailyText(rem) {
   if (!rem) return '';
   const now = mytNow(), today = now.toISOString().slice(0, 10), md = today.slice(5);
   const dueCount = Object.entries(rem.dueBy || {}).reduce((n, [d, c]) => n + (d <= today ? c : 0), 0);
-  const o = (rem.occ || {})[md] || { b: 0, a: 0 };
-  const bits = [];
-  if (dueCount) bits.push(`${dueCount} prospect${dueCount === 1 ? '' : 's'} due for a chat`);
-  if (o.b) bits.push(`${o.b} customer birthday${o.b === 1 ? '' : 's'} 🎂`);
-  if (o.a) bits.push(`${o.a} policy anniversar${o.a === 1 ? 'y' : 'ies'} 🤝`);
-  return bits.join(' · ');
+  return dueCount ? `${dueCount} prospect${dueCount === 1 ? '' : 's'} due for a chat` : '';
+}
+// customer birthdays and policy anniversaries today, plus tomorrow's as a heads-up (counts only)
+function occasionText(rem) {
+  if (!rem) return '';
+  const now = mytNow(), md = now.toISOString().slice(5, 10), tm = new Date(now.getTime() + 864e5).toISOString().slice(5, 10);
+  const say = o => [o.b && `${o.b} birthday${o.b === 1 ? '' : 's'} 🎂`, o.a && `${o.a} policy anniversar${o.a === 1 ? 'y' : 'ies'} 🤝`].filter(Boolean).join(' and ');
+  const t = say((rem.occ || {})[md] || {}), n = say((rem.occ || {})[tm] || {});
+  return [t && `Today: ${t}. Send a personal poster.`, n && `Tomorrow: ${n}.`].filter(Boolean).join(' ');
 }
 async function hourlyReminders(env) {
   if (!env.FCM_SERVICE_ACCOUNT) return;
@@ -262,6 +265,8 @@ async function hourlyReminders(env) {
       const email = k.name.slice(2); p.sent = p.sent || {};
       let changed = false;
       if (hour === (p.hour || 9) && p.sent.daily !== today) {
+        const occ = occasionText(p.rem);
+        if (occ) await sendAll(env, email, p, '🎂 Customer occasions', occ, '#customers');
         const text = dailyText(p.rem);
         if (text) await sendAll(env, email, p, '定联 time', `${text}. Open the app for today’s 3-3-2-1.`);
         p.sent.daily = today; changed = true;
@@ -276,10 +281,10 @@ async function hourlyReminders(env) {
     cursor = page.list_complete ? null : page.cursor;
   } while (cursor);
 }
-async function sendAll(env, email, p, title, body) {
+async function sendAll(env, email, p, title, body, url = '#routine') {
   const keep = [];
   for (const token of p.tokens) {
-    const r = await fcmSend(env, token, title, body);
+    const r = await fcmSend(env, token, title, body, url);
     if (r !== 'gone') keep.push(token);
   }
   if (keep.length !== p.tokens.length) { p.tokens = keep; await env.USAGE.put(`p:${email}`, JSON.stringify(p)); }
@@ -303,12 +308,12 @@ async function fcmAccessToken(env) { // Google service-account sign-in (JWT sign
   fcmAuth = { token: j.access_token, exp: Date.now() + (j.expires_in || 3600) * 1000, project: sa.project_id };
   return fcmAuth;
 }
-async function fcmSend(env, token, title, body) {
+async function fcmSend(env, token, title, body, url = '#routine') {
   try {
     const auth = await fcmAccessToken(env);
     const r = await fetch(`https://fcm.googleapis.com/v1/projects/${auth.project}/messages:send`, {
       method: 'POST', headers: { Authorization: `Bearer ${auth.token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message: { token, data: { title, body, url: '#routine', tag: 'dinglian' }, webpush: { headers: { Urgency: 'high', TTL: '43200' } } } })
+      body: JSON.stringify({ message: { token, data: { title, body, url, tag: url === '#customers' ? 'occasions' : 'dinglian' }, webpush: { headers: { Urgency: 'high', TTL: '43200' } } } })
     });
     if (r.ok) return 'ok';
     const t = await r.text();

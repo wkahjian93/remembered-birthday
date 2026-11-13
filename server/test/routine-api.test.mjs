@@ -57,7 +57,9 @@ const p = JSON.parse(kv.get('p:agent2@x.com')); p.hour = myt.getUTCHours(); kv.s
 let waits = [];
 await worker.scheduled({}, hourEnv, { waitUntil: x => waits.push(x) }); await Promise.all(waits);
 const daily = sent.find(m => m.data.title === '定联 time');
-check('daily pop-up sent at the chosen hour', !!daily && daily.token === 'tok-123' && /6 prospects due/.test(daily.data.body) && /1 customer birthday/.test(daily.data.body), daily && daily.data.body);
+check('daily 定联 pop-up sent at the chosen hour', !!daily && daily.token === 'tok-123' && /6 prospects due/.test(daily.data.body), daily && daily.data.body);
+const occ = sent.find(m => m.data.title === '🎂 Customer occasions');
+check('separate customer birthday pop-up, opens Customers', !!occ && /Today: 1 birthday/.test(occ.data.body) && occ.data.url === '#customers', occ && occ.data.body);
 sent.length = 0; waits = [];
 await worker.scheduled({}, hourEnv, { waitUntil: x => waits.push(x) }); await Promise.all(waits);
 check('daily pop-up not repeated the same day', !sent.some(m => m.data.title === '定联 time'));
