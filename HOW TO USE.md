@@ -93,6 +93,8 @@ Open the **定联** tab. The red number on it is how many prospects are due. **S
 **All prospects**
 - Group counts plus filters: **All · Due · ⭐ · A · B · C · D · Talked this week**, showing 20 at a time with **Show 20 more**.
 - **✓ Talked** on every row, so you can chat with anyone **before they're due**. It simply resets their next date.
+- **Sort**: Due first · A–Z · Recently talked. Each prospect takes one line, so about 9 fit on a phone screen.
+- **While selecting, search to tick**: type a name in the search box, tick them, then type the next name. Your ticks are kept. **☑ Selected (N)** shows everyone you've ticked before you act.
 - **☑ Select many**: tick people, or **Select all**, then in one go **✓ Talked** (same platform and note for everyone, e.g. Instagram · Commented post), **Group** (move all to A/B/C/D), **⭐**, or **🗑** (asks first).
 
 **Adding prospects**

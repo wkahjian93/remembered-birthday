@@ -116,6 +116,8 @@
   .plist-row:last-child { border-bottom:0; }
   .plist-row .n { min-width:0; overflow-wrap:anywhere; font-weight:700; cursor:pointer; }
   .plist-row .s { font-size:12.5px; color:var(--muted); font-weight:500; }
+  .plist-row .n .s { display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; } /* one line per prospect so long lists stay short */
+  .plist-row { padding:8px 2px; }
   .plist-row input[type=checkbox] { width:22px; height:22px; accent-color:var(--accent); }
   .bulkbar { position:fixed; left:0; right:0; bottom:calc(64px + env(safe-area-inset-bottom,0px)); z-index:7; background:var(--ink); color:var(--bg);
     padding:10px max(16px, env(safe-area-inset-left,0px)); display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
@@ -181,7 +183,7 @@
   }
 
   /* ---------- the tab: Today and All prospects ---------- */
-  let mode = 'today', query = '', filter = 'all', shown = 20, selecting = false;
+  let mode = 'today', query = '', filter = 'all', shown = 20, selecting = false, sortBy = 'due';
   const selected = new Set();
   function render() {
     const view = $('#view-routine'); if (!view) return;
@@ -203,7 +205,7 @@
     const body = $('#reBody'); if (!body) return;
     renderBulkbar();
     if (typeof updateRoutineCount === 'function') updateRoutineCount();
-    if (query.trim()) { body.innerHTML = searchHtml(); wireCommon(body); return; }
+    if (query.trim() && mode !== 'all') { body.innerHTML = searchHtml(); wireCommon(body); return; }
     body.innerHTML = mode === 'today' ? todayHtml() : allHtml();
     wireCommon(body);
     if (mode === 'today') wireToday(body); else wireAll(body);
@@ -288,19 +290,24 @@
   }
   const FILTERS = [['all', 'All'], ['due', 'Due'], ['star', '⭐'], ['A', 'A'], ['B', 'B'], ['C', 'C'], ['D', 'D'], ['week', 'Talked this week']];
   function filtered() {
-    const wk = weekStats(0).week;
-    return prospects.filter(p => filter === 'all' || (filter === 'due' && due(p).days <= 0) || (filter === 'star' && p.star) || p.group === filter ||
-      (filter === 'week' && (p.touches || []).some(t => t.date >= wk)))
-      .map(p => ({ p, d: due(p) })).sort((a, b) => (b.p.star - a.p.star) || (a.d.days - b.d.days));
+    if (filter === 'sel' && !selecting) filter = 'all'; // the Selected filter only makes sense while selecting
+    const wk = weekStats(0).week, q = query.trim().toUpperCase();
+    return prospects.filter(p => (filter === 'all' || (filter === 'due' && due(p).days <= 0) || (filter === 'star' && p.star) || p.group === filter ||
+      (filter === 'week' && (p.touches || []).some(t => t.date >= wk)) || (filter === 'sel' && selected.has(p.id))) && (!q || matches(p, q)))
+      .map(p => ({ p, d: due(p) })).sort(sortBy === 'az' ? (a, b) => a.p.name.localeCompare(b.p.name)
+        : sortBy === 'recent' ? (a, b) => String(b.p.lastTouch || '').localeCompare(String(a.p.lastTouch || '')) || a.p.name.localeCompare(b.p.name)
+        : (a, b) => (b.p.star - a.p.star) || (a.d.days - b.d.days));
   }
   function allHtml() {
     const counts = Object.fromEntries(GROUPS.map(g => [g, prospects.filter(p => p.group === g).length]));
     const rows = filtered();
     return `
       <div class="progress-row">${GROUPS.map(g => `<button type="button" class="gprog" data-f="${g}" style="cursor:pointer;${filter === g ? 'border-color:var(--accent)' : ''}"><span class="gbadge g${g}">${g}</span><br><b>${counts[g]}</b></button>`).join('')}</div>
-      <div class="chipset">${FILTERS.map(([k, l]) => `<button type="button" data-f="${k}" class="${filter === k ? 'on' : ''}">${l}</button>`).join('')}</div>
+      <div class="chipset">${FILTERS.map(([k, l]) => `<button type="button" data-f="${k}" class="${filter === k ? 'on' : ''}">${l}</button>`).join('')}${selecting ? `<button type="button" data-f="sel" class="${filter === 'sel' ? 'on' : ''}">☑ Selected (${selected.size})</button>` : ''}</div>
+      <div class="chipset"><span class="hint" style="align-self:center">Sort:</span>${[['due', 'Due first'], ['az', 'A–Z'], ['recent', 'Recently talked']].map(([k, l]) => `<button type="button" data-sort="${k}" class="${sortBy === k ? 'on' : ''}">${l}</button>`).join('')}</div>
+      ${selecting ? '<p class="hint" style="margin:0">Tip: type a name in the search box above, tick them, then search the next one. Your ticks are kept.</p>' : ''}
       <div class="row" style="justify-content:space-between">
-        <span class="hint">${rows.length} prospect${rows.length === 1 ? '' : 's'}${selecting ? ` · ${selected.size} selected` : ''}</span>
+        <span class="hint" data-count>${rows.length} ${query.trim() ? 'found' : `prospect${rows.length === 1 ? '' : 's'}`}${selecting ? ` · ${selected.size} selected` : ''}</span>
         <div class="row">${selecting ? `<button type="button" class="btn small" id="reSelAll">Select all ${rows.length}</button><button type="button" class="btn small ghost" id="reSelDone">Done</button>` : '<button type="button" class="btn small" id="reSel">☑ Select many</button>'}</div>
       </div>
       <div class="panel" style="padding:4px 12px">${rows.length ? rows.slice(0, shown).map(({ p, d }) => `<div class="plist-row">
@@ -327,10 +334,11 @@
   }
   function wireAll(root) {
     root.querySelectorAll('[data-f]').forEach(b => b.onclick = () => { filter = filter === b.dataset.f && GROUPS.includes(b.dataset.f) ? 'all' : b.dataset.f; shown = 20; renderBody(); });
+    root.querySelectorAll('[data-sort]').forEach(b => b.onclick = () => { sortBy = b.dataset.sort; shown = 20; renderBody(); });
     root.querySelectorAll('[data-talk1]').forEach(b => b.onclick = () => openLogSheet([b.dataset.talk1]));
-    root.querySelectorAll('[data-pick]').forEach(c => c.onchange = () => { c.checked ? selected.add(c.dataset.pick) : selected.delete(c.dataset.pick); renderBulkbar(); root.querySelector('.hint').textContent = `${filtered().length} prospects · ${selected.size} selected`; });
+    root.querySelectorAll('[data-pick]').forEach(c => c.onchange = () => { c.checked ? selected.add(c.dataset.pick) : selected.delete(c.dataset.pick); renderBulkbar(); renderBody(); });
     if ($('#reSel')) $('#reSel').onclick = () => { selecting = true; selected.clear(); renderBody(); };
-    if ($('#reSelDone')) $('#reSelDone').onclick = () => { selecting = false; selected.clear(); renderBody(); };
+    if ($('#reSelDone')) $('#reSelDone').onclick = () => { selecting = false; selected.clear(); if (filter === 'sel') filter = 'all'; renderBody(); };
     if ($('#reSelAll')) $('#reSelAll').onclick = () => { filtered().forEach(({ p }) => selected.add(p.id)); renderBody(); };
     if ($('#reMore')) $('#reMore').onclick = () => { shown += 20; renderBody(); };
     if ($('#reClearSamples')) $('#reClearSamples').onclick = async () => {
