@@ -263,6 +263,7 @@
           <div class="stat"><b>RM ${Math.round(wk.anp).toLocaleString('en-MY')}</b><span>ANP</span></div>
         </div>
         <div class="badges">${badges(wk).map(([got, label]) => `<span class="badge ${got ? 'got' : ''}">${got ? '🏅' : '○'} ${label}</span>`).join('')}</div>
+        ${team && !settings.name ? '<div class="notice warn">Add your name in <b>Me</b> so your team leader and the ranking show your name.</div>' : ''}
         ${team ? '<div id="reRank"><button type="button" class="btn small" id="reRankBtn">🏆 Team ranking by chats</button></div><p class="hint" style="margin:0">Your numbers (not prospect names) are shared with your team leader.</p>' : ''}
       </div>
       <div class="panel" id="rePush"></div>
@@ -662,7 +663,7 @@ Return JSON only: {"rows": [{"name": "", "platform": ""}], "note": ""}
     try {
       const r = await callJson('api/team-stats', {}, 'team', 30000);
       const table = (wk, title) => `<p class="hint" style="margin:8px 0 4px">${title} (from ${wk.week})</p><table class="team-table"><tr><th>Agent</th><th>Chats</th><th>Days</th><th>Open</th><th>Present</th><th>Close</th><th>NOC</th><th>ANP</th></tr>
-        ${wk.agents.map(a => `<tr><td style="overflow-wrap:anywhere">${esc(a.name || a.email)}</td><td>${a.touches}</td><td>${a.activeDays}</td><td>${a.opens}</td><td>${a.presents}</td><td>${a.closes}</td><td>${a.noc}</td><td>${Math.round(a.anp).toLocaleString('en-MY')}</td></tr>`).join('') || '<tr><td colspan="8">No numbers yet.</td></tr>'}</table>`;
+        ${wk.agents.map(a => `<tr><td style="overflow-wrap:anywhere">${a.name ? esc(a.name) : '<span style="color:var(--muted)">Name not set yet</span>'}</td><td>${a.touches}</td><td>${a.activeDays}</td><td>${a.opens}</td><td>${a.presents}</td><td>${a.closes}</td><td>${a.noc}</td><td>${Math.round(a.anp).toLocaleString('en-MY')}</td></tr>`).join('') || '<tr><td colspan="8">No numbers yet.</td></tr>'}</table>`;
       out.innerHTML = table(r.thisWeek, 'This week') + table(r.lastWeek, 'Last week');
     } catch (e) { out.textContent = e.message; }
   }
