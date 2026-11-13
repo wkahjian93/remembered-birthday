@@ -59,7 +59,7 @@ await worker.scheduled({}, hourEnv, { waitUntil: x => waits.push(x) }); await Pr
 const daily = sent.find(m => m.data.title === '定联 time');
 check('daily 定联 pop-up sent at the chosen hour', !!daily && daily.token === 'tok-123' && /6 prospects due/.test(daily.data.body), daily && daily.data.body);
 const occ = sent.find(m => m.data.title === '🎂 Customer occasions');
-check('separate customer birthday pop-up, opens Customers', !!occ && /Today: 1 birthday/.test(occ.data.body) && occ.data.url === '#customers', occ && occ.data.body);
+check('separate customer birthday pop-up, opens Customers', !!occ && /Today: 1 birthday.*wish them or skip/.test(occ.data.body) && occ.data.url === '#customers', occ && occ.data.body);
 sent.length = 0; waits = [];
 await worker.scheduled({}, hourEnv, { waitUntil: x => waits.push(x) }); await Promise.all(waits);
 check('daily pop-up not repeated the same day', !sent.some(m => m.data.title === '定联 time'));

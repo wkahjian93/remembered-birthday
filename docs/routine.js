@@ -631,10 +631,12 @@ Return JSON only: {"rows": [{"name": "", "platform": ""}], "note": ""}
       if (d.days <= 60) dueBy[day] = (dueBy[day] || 0) + 1;
     });
     const occ = {};
-    (typeof customers !== 'undefined' ? customers : []).filter(c => !c.sample).forEach(c => {
+    // customers with reminders on, whose coming birthday / anniversary hasn't been wished or skipped yet
+    const undecided = (c, o, d) => typeof doneFor !== 'function' || !doneFor(c, o, d.getFullYear());
+    (typeof customers !== 'undefined' ? customers : []).filter(c => !c.sample && !c.noRemind).forEach(c => {
       const nb = nextBirthday(c.dob), na = nextAnniversary(c.policyDate);
-      if (nb) { const k = dayStr(nb.date).slice(5); occ[k] = occ[k] || { b: 0, a: 0 }; occ[k].b++; }
-      if (na) { const k = dayStr(na.date).slice(5); occ[k] = occ[k] || { b: 0, a: 0 }; occ[k].a++; }
+      if (nb && undecided(c, 'birthday', nb.date)) { const k = dayStr(nb.date).slice(5); occ[k] = occ[k] || { b: 0, a: 0 }; occ[k].b++; }
+      if (na && undecided(c, 'anniversary', na.date)) { const k = dayStr(na.date).slice(5); occ[k] = occ[k] || { b: 0, a: 0 }; occ[k].a++; }
     });
     return { day: todayStr(), dueBy, occ, doneToday: doneTotalOf(plan), targetToday: targetTotalOf(plan) };
   }

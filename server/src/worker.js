@@ -252,7 +252,7 @@ function occasionText(rem) {
   const now = mytNow(), md = now.toISOString().slice(5, 10), tm = new Date(now.getTime() + 864e5).toISOString().slice(5, 10);
   const say = o => [o.b && `${o.b} birthday${o.b === 1 ? '' : 's'} 🎂`, o.a && `${o.a} policy anniversar${o.a === 1 ? 'y' : 'ies'} 🤝`].filter(Boolean).join(' and ');
   const t = say((rem.occ || {})[md] || {}), n = say((rem.occ || {})[tm] || {});
-  return [t && `Today: ${t}. Send a personal poster.`, n && `Tomorrow: ${n}.`].filter(Boolean).join(' ');
+  return [t && `Today: ${t}. Tap to wish them or skip.`, n && `Tomorrow: ${n}.`].filter(Boolean).join(' ');
 }
 async function hourlyReminders(env) {
   if (!env.FCM_SERVICE_ACCOUNT) return;

@@ -111,6 +111,15 @@ Open the **定联** tab. The red number on it is how many prospects are due. **S
 
 **For the Group Manager:** **Team 定联 (numbers only)** at the bottom of Today shows each agent's chats, days, open, present, close, NOC and ANP for this week and last week.
 
+## Hundreds of customers: what you see
+
+- **Coming up in the next 7 days** (top of Customers): who to decide on, each with **🎂 Wish** / **🤝 Thank** (make the poster) or **Skip** (no more reminders for that occasion this year, with Undo). Undecided people come first; a busy week shows 5, with the rest folded below.
+- **This month** shows the totals, with the full list folded when it's long.
+- **📥 Import from ePartner** folds away once you have customers.
+- **My customers**: search (name or what they care about), filters **All · Next 30 days · This month · Not wished yet · 🔕 Reminders off**, 20 at a time.
+- **Turn reminders off for one customer**: Edit, then untick **🔔 Remind me about this customer's birthday and anniversary**.
+- **Pop-ups** only count customers you haven't wished or skipped yet, with reminders on.
+
 ## Adding a customer
 
 - **Nickname, date of birth and at least one priority** are needed. Gender is optional.

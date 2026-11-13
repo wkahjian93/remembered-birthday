@@ -181,11 +181,10 @@ code { font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border
     </div>
     <div class="panel" id="monthPanel"></div>
 
-    <div class="panel" id="importPanel">
-      <div>
-        <h2>Import from ePartner</h2>
-        <p class="hint" style="margin:4px 0 0">Best: in ePartner, select the whole policy list table, copy it, and paste it here. It’s read on this phone only, with no AI, and works for hundreds of policies at once. Only Policy Holder, DOB, Commencement Date and Status are kept. You check every row before anything is saved.</p>
-      </div>
+    <details class="panel" id="importPanel">
+      <summary><b>📥 Import from ePartner</b> <span class="hint">paste the list, photo or CSV</span></summary>
+      <div style="display:grid;gap:12px;margin-top:10px">
+        <p class="hint" style="margin:0">Best: in ePartner, select the whole policy list table, copy it, and paste it here. It’s read on this phone only, with no AI, and works for hundreds of policies at once. Only Policy Holder, DOB, Commencement Date and Status are kept. You check every row before anything is saved.</p>
       <label class="field">Paste ePartner list
         <textarea id="pasteBox" placeholder="Long-press here and tap Paste" style="min-height:90px"></textarea>
       </label>
@@ -198,9 +197,16 @@ code { font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border
       </div>
       <div id="scanStatus" style="display:grid;gap:8px"></div>
       <div id="reviewBox" style="display:grid;gap:10px" hidden></div>
-    </div>
+      </div>
+    </details>
 
-    <div id="custList" style="display:grid;gap:10px"></div>
+    <div class="panel" id="custListPanel">
+      <div class="row" style="justify-content:space-between"><h2>My customers</h2><span class="hint" id="custCount"></span></div>
+      <input type="search" id="custQ" placeholder="🔍 Search name or what they care about" autocomplete="off">
+      <div class="chipset" id="custFilters"></div>
+      <div id="custList" style="display:grid;gap:8px"></div>
+      <button class="btn" type="button" id="custMore" hidden>Show 20 more</button>
+    </div>
     <button class="btn primary big" id="addCustBtn" type="button">+ Add a customer</button>
 
     <form id="custForm" class="panel" hidden novalidate>
@@ -232,6 +238,7 @@ code { font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border
           <input type="text" id="f-notes" maxlength="140" placeholder="e.g. just got promoted">
         </label>
       </div>
+      <label class="check"><input type="checkbox" id="f-remind" checked> 🔔 Remind me about this customer’s birthday and anniversary</label>
       <label class="field">Policy start date (for the anniversary thank-you)
         <input type="date" id="f-policy">
         <small>Optional. Use the date their first policy with you started. The app counts the years and reminds you each year.</small>
@@ -607,42 +614,82 @@ function show(view) {
 document.querySelectorAll('nav.tabs button').forEach(b => b.onclick = () => show(b.dataset.view));
 
 /* ---------- customers ---------- */
+// has this occasion already been wished or skipped for that year? ('sent', 'skipped' or '')
+function doneFor(c, occ, year) {
+  const h = (c.history || []).filter(x => (x.occasion || 'birthday') === occ && (x.for ? x.for === `${occ}-${year}` : String(x.date).startsWith(String(year))));
+  return !h.length ? '' : h.some(x => !x.skipped) ? 'sent' : 'skipped';
+}
+function nextOccasions(c) { // the coming birthday and anniversary, each with its wished/skipped state
+  const out = [], nb = nextBirthday(c.dob), na = nextAnniversary(c.policyDate);
+  if (nb) out.push({ c, occ: 'birthday', days: nb.days, date: nb.date, what: `turns ${nb.turning}`, done: doneFor(c, 'birthday', nb.date.getFullYear()) });
+  if (na) out.push({ c, occ: 'anniversary', days: na.days, date: na.date, what: `${na.years} year${na.years === 1 ? '' : 's'} with you`, done: doneFor(c, 'anniversary', na.date.getFullYear()) });
+  return out;
+}
+// Wish (make the poster) or Skip (no reminders for it until next year), or the state if already decided
+function occActions(o) {
+  if (o.done === 'sent') return '<span class="chip ok">✓ Wished</span>';
+  if (o.done === 'skipped') return `<span class="chip">Skipped</span><button class="btn small ghost" data-unskip="${o.c.id}" data-occ="${o.occ}" data-year="${o.date.getFullYear()}">Undo</button>`;
+  return `<button class="btn small primary" data-make="${o.c.id}" data-occ="${o.occ}">${o.occ === 'birthday' ? '🎂 Wish' : '🤝 Thank'}</button><button class="btn small" data-skip="${o.c.id}" data-occ="${o.occ}" data-year="${o.date.getFullYear()}">Skip</button>`;
+}
+function wireOccActions(root) {
+  root.querySelectorAll('[data-make]').forEach(b => b.onclick = () => { selectedId = b.dataset.make; setOccasion(b.dataset.occ); show('create'); });
+  root.querySelectorAll('[data-skip]').forEach(b => b.onclick = async () => {
+    const c = customers.find(x => x.id === b.dataset.skip), occ = b.dataset.occ, year = b.dataset.year; if (!c) return;
+    if (!(await ask(`Skip ${esc(c.nickname)}’s ${occ === 'birthday' ? 'birthday' : 'policy anniversary'}?`, `No more reminders for it this year (${year}). You can undo this.`, 'Skip'))) return;
+    c.history = (c.history || []).concat({ date: today0().toISOString().slice(0, 10), occasion: occ, for: `${occ}-${year}`, skipped: true, message: '' });
+    saveCustomers(); renderCustomers(); toast('Skipped for this year');
+  });
+  root.querySelectorAll('[data-unskip]').forEach(b => b.onclick = () => {
+    const c = customers.find(x => x.id === b.dataset.unskip), key = `${b.dataset.occ}-${b.dataset.year}`; if (!c) return;
+    c.history = (c.history || []).filter(h => !(h.skipped && (h.for === key || (!h.for && (h.occasion || 'birthday') === b.dataset.occ && String(h.date).startsWith(b.dataset.year)))));
+    saveCustomers(); renderCustomers(); toast('Reminder back on');
+  });
+}
+let custQ = '', custF = 'all', custShown = 20;
+const CUST_FILTERS = [['all', 'All'], ['30', 'Next 30 days'], ['month', 'This month'], ['open', 'Not wished yet'], ['off', '🔕 Reminders off']];
 function renderCustomers() {
   renderMonth();
-  const list = $('#custList');
-  if (!customers.length) { list.innerHTML = '<div class="empty">No customers yet. Add your first one to get birthday and anniversary reminders here.</div>'; return; }
-  const inDays = n => n === 0 ? 'today' : `in ${n} day${n === 1 ? '' : 's'}`;
-  const rows = customers.map(c => {
-    const nb = nextBirthday(c.dob), na = nextAnniversary(c.policyDate);
-    const next = na && (!nb || na.days < nb.days) ? { occ: 'anniversary', ...na } : nb ? { occ: 'birthday', ...nb } : null;
-    return { c, nb, na, next };
-  }).sort((a, b) => (a.next ? a.next.days : 9999) - (b.next ? b.next.days : 9999));
-  list.innerHTML = rows.map(({ c, nb, na, next }) => {
-    const sentThisYear = occ => (c.history || []).some(h => (h.occasion || 'birthday') === occ && h.date.startsWith(String(new Date().getFullYear())));
+  const list = $('#custList'), real = customers.filter(c => !c.sample).length;
+  $('#custCount').textContent = `${customers.length} total`;
+  $('#custFilters').innerHTML = CUST_FILTERS.map(([k, l]) => `<button type="button" data-cf="${k}" class="${k === custF ? 'on' : ''}">${l}</button>`).join('');
+  $('#custFilters').querySelectorAll('[data-cf]').forEach(b => b.onclick = () => { custF = b.dataset.cf; custShown = 20; renderCustomers(); });
+  if (!customers.length) { list.innerHTML = '<div class="empty">No customers yet. Use <b>Import from ePartner</b> above, or add one below.</div>'; $('#custMore').hidden = true; return; }
+  const q = custQ.trim().toUpperCase(), m = today0().getMonth();
+  const rows = customers.map(c => { const occ = nextOccasions(c); return { c, occ, next: occ.slice().sort((a, b) => a.days - b.days)[0] }; })
+    .filter(({ c, occ }) => (!q || (c.nickname + ' ' + (c.fullName || '') + ' ' + (c.priorities || []).join(' ') + ' ' + (c.notes || '')).toUpperCase().includes(q))
+      && (custF === 'all' || (custF === '30' && occ.some(o => o.days <= 30)) || (custF === 'month' && occ.some(o => o.date.getMonth() === m && o.days <= 31))
+        || (custF === 'open' && !c.noRemind && occ.some(o => o.days <= 30 && !o.done)) || (custF === 'off' && c.noRemind)))
+    .sort((a, b) => (a.next ? a.next.days : 9999) - (b.next ? b.next.days : 9999));
+  const inDays = n => n === 0 ? 'today' : `in ${n}d`;
+  list.innerHTML = rows.length ? rows.slice(0, custShown).map(({ c, occ, next }) => {
     const whenBox = !next ? `<div class="when"><b>?</b><span>date</span></div>`
       : next.days === 0 ? `<div class="when today"><b>${next.occ === 'birthday' ? '🎂' : '🤝'}</b><span>Today</span></div>`
       : `<div class="when"><b>${next.date.getDate()}</b><span>${MONTHS[next.date.getMonth()]}</span></div>`;
-    const lines = [nb ? `🎂 Turns ${nb.turning} ${inDays(nb.days)}${sentThisYear('birthday') ? ' · sent' : ''}` : 'Birthday needs fixing'];
-    if (na) lines.push(`🤝 ${na.years} year${na.years === 1 ? '' : 's'} with you ${inDays(na.days)}${sentThisYear('anniversary') ? ' · sent' : ''}`);
-    return `<article class="cust">${whenBox}<div style="min-width:0">
-      <h3>${esc(c.nickname)}${c.sample ? '<span class="tag-sample">Example</span>' : ''}</h3>
-      <div class="meta">${lines.map(esc).join('<br>')}</div>
-      <div class="chips" style="margin-top:6px">${(c.priorities || []).slice(0, 3).map(p => `<span class="chip">${esc(p)}</span>`).join('') || '<span class="chip">No priorities yet</span>'}</div>
+    const line = occ.map(o => `${o.occ === 'birthday' ? '🎂' : '🤝'} ${o.what} ${inDays(o.days)}${o.done === 'sent' ? ' ✓' : o.done === 'skipped' ? ' (skipped)' : ''}`).join(' · ') || 'Birthday needs fixing';
+    return `<article class="cust" style="padding:10px 12px">${whenBox}<div style="min-width:0">
+      <h3>${esc(c.nickname)}${c.noRemind ? ' 🔕' : ''}${c.sample ? '<span class="tag-sample">Example</span>' : ''}</h3>
+      <div class="meta">${esc(line)}</div>
+      ${(c.priorities || [])[0] ? `<div class="meta">💭 ${esc(c.priorities[0])}</div>` : ''}
       <div class="actions"><button class="btn small primary" data-make="${c.id}" data-occ="birthday">Birthday poster</button>
-        ${na ? `<button class="btn small primary" data-make="${c.id}" data-occ="anniversary">Thank-you poster</button>` : ''}
+        ${c.policyDate ? `<button class="btn small primary" data-make="${c.id}" data-occ="anniversary">Thank-you poster</button>` : ''}
         <button class="btn small" data-edit="${c.id}">Edit</button></div>
     </div></article>`;
-  }).join('');
-  list.querySelectorAll('[data-make]').forEach(b => b.onclick = () => { selectedId = b.dataset.make; setOccasion(b.dataset.occ); show('create'); });
+  }).join('') : `<p class="hint">No customers match${q ? ` “${esc(custQ)}”` : ''}.</p>`;
+  $('#custMore').hidden = rows.length <= custShown;
+  $('#custMore').textContent = `Show 20 more (${Math.max(0, rows.length - custShown)} left)`;
+  wireOccActions(list);
   list.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => openForm(b.dataset.edit));
+  if (!renderCustomers.opened) { renderCustomers.opened = true; $('#importPanel').open = real === 0; } // import folds away once you have customers
 }
+$('#custQ').oninput = e => { custQ = e.target.value; custShown = 20; renderCustomers(); };
+$('#custMore').onclick = () => { custShown += 20; renderCustomers(); };
 let editingId = null;
 function openForm(id) {
   editingId = id || null; const c = customers.find(x => x.id === id) || {};
   $('#custFormTitle').textContent = id ? `Edit ${c.nickname}` : 'New customer';
   $('#f-nick').value = c.nickname || ''; $('#f-dob').value = c.dob || ''; $('#f-gender').value = c.gender || '';
   $('#f-pri').value = (c.priorities || []).join('\n'); $('#f-since').value = c.since || ''; $('#f-notes').value = c.notes || '';
-  $('#f-policy').value = c.policyDate || '';
+  $('#f-policy').value = c.policyDate || ''; $('#f-remind').checked = !c.noRemind;
   $('#custFormIssues').innerHTML = ''; $('#custDeleteBtn').hidden = !id;
   $('#custForm').hidden = false; $('#addCustBtn').hidden = true; $('#f-nick').focus();
   $('#custForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -660,8 +707,8 @@ $('#custForm').onsubmit = async e => {
   if (editingId) {
     const c = customers.find(x => x.id === editingId);
     if (!(await ask(`Save changes to ${esc(c.nickname)}?`, 'This replaces the details you saved before.', 'Save changes'))) return;
-    Object.assign(c, data); delete c.sample;
-  } else customers.push(Object.assign({ id: uid(), history: [] }, data));
+    Object.assign(c, data, { noRemind: !$('#f-remind').checked }); delete c.sample;
+  } else customers.push(Object.assign({ id: uid(), history: [] }, data, { noRemind: !$('#f-remind').checked }));
   saveCustomers(); closeForm(); renderCustomers(); toast('Customer saved');
 };
 $('#custDeleteBtn').onclick = async () => {
@@ -704,23 +751,25 @@ function renderMonth() {
   const nm = (m + 1) % 12, ny = m === 11 ? y + 1 : y, next = occasionsInMonth(ny, nm);
   const fresh = customers.filter(c => !c.sample && c.calSig !== calSig(c)).length;
   // the app's own reminder: anything in the next 7 days shows first, every time the app opens
-  const soon = [];
-  customers.forEach(c => {
-    const nb = nextBirthday(c.dob), na = nextAnniversary(c.policyDate);
-    if (nb && nb.days <= 7) soon.push({ c, occ: 'birthday', days: nb.days, what: `turns ${nb.turning}` });
-    if (na && na.days <= 7) soon.push({ c, occ: 'anniversary', days: na.days, what: `${na.years} year${na.years === 1 ? '' : 's'} with you` });
-  });
-  soon.sort((a, b) => a.days - b.days);
-  try { if (navigator.setAppBadge) soon.length ? navigator.setAppBadge(soon.length) : navigator.clearAppBadge(); } catch {}
+  const soon = customers.filter(c => !c.noRemind).flatMap(nextOccasions).filter(o => o.days <= 7).sort((a, b) => a.days - b.days);
+  const waiting = soon.filter(o => !o.done).length;
+  try { if (navigator.setAppBadge) waiting ? navigator.setAppBadge(waiting) : navigator.clearAppBadge(); } catch {}
   const when = d => d === 0 ? 'Today' : d === 1 ? 'Tomorrow' : `In ${d} days`;
-  $('#monthPanel').innerHTML = `${soon.length ? `<div class="notice warn" style="gap:6px"><b>Coming up in the next 7 days</b>
-      ${soon.map(o => `<div class="row" style="justify-content:space-between;gap:6px"><span>${when(o.days)}: ${o.occ === 'birthday' ? '🎂' : '🤝'} ${esc(o.c.nickname)} ${esc(o.what)}</span>
-        <button class="btn small" data-make="${o.c.id}" data-occ="${o.occ}">Create</button></div>`).join('')}</div>` : ''}
+  $('#monthPanel').innerHTML = `${soon.length ? `<div class="notice ${waiting ? 'warn' : 'ok'}" style="gap:8px"><b>Coming up in the next 7 days${waiting ? ` · ${waiting} to decide` : ' · all done'}</b>
+      ${(() => { // undecided first; the rest of a busy week folds away so the screen stays short
+        const order = soon.slice().sort((x, y) => (!!x.done - !!y.done) || (x.days - y.days));
+        const item = o => `<div class="row" style="justify-content:space-between;gap:6px"><span style="min-width:0;flex:1 1 160px">${when(o.days)}: ${o.occ === 'birthday' ? '🎂' : '🤝'} <b>${esc(o.c.nickname)}</b> ${esc(o.what)}</span>
+        <span class="row" style="gap:6px">${occActions(o)}</span></div>`;
+        return order.slice(0, 5).map(item).join('') + (order.length > 5 ? `<details><summary class="hint">Show ${order.length - 5} more this week</summary><div style="display:grid;gap:8px;margin-top:8px">${order.slice(5).map(item).join('')}</div></details>` : '');
+      })()}</div>` : ''}
     <div class="row" style="justify-content:space-between"><h2>This month: ${MONTH_NAMES[m]}</h2>
       <span class="chip gold">${list.filter(o => o.occ === 'birthday').length} 🎂 · ${list.filter(o => o.occ === 'anniversary').length} 🤝</span></div>
-    ${list.length ? `<ul class="month-list">${list.map(o => `<li class="${o.day < t.getDate() ? 'past' : ''}"><span class="d">${o.day} ${MONTHS[m]}</span>
-      <span>${o.occ === 'birthday' ? '🎂' : '🤝'} ${esc(o.c.nickname)} <span class="hint">${esc(o.what)}</span></span>
-      <button class="btn small" data-make="${o.c.id}" data-occ="${o.occ}">Create</button></li>`).join('')}</ul>`
+    ${list.length ? `<details ${list.length <= 8 ? 'open' : ''}><summary class="hint">${list.length <= 8 ? 'Everyone this month' : `Show all ${list.length} this month`}</summary><ul class="month-list" style="margin-top:8px">${list.map(o => {
+      const done = doneFor(o.c, o.occ, y);
+      return `<li class="${o.day < t.getDate() || done ? 'past' : ''}"><span class="d">${o.day} ${MONTHS[m]}</span>
+      <span style="min-width:0">${o.occ === 'birthday' ? '🎂' : '🤝'} ${esc(o.c.nickname)}${o.c.noRemind ? ' 🔕' : ''} <span class="hint">${esc(o.what)}</span></span>
+      ${done === 'sent' ? '<span class="chip ok">✓</span>' : done === 'skipped' ? '<span class="chip">Skipped</span>' : `<button class="btn small" data-make="${o.c.id}" data-occ="${o.occ}">${o.occ === 'birthday' ? 'Wish' : 'Thank'}</button>`}</li>`;
+    }).join('')}</ul></details>`
       : '<p class="hint" style="margin:0">No customer birthdays or policy anniversaries this month.</p>'}
     <p class="hint" style="margin:0">Next month (${MONTH_NAMES[nm]}): ${next.length ? `${next.length} occasion${next.length === 1 ? '' : 's'}` : 'none yet'}.</p>
     <div class="row">
@@ -731,7 +780,7 @@ function renderMonth() {
     ${team ? (store.get('remembered.pushToken', '') && 'Notification' in window && Notification.permission === 'granted'
       ? '<p class="hint" style="margin:0">🔔 Pop-ups are on: you get a pop-up on the day of each birthday and anniversary, and the day before.</p>'
       : '<button class="btn small" type="button" id="occPushBtn">🔔 Get pop-ups for birthdays and anniversaries</button>') : ''}`;
-  $('#monthPanel').querySelectorAll('[data-make]').forEach(b => b.onclick = () => { selectedId = b.dataset.make; setOccasion(b.dataset.occ); show('create'); });
+  wireOccActions($('#monthPanel'));
   $('#calNewBtn').onclick = () => exportCalendar(false);
   if ($('#occPushBtn')) $('#occPushBtn').onclick = () => { show('routine'); setTimeout(() => { const b = $('#rePush'); if (b) b.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 150); };
   $('#calAllBtn').onclick = () => exportCalendar(true);
@@ -1293,7 +1342,7 @@ async function callJson(url, opts, model, timeoutMs) {
 }
 function customerBrief(c, occ) {
   const p = parseDob(c.dob), nb = nextBirthday(c.dob), na = nextAnniversary(c.policyDate), cny = nextCny();
-  const last = (c.history || []).filter(h => (h.occasion || 'birthday') === occ).slice(-1)[0];
+  const last = (c.history || []).filter(h => (h.occasion || 'birthday') === occ && !h.skipped && h.message).slice(-1)[0];
   const zodiac = p && chineseZodiac(p);
   return [`Nickname: ${c.nickname}`, `Gender: ${c.gender || 'not stated'}`,
     occ === 'birthday' && nb ? `Turning: ${nb.turning} on ${nb.date.getDate()} ${MONTHS[nb.date.getMonth()]}` : '',
@@ -2211,7 +2260,7 @@ $('#shareBtn').onclick = async () => {
 $('#sentBtn').onclick = async () => {
   const c = current();
   if (!(await ask(`Mark ${esc(c.nickname)} as sent?`, 'Saves today’s date and this message, so next year’s wish talks about something new.', 'Mark as sent'))) return;
-  c.history = (c.history || []).concat({ date: new Date().toISOString().slice(0, 10), message: $('#w-msg').value, occasion, sang: sendingVideo() });
+  c.history = (c.history || []).concat({ date: new Date().toISOString().slice(0, 10), message: $('#w-msg').value, occasion, for: `${occasion}-${(occasionInfo(c) || { date: today0() }).date.getFullYear()}`, sang: sendingVideo() });
   saveCustomers(); toast(`Logged. ${c.nickname} won't get the same message next time.`);
 };
 
