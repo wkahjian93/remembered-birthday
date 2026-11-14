@@ -553,12 +553,48 @@
       p.results = (p.results || []).filter(r => r.id !== out.id).concat(out); save(); box.hidden = true; box.innerHTML = '';
       done();
       if (!rec && isClose) celebrate('close', '💰 Close recorded. Well done!');
+      else if (!rec && (stage === 'open' || stage === 'present')) nextAppSheet(p, stage);
       else toast(rec ? 'Changed' : 'Recorded');
     };
     if (q('[data-rdel]')) q('[data-rdel]').onclick = async () => {
       if (!(await ask('Delete this result?', `${esc(p.name)}: ${esc(STAGES.find(s => s[0] === rec.stage)[1])} on ${esc(rec.date)} will be removed. This can’t be undone.`, 'Delete', true))) return;
       p.results = (p.results || []).filter(r => r.id !== rec.id); save(); box.hidden = true; box.innerHTML = ''; done(); toast('Deleted');
     };
+  }
+  /* after Opened (appointment made) → put it in REDEFINE Calendar; after Presented → record it in REDEFINE On Field (client farm).
+     Both open in a new tab with nothing saved until the agent taps Add / records there. */
+  const CAL_URL = 'https://wkahjian93.github.io/redefine-calendar/', ONFIELD_URL = 'https://wkahjian93.github.io/policy-summary-power-tools/';
+  function calLink(name, d, s) {
+    const qs = new URLSearchParams({ t: `Appointment: ${name}` });
+    if (/^\d{4}-\d{2}-\d{2}$/.test(d || '')) qs.set('d', d);
+    if (/^\d{2}:\d{2}$/.test(s || '')) qs.set('s', s);
+    qs.set('n', '定联 prospect, appointment made');
+    return CAL_URL + '#/new?' + qs.toString();
+  }
+  function nextAppSheet(p, stage) {
+    if (stage === 'open') {
+      const back = sheet(`<h2>🔓 Opened: appointment made!</h2>
+        <p class="hint" style="margin:0">Next, put the appointment with <b>${esc(p.name)}</b> in REDEFINE Calendar so it counts and the team sees it.</p>
+        <div class="two"><label class="mini-label">Appointment date<input type="date" data-ad min="${todayStr()}"></label>
+          <label class="mini-label">Time<input type="time" data-at></label></div>
+        <a class="btn primary" data-cal target="_blank" rel="noopener" href="${esc(calLink(p.name))}">📅 Add to REDEFINE Calendar</a>
+        <p class="hint" style="margin:0">Opens the calendar with the event filled in. Check it, then tap Add there.</p>
+        <button type="button" class="btn ghost" data-x>Later</button>`);
+      const q = s => back.querySelector(s), sync = () => { q('[data-cal]').href = calLink(p.name, q('[data-ad]').value, q('[data-at]').value); };
+      q('[data-ad]').oninput = sync; q('[data-at]').oninput = sync;
+      q('[data-cal]').addEventListener('click', () => setTimeout(() => back.remove(), 300));
+      q('[data-x]').onclick = () => back.remove();
+      return;
+    }
+    const back = sheet(`<h2>📊 Presented!</h2>
+      <p class="hint" style="margin:0">Next, record the meeting with <b>${esc(p.name)}</b> in REDEFINE On Field. Speak your notes and it builds their client farm and follow-up.</p>
+      <a class="btn primary" data-of target="_blank" rel="noopener" href="${ONFIELD_URL}#/record">🎙 Record in REDEFINE On Field</a>
+      <button type="button" class="btn small" data-copy>Copy “${esc(p.name)}” to paste there</button>
+      <p class="hint" style="margin:0">There, pick ${esc(p.name)} from “Which client?”, or choose New client and say the name.</p>
+      <button type="button" class="btn ghost" data-x>Later</button>`);
+    back.querySelector('[data-copy]').onclick = async () => { try { await navigator.clipboard.writeText(p.name); toast('Name copied'); } catch { toast('Couldn’t copy. Type the name there.'); } };
+    back.querySelector('[data-of]').addEventListener('click', () => setTimeout(() => back.remove(), 300));
+    back.querySelector('[data-x]').onclick = () => back.remove();
   }
   function editRecord(p, kind, rid, done) {
     if (kind === 'result') {

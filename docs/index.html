@@ -59,6 +59,7 @@ h2 { font-family: var(--display); font-weight: 400; font-size: 21px; margin: 0; 
 .row > * { min-width: 0; }
 .grow { flex: 1 1 auto; }
 
+a.btn { text-decoration: none; text-align: center; justify-content: center; }
 .btn { appearance: none; border: 1px solid var(--line); background: var(--surface); border-radius: 12px; padding: 11px 16px;
   font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; }
 .btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
@@ -131,6 +132,8 @@ textarea { min-height: 110px; resize: vertical; line-height: 1.45; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .spinner { animation-duration: 3s; } }
 
+.evbox { display: grid; gap: 10px; }
+.evbox[hidden] { display: none; }
 .seg { display: flex; gap: 6px; flex-wrap: wrap; }
 .seg input { position: absolute; opacity: 0; pointer-events: none; }
 .seg label { border: 1px solid var(--line); border-radius: 999px; padding: 7px 12px; font-size: 13.5px; font-weight: 600; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
@@ -248,6 +251,11 @@ code { font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border
           <input type="text" id="f-notes" maxlength="140" placeholder="e.g. just got promoted">
         </label>
       </div>
+      <div class="row" id="f-events" hidden>
+        <span class="hint" style="margin:0">Make a poster for:</span>
+        <button class="btn small" type="button" data-evmake="claim">💙 Claim done</button>
+        <button class="btn small" type="button" data-evmake="newpolicy">🎉 New policy</button>
+      </div>
       <label class="check"><input type="checkbox" id="f-remind" checked> 🔔 Remind me about this customer’s birthday and anniversary</label>
       <label class="field">Policy start date (for the anniversary thank-you)
         <input type="date" id="f-policy">
@@ -286,10 +294,29 @@ code { font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border
         <input type="radio" name="occ" id="occ-birthday" value="birthday" checked><label for="occ-birthday">🎂 Birthday</label>
         <input type="radio" name="occ" id="occ-anniversary" value="anniversary"><label for="occ-anniversary">🤝 Policy anniversary</label>
         <input type="radio" name="occ" id="occ-cny" value="cny"><label for="occ-cny">🧧 Chinese New Year</label>
+        <input type="radio" name="occ" id="occ-claim" value="claim"><label for="occ-claim">💙 Claim done</label>
+        <input type="radio" name="occ" id="occ-newpolicy" value="newpolicy"><label for="occ-newpolicy">🎉 New policy</label>
       </div>
       <label class="field">Customer
         <select id="c-cust"></select>
       </label>
+      <div class="evbox" id="eventBox" hidden>
+        <div id="ev-claim" class="evbox">
+          <div class="eyebrow">What was the claim for?</div>
+          <div class="seg" id="ev-kind" role="radiogroup" aria-label="Claim type"></div>
+          <div class="seg" id="ev-who" role="radiogroup" aria-label="Who the claim was for"></div>
+          <p class="hint" style="margin:0">For a death claim, please call or visit the family yourself. A poster isn’t right for that moment, so the app doesn’t make one.</p>
+        </div>
+        <div id="ev-policy" class="evbox">
+          <div class="eyebrow">Is this their first policy with you?</div>
+          <div class="seg" id="ev-repeat" role="radiogroup" aria-label="First policy or bought again"></div>
+        </div>
+        <div class="two">
+          <label class="field"><span id="ev-date-label">Date</span><input type="date" id="ev-date"></label>
+          <label class="field"><span id="ev-note-label">Anything to mention (optional)</span><input type="text" id="ev-note" maxlength="120"></label>
+        </div>
+        <small class="hint" id="ev-note-hint" style="margin-top:-4px"></small>
+      </div>
       <div id="c-summary" style="display:grid;gap:10px"></div>
     </div>
 
@@ -701,12 +728,18 @@ function openForm(id) {
   $('#f-nick').value = c.nickname || ''; $('#f-dob').value = c.dob || ''; $('#f-gender').value = c.gender || '';
   $('#f-pri').value = (c.priorities || []).join('\n'); $('#f-since').value = c.since || ''; $('#f-notes').value = c.notes || '';
   $('#f-policy').value = c.policyDate || ''; $('#f-remind').checked = !c.noRemind;
-  $('#custFormIssues').innerHTML = ''; $('#custDeleteBtn').hidden = !id;
+  $('#custFormIssues').innerHTML = ''; $('#custDeleteBtn').hidden = !id; $('#f-events').hidden = !id;
   $('#custForm').hidden = false; $('#addCustBtn').hidden = true; $('#f-nick').focus();
   $('#custForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 function closeForm() { $('#custForm').hidden = true; $('#addCustBtn').hidden = false; editingId = null; }
-$('#addCustBtn').onclick = () => openForm(null);
+$('#addCustBtn').onclick = () => { afterAdd = null; openForm(null); };
+let afterAdd = null; // 'newpolicy' when the agent came from Create to add a brand-new customer
+// claim / new-policy poster straight from a customer's edit form
+document.querySelectorAll('[data-evmake]').forEach(b => b.onclick = () => {
+  const id = editingId; if (!id) return; closeForm();
+  selectedId = id; setOccasion(b.dataset.evmake); show('create');
+});
 $('#custCancelBtn').onclick = closeForm;
 $('#custForm').onsubmit = async e => {
   e.preventDefault();
@@ -720,7 +753,9 @@ $('#custForm').onsubmit = async e => {
     if (!(await ask(`Save changes to ${esc(c.nickname)}?`, 'This replaces the details you saved before.', 'Save changes'))) return;
     Object.assign(c, data, { noRemind: !$('#f-remind').checked }); delete c.sample;
   } else customers.push(Object.assign({ id: uid(), history: [] }, data, { noRemind: !$('#f-remind').checked }));
+  const added = !editingId && customers[customers.length - 1];
   saveCustomers(); closeForm(); renderCustomers(); toast('Customer saved');
+  if (added && afterAdd) { const o = afterAdd; afterAdd = null; selectedId = added.id; setOccasion(o); show('create'); }
 };
 $('#custDeleteBtn').onclick = async () => {
   const c = customers.find(x => x.id === editingId); if (!c) return;
@@ -1368,6 +1403,7 @@ function customerBrief(c, occ) {
     occ === 'anniversary' && na ? `Policy anniversary: ${na.years} year${na.years === 1 ? '' : 's'} with me on ${na.date.getDate()} ${MONTHS[na.date.getMonth()]} ${na.date.getFullYear()}` : '',
     occ === 'cny' && cny ? `New year: Year of the ${cny.animal} (${cny.year})` : '',
     occ === 'cny' && zodiac ? `Their own Chinese zodiac: ${zodiac}` : '',
+    ...eventBrief(c, occ),
     `Things they care about and prioritise:\n- ${(c.priorities || []).join('\n- ') || '(none recorded)'}`,
     c.notes ? `Recent news: ${c.notes}` : '', yearsWithMe(c, occ) ? `My client for ${yearsWithMe(c, occ)} year${yearsWithMe(c, occ) === 1 ? '' : 's'} (since ${c.policyDate || c.since})` : c.since ? `My customer since: ${c.since}` : '',
     occ === 'birthday' && p ? `Star sign: ${westernSign(p.mo, p.d)}` : '',
@@ -1386,9 +1422,25 @@ Goal: a sincere, humble thank-you for the client's trust over the stated number 
   cny: `You write Chinese New Year greetings that a Malaysian life-insurance agent sends personally to a client on WhatsApp.
 Goal: a warm, personal blessing for the new year that shows the agent remembers what matters to this client.
 - Mention the new year's animal. You may open with "新年快乐" or "Gong Xi Fa Cai". If their own zodiac is given you may mention it kindly, without predictions or fortune-telling.
-- Blessings are wishes, never promises of wealth, luck or outcomes.`
+- Blessings are wishes, never promises of wealth, luck or outcomes.`,
+  claim: `You write a caring message that a Malaysian life-insurance agent sends personally to a client after the client's insurance claim has been settled.
+Goal: the client feels cared for as a person and knows the agent was there when it mattered. Calm, gentle and sincere, never celebratory and never salesy.
+- Open with genuine care for their wellbeing (or their family's, if the claim was for a family member; never guess who). Wish them rest, strength and a smooth recovery, without promising any outcome.
+- You may say you're glad the claim is settled so they can focus on getting better. Never name the illness or injury, the hospital or treatment, never mention amounts, the policy, coverage, what was or wasn't paid, or anything about future claims.
+- Critical illness: be especially gentle. Wish strength and courage; never say "you'll be fine" or anything that sounds like a medical opinion.
+- Mention at most 1 of their priorities, gently, as something to look forward to, and only if it fits the moment.
+- No celebration words or emojis (no "congratulations", no 🎉). At most 1 soft emoji such as 🙏 or 💙.
+- End with ONE gentle, easy question about how they (or the family) are doing, not about a priority.
+- posterLine: a calm line of care and strength, max 14 words. It must NOT mention the claim, illness, injury, hospital, money or insurance, because other people may see the poster.`,
+  newpolicy: `You write a personal thank-you message that a Malaysian life-insurance agent sends to a client who has just started a policy with them.
+Goal: the client feels their trust is valued and that they now have someone who will genuinely look after them, not that they were "closed".
+- First policy with the agent: warmly welcome them and thank them for their trust. Say what the agent will do as a person: stay reachable and help whenever life changes.
+- Bought again (returning client): thank them for trusting the agent again. If years together are given, mention the number.
+- If "why it matters to them" is given, you may reflect it warmly in their own words. Never describe the plan, its name, benefits, coverage, premium or returns, and never say they are now "protected" or "covered" for anything specific.
+- No referral request, no further offer, no "congratulations on your purchase".
+- posterLine: max 14 words about trust, welcome or the journey together. No product, insurance or money words.`
 };
-const SHARED_RULES = `Rules for every message:
+const SHARED_RULES = `Rules for every message (where the occasion rules above say something different, follow the occasion rules):
 - Natural Malaysian English, warm, confident, sincere. Sounds like a real friend who pays attention. No corporate tone.
 - Weave in 2 of the client's priorities as specific things the agent remembers. Use only facts given. Never invent names, events, dates or numbers.
 - Never mention insurance products, coverage, financial plans, money advice or any sales call to action.
@@ -1437,6 +1489,20 @@ function templateWords(c, occ = occasion) {
     return { posterLine: n ? `${yrs} of trust. Thank you for walking this journey with me` : 'Thank you for your trust',
       message: `Hi ${c.nickname}, today marks ${yrs} since you first trusted me with your plan. 🙏\n\nThank you, sincerely.${remember} It's an honour to be part of your journey, and if anything in your life changes, I'm always here.${end}`, source: 'template' };
   }
+  if (occ === 'claim') {
+    const fam = ev.who === 'family', signEnd = sign ? `\n\n${sign}` : '';
+    const look = pr[0] ? ` I know how much ${lowerFirst(pr[0])} means to you, and I’m looking forward to hearing good news about it when you’re ready.` : '';
+    return { posterLine: fam ? 'Wishing your family strength, rest and brighter days ahead' : 'Wishing you strength, rest and brighter days ahead',
+      message: `Hi ${c.nickname}, I’m glad everything with the claim is settled now, so ${fam ? 'the family' : 'you'} can focus fully on resting and getting better. 🙏\n\nPlease take things one day at a time.${look} If you need anything at all, I’m just a message away.\n\n${fam ? 'How is everyone holding up?' : 'How are you feeling these days?'}${signEnd}`, source: 'template' };
+  }
+  if (occ === 'newpolicy') {
+    const yrs = ev.repeat ? yearsUpTo(c.policyDate, eventDate()) : 0;
+    const remember = pr.length ? ` I remember how much ${lowerFirst(pr[0])} means to you, and I’m cheering for you all the way.` : '';
+    if (ev.repeat) return { posterLine: yrs ? `${yrs} year${yrs === 1 ? '' : 's'} together, and you trusted me again. Thank you` : 'Thank you for trusting me again',
+      message: `Hi ${c.nickname}, thank you for trusting me again. 🙏\n\n${yrs ? `After ${yrs} year${yrs === 1 ? '' : 's'} together, it` : 'It'} really means a lot that you chose me once more.${remember} Whenever life changes, big or small, I’m just a message away.${end}`, source: 'template' };
+    return { posterLine: 'Thank you for your trust. I’m with you every step of the way',
+      message: `Hi ${c.nickname}, welcome! 😊\n\nThank you for trusting me. I don’t take it lightly.${remember} From today, whenever life changes, big or small, I’m just a message away.${end}`, source: 'template' };
+  }
   if (occ === 'cny') {
     const cny = nextCny(), animal = cny ? cny.animal : '';
     const lines = { family: 'May your home be full of laughter and love this new year', parents: 'Wishing your whole family good health and many happy reunions',
@@ -1483,10 +1549,14 @@ const POSES = {
   presenting: ['Presenting a cake', `The person is smiling warmly and holding a beautiful birthday cake with lit candles out toward the viewer in both hands, clearly offering it to them. ${NOT_CELEBRANT}`],
   singing: ['Singing to them', `The person is joyfully singing "Happy Birthday" to the viewer, mouth open mid-song, while holding a beautiful birthday cake with lit candles out toward the viewer in both hands. A few golden musical notes float in the air. ${NOT_CELEBRANT}`]
 };
-const BUBBLE = { birthday: n => `Happy birthday, ${n}!`, anniversary: n => `Thank you, ${n}!`, cny: n => `Gong Xi Fa Cai, ${n}!` };
+const BUBBLE = { birthday: n => `Happy birthday, ${n}!`, anniversary: n => `Thank you, ${n}!`, cny: n => `Gong Xi Fa Cai, ${n}!`,
+  claim: n => `Here for you, ${n}`, newpolicy: (n, again) => again ? `Thank you again, ${n}!` : `Welcome, ${n}!` };
+const HEADLINE = { birthday: 'Happy Birthday', anniversary: 'Thank You', claim: 'Take Care', newpolicy: again => again ? 'Thank You' : 'Welcome' };
 function autoPalette(c) {
   if (occasion === 'cny') return 'cny';
   if (occasion === 'anniversary') return 'midnight';
+  if (occasion === 'claim') return 'jade';
+  if (occasion === 'newpolicy') return 'champagne';
   const cat = c.priorities && c.priorities[0] ? catOf(c.priorities[0]) : 'other';
   return { family: 'coral', parents: 'champagne', health: 'jade', home: 'champagne', travel: 'midnight', career: 'midnight', faith: 'champagne' }[cat]
     || (c.gender === 'female' ? 'coral' : c.gender === 'male' ? 'midnight' : 'champagne');
@@ -1681,6 +1751,19 @@ function drawLaurel(g, cx, cy, years, pal) {
   g.fillText(years === 1 ? 'YEAR OF TRUST' : 'YEARS OF TRUST', cx, cy + 70);
   g.restore();
 }
+// a polished gold heart (claim care, and welcome for a new customer)
+function drawHeart(g, cx, cy, s) {
+  const path = () => { g.beginPath(); g.moveTo(cx, cy + s * 0.95);
+    g.bezierCurveTo(cx - s * 1.55, cy - s * 0.05, cx - s * 0.8, cy - s * 1.2, cx, cy - s * 0.45);
+    g.bezierCurveTo(cx + s * 0.8, cy - s * 1.2, cx + s * 1.55, cy - s * 0.05, cx, cy + s * 0.95); g.closePath(); };
+  g.save(); g.shadowColor = 'rgba(0,0,0,.55)'; g.shadowBlur = 32; g.shadowOffsetY = 14;
+  g.fillStyle = goldFoil(g, cx - s, cy - s, cx + s, cy + s); path(); g.fill(); g.restore();
+  g.save(); path(); g.clip();
+  const hl = g.createRadialGradient(cx - s * 0.5, cy - s * 0.5, 4, cx - s * 0.35, cy - s * 0.35, s);
+  hl.addColorStop(0, 'rgba(255,255,240,.75)'); hl.addColorStop(1, 'rgba(255,255,240,0)');
+  g.fillStyle = hl; g.fillRect(cx - s * 1.6, cy - s * 1.3, s * 3.2, s * 2.4); g.restore();
+  g.save(); g.lineWidth = 3; g.strokeStyle = 'rgba(80,50,10,.5)'; path(); g.stroke(); g.restore();
+}
 // a pair of mandarin oranges and an ang pao on a gold plate (Chinese New Year)
 function drawOranges(g, cx, base, pal) {
   g.save();
@@ -1813,13 +1896,13 @@ function drawPoster(canvas, o) {
     // fade the lower body into the velvet so the quote stays readable
     const fade = g.createLinearGradient(0, H - 470, 0, H); fade.addColorStop(0, pal.deep + '00'); fade.addColorStop(0.45, pal.deep + 'd0'); fade.addColorStop(1, pal.deep + 'fa');
     g.fillStyle = fade; g.fillRect(0, H - 470, W, 470);
-    drawBubble(g, BUBBLE[o.occasion](o.customer.nickname), 660, 420, 360, 640, 560, pal);
+    drawBubble(g, BUBBLE[o.occasion](o.customer.nickname, o.again), 660, 420, 360, 640, 560, pal);
   } else {
     velvet(g, W, H, pal);
     drawPattern(g, o.pattern, pal, rnd, W, H, null);
     curtains(g, W, pal);
     if (o.occasion === 'cny') { drawLantern(g, 120, 640, 1, pal); drawLantern(g, 968, 700, 0.85, pal); drawLantern(g, 96, 900, 0.7, pal); }
-    else { balloon(g, 128, 700, 56, 70, GOLD_BALLOON); balloon(g, 968, 760, 54, 68, PEARL_BALLOON); balloon(g, 112, 930, 48, 61, [pal.soft, pal.mid, pal.deep]); }
+    else if (o.occasion !== 'claim') { balloon(g, 128, 700, 56, 70, GOLD_BALLOON); balloon(g, 968, 760, 54, 68, PEARL_BALLOON); balloon(g, 112, 930, 48, 61, [pal.soft, pal.mid, pal.deep]); }
     // the agent (left) offering the cake / thanks / oranges (right) and saying the wish (bubble)
     const cx = 390, cy = 665, r = 178;
     const glow = g.createRadialGradient(cx, cy, r * 0.8, cx, cy, r * 1.6); glow.addColorStop(0, 'rgba(255,225,150,.35)'); glow.addColorStop(1, 'rgba(255,225,150,0)');
@@ -1830,16 +1913,17 @@ function drawPoster(canvas, o) {
     g.fillStyle = inner; g.fillRect(cx - r, cy - r, 2 * r, 2 * r);
     g.restore();
     goldRing(g, cx, cy, r, 18);
-    if (o.occasion === 'anniversary') drawLaurel(g, 680, 880, o.years || 0, pal);
+    if (o.occasion === 'anniversary' || (o.occasion === 'newpolicy' && o.years)) drawLaurel(g, 680, 880, o.years || 0, pal);
+    else if (o.occasion === 'claim' || o.occasion === 'newpolicy') drawHeart(g, 680, 880, 150);
     else if (o.occasion === 'cny') drawOranges(g, 664, 1010, pal);
     else drawCake(g, 664, 1012, pal);
     if (o.occasion === 'birthday' && o.pose === 'singing') drawNotes(g, cx, cy, r, pal, rnd);
-    drawBubble(g, BUBBLE[o.occasion](o.customer.nickname), 610, 418, 400, 560, 560, pal);
+    drawBubble(g, BUBBLE[o.occasion](o.customer.nickname, o.again), 610, 418, 400, 560, 560, pal);
   }
   ornateFrame(g, W, H);
   // headline + name in embossed gold and pearl
   if (o.occasion === 'cny') text3D(g, '新年快乐', W / 2, 166, '118px "Ma Shan Zheng", "STKaiti", "KaiTi", serif', 118);
-  else text3D(g, o.occasion === 'anniversary' ? 'Thank You' : 'Happy Birthday', W / 2, 172, '128px Allura, cursive', 128);
+  else { const hl = HEADLINE[o.occasion] || HEADLINE.birthday; text3D(g, typeof hl === 'function' ? hl(o.again) : hl, W / 2, 172, '128px Allura, cursive', 128); }
   const nameFit = fitText(g, o.customer.nickname, '{px}px Gloock, Georgia, serif', 150, 64, W - 200, 1);
   const nameBase = 172 + 30 + nameFit.px * 0.82;
   const pearl = g.createLinearGradient(0, nameBase - nameFit.px * 0.8, 0, nameBase); pearl.addColorStop(0, '#ffffff'); pearl.addColorStop(0.55, pal.text); pearl.addColorStop(1, shade(pal.soft, -0.15));
@@ -1854,7 +1938,7 @@ function drawPoster(canvas, o) {
     g.restore();
   }
   // occasion medal: age turning, years together, or the zodiac year (the Quick anniversary laurel already shows the years)
-  if (o.showMedal && o.medal && !(o.occasion === 'anniversary' && !o.art && !o.cake)) {
+  if (o.showMedal && o.medal && !((o.occasion === 'anniversary' || o.occasion === 'newpolicy') && !o.art && !o.cake)) {
     const bx = W - 130, by = o.art ? 318 : 905; // AI layout: in the title band, clear of the picture
     g.save(); g.shadowColor = 'rgba(0,0,0,.55)'; g.shadowBlur = 22; g.shadowOffsetY = 8;
     g.fillStyle = goldFoil(g, bx - 80, by - 80, bx + 80, by + 80); g.beginPath(); g.arc(bx, by, 80, 0, 7); g.fill();
@@ -1909,10 +1993,91 @@ const OCC = {
     poses: { heart: ['Hand on heart', 'The person is smiling warmly with one hand on their heart and a slight, respectful nod toward the viewer, expressing sincere gratitude.'] }, pose: 'heart' },
   cny: { title: 'Create a Chinese New Year poster', button: 'Create Chinese New Year poster', medal: 'Show the zodiac year medal', file: 'chinese-new-year',
     poses: { oranges: ['Presenting mandarin oranges', 'The person is smiling warmly and presenting a pair of fresh mandarin oranges with green leaves toward the viewer in both hands, the traditional Chinese New Year gesture of good wishes.'],
-      greet: ['Gong Xi greeting', 'The person is smiling and making the traditional Chinese New Year fist-and-palm greeting gesture toward the viewer.'] }, pose: 'oranges' }
+      greet: ['Gong Xi greeting', 'The person is smiling and making the traditional Chinese New Year fist-and-palm greeting gesture toward the viewer.'] }, pose: 'oranges' },
+  claim: { title: 'Create a caring poster after a claim', button: 'Create caring poster', medal: '', file: 'take-care',
+    poses: { heart: ['Hand on heart', 'The person is smiling gently with one hand on their heart, a kind, caring and reassuring expression toward the viewer. Calm and sincere, not celebratory.'],
+      fruit: ['Bringing a fruit basket', 'The person is smiling gently and holding a neat basket of fresh fruit toward the viewer in both hands, the caring gesture of visiting someone to wish them well. Calm and sincere, not celebratory.'] }, pose: 'heart' },
+  newpolicy: { title: 'Create a welcome poster', button: 'Create welcome poster', medal: 'Show the years-together medal', file: 'welcome',
+    poses: { handshake: ['Welcome handshake', 'The person is smiling warmly and reaching one hand out toward the viewer for a friendly, welcoming handshake, confident and sincere.'],
+      heart: ['Hand on heart', 'The person is smiling warmly with one hand on their heart and a slight, respectful nod toward the viewer, expressing sincere gratitude.'] }, pose: 'handshake' }
 };
+/* claim done / new policy: one-off events the agent fills in (date, type, a short note), not yearly reminders */
+const CLAIM_KINDS = { hospital: 'Hospital stay', surgery: 'Surgery', accident: 'Accident', ci: 'Critical illness', other: 'Other' };
+const ev = { kind: 'hospital', who: 'self', repeat: false, repeatFor: null, date: '', note: '' };
+const isEvent = o => o === 'claim' || o === 'newpolicy';
+const isoDay = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+function eventDate() { const p = parseDob(ev.date); return p ? new Date(p.y, p.mo - 1, p.d) : null; }
+function yearsUpTo(start, when) { // full years from a start date up to a given day
+  const p = parseDob(start); if (!p || !when) return 0; let y = when.getFullYear() - p.y;
+  if (when.getMonth() + 1 < p.mo || (when.getMonth() + 1 === p.mo && when.getDate() < p.d)) y--;
+  return Math.max(0, y);
+}
+function eventBrief(c, occ) {
+  if (!isEvent(occ)) return [];
+  const d = eventDate(), when = d ? `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}` : 'recently';
+  if (occ === 'claim') return [`Situation: their insurance claim was settled on ${when}.`, `Claim type: ${CLAIM_KINDS[ev.kind]} (never name the illness or injury).`,
+    ev.who === 'family' ? 'The claim was for a member of their family (do not guess who).' : 'The claim was for the customer themselves.',
+    ev.note ? `What I want to mention: ${ev.note}` : ''];
+  const yrs = ev.repeat ? yearsUpTo(c.policyDate, d) : 0;
+  return [ev.repeat ? `Situation: they started another policy with me on ${when}. Returning client${yrs ? `, ${yrs} year${yrs === 1 ? '' : 's'} together` : ''}.`
+    : `Situation: their first policy with me started on ${when}. New client.`, ev.note ? `Why it matters to them (their words): ${ev.note}` : ''];
+}
+function eventChecks() { // errors stop Create; warnings just ask the agent to check
+  const errors = [], warnings = [], d = eventDate(), t = today0();
+  if (!d) errors.push(occasion === 'claim' ? 'Add the date the claim was settled.' : 'Add the policy start date.');
+  else if (occasion === 'claim' && d > t) errors.push('The claim date is in the future.');
+  else if (occasion === 'newpolicy' && (d - t) / 864e5 > 62) errors.push('The policy start date is more than 2 months away. Check it.');
+  else if ((t - d) / 864e5 > 366) warnings.push('That date is over a year ago. Is it the right one?');
+  if (/\b\d{6}-?\d{2}-?\d{4}\b/.test(ev.note)) errors.push('The note looks like it has an IC number. Remove it.');
+  else if (/\bRM\s?\d|\$\s?\d|\d{5,}/i.test(ev.note)) errors.push('Leave amounts and policy numbers out of the note.');
+  return { errors, warnings };
+}
+function guessRepeat(c) { // bought again if they already had a policy before this one, or got a new-policy poster before
+  const d = eventDate(), pd = parseDob(c.policyDate);
+  ev.repeat = !!((pd && d && new Date(pd.y, pd.mo - 1, pd.d) < d) || (c.history || []).some(h => h.occasion === 'newpolicy' && !h.skipped));
+  ev.repeatFor = c.id;
+}
+function syncOccText() {
+  const o = OCC[occasion], again = occasion === 'newpolicy' && ev.repeat;
+  $('#createTitle').textContent = again ? 'Create a thank-you poster (bought again)' : o.title;
+  $('#createBtn').textContent = again ? 'Create thank-you poster' : o.button;
+}
+function renderEventBox() {
+  const on = isEvent(occasion); $('#eventBox').hidden = !on; if (!on) return;
+  $('#ev-claim').hidden = occasion !== 'claim'; $('#ev-policy').hidden = occasion !== 'newpolicy';
+  radios($('#ev-kind'), 'evk', CLAIM_KINDS, ev.kind);
+  radios($('#ev-who'), 'evw', { self: 'For the customer', family: 'For their family member' }, ev.who);
+  radios($('#ev-repeat'), 'evr', { first: 'First policy with me', again: 'Bought again' }, ev.repeat ? 'again' : 'first');
+  if (!ev.date) ev.date = isoDay(today0());
+  $('#ev-date').value = ev.date; $('#ev-note').value = ev.note;
+  const claim = occasion === 'claim';
+  $('#ev-date-label').textContent = claim ? 'Claim settled on' : 'Policy start date';
+  $('#ev-note-label').textContent = claim ? 'Anything to mention (optional)' : 'Why it matters to them (optional)';
+  $('#ev-note').placeholder = claim ? 'e.g. resting at home, back at work soon' : 'e.g. so Chloe’s education is planned';
+  $('#ev-note-hint').textContent = claim ? 'No diagnosis, hospital name or amounts. The poster never mentions the claim; only the WhatsApp message does, gently.'
+    : 'Their own reason, in a few words. No plan name, coverage or premium.';
+}
+function eventChanged() { lastWords && !busy && render(); syncOccText(); renderSummary(); }
+document.addEventListener('change', e => {
+  if (e.target.name === 'evk') ev.kind = e.target.value;
+  else if (e.target.name === 'evw') ev.who = e.target.value;
+  else if (e.target.name === 'evr') ev.repeat = e.target.value === 'again';
+  else return;
+  eventChanged();
+});
+$('#ev-date').onchange = () => { ev.date = $('#ev-date').value; eventChanged(); };
+$('#ev-note').oninput = () => { ev.note = $('#ev-note').value; renderSummary(); };
 // when this occasion next happens for the customer, plus what the poster shows for it
 function occasionInfo(c, occ = occasion) {
+  if (isEvent(occ)) {
+    const d = eventDate(); if (!d) return null;
+    const label = `${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()}`;
+    if (occ === 'claim') return { date: d, days: 0, dateLabel: '', chip: `Claim settled · ${label}`, extra: `${CLAIM_KINDS[ev.kind]} · ${ev.who === 'family' ? 'family member' : 'the customer'}` };
+    const yrs = ev.repeat ? yearsUpTo(c.policyDate, d) : 0;
+    return { date: d, days: 0, years: yrs, dateLabel: label, chip: `${ev.repeat ? 'Bought again' : 'New customer'} · ${label}`,
+      extra: yrs ? `${yrs} year${yrs === 1 ? '' : 's'} together` : ev.repeat ? 'Returning client' : 'First policy with you',
+      medal: yrs ? { top: yrs === 1 ? 'YEAR' : 'YEARS', big: String(yrs) } : null };
+  }
   if (occ === 'anniversary') {
     const na = nextAnniversary(c.policyDate); if (!na) return null;
     return { ...na, dateLabel: `${na.date.getDate()} ${MONTHS[na.date.getMonth()]} ${na.date.getFullYear()}`, medal: { top: na.years === 1 ? 'YEAR' : 'YEARS', big: String(na.years) },
@@ -1930,11 +2095,12 @@ function occasionInfo(c, occ = occasion) {
 function setOccasion(o) {
   occasion = OCC[o] ? o : 'birthday';
   $(`#occ-${occasion}`).checked = true;
-  $('#createTitle').textContent = OCC[occasion].title;
-  $('#createBtn').textContent = OCC[occasion].button;
+  if (occasion === 'newpolicy') ev.repeatFor = null; // guess first / again again for the chosen customer
   $('#c-age-label').textContent = OCC[occasion].medal;
   $('#c-age').checked = occasion !== 'birthday';
   radios($('#c-pose'), 'pose', OCC[occasion].poses, OCC[occasion].pose);
+  radios($('#c-pattern'), 'pat', PATTERNS, occasion === 'claim' ? 'bokeh' : 'confetti'); // calm lights, not confetti, after a claim
+  renderEventBox(); syncOccText();
 }
 document.querySelectorAll('input[name="occ"]').forEach(r => r.onchange = () => {
   setOccasion(r.value); lastArt = null; lastWords = null; clearVoice(); resetSend();
@@ -1944,19 +2110,25 @@ document.querySelectorAll('input[name="occ"]').forEach(r => r.onchange = () => {
 function renderCreate() {
   const sel = $('#c-cust');
   if (!customers.length) { sel.innerHTML = '<option value="">Add a customer first</option>'; $('#c-summary').innerHTML = ''; $('#createBtn').disabled = true; return; }
+  const order = new Map(customers.map((c, i) => [c.id, i]));
   const sorted = customers.map(c => ({ c, info: occasionInfo(c) }))
-    .sort((a, b) => occasion === 'cny' ? a.c.nickname.localeCompare(b.c.nickname) : (a.info ? a.info.days : 9999) - (b.info ? b.info.days : 9999));
+    .sort((a, b) => occasion === 'newpolicy' ? order.get(b.c.id) - order.get(a.c.id) // newest added first
+      : occasion === 'cny' || occasion === 'claim' ? a.c.nickname.localeCompare(b.c.nickname) : (a.info ? a.info.days : 9999) - (b.info ? b.info.days : 9999));
   if (!current()) selectedId = sorted[0].c.id;
   sel.innerHTML = sorted.map(({ c, info }) => `<option value="${c.id}" ${c.id === selectedId ? 'selected' : ''}>${esc(c.nickname)}${
-    occasion === 'cny' ? '' : info ? ` (${info.date.getDate()} ${MONTHS[info.date.getMonth()]})` : occasion === 'anniversary' ? ' (no policy date)' : ''}${c.sample ? ' · example' : ''}</option>`).join('');
+    occasion === 'cny' || isEvent(occasion) ? '' : info ? ` (${info.date.getDate()} ${MONTHS[info.date.getMonth()]})` : occasion === 'anniversary' ? ' (no policy date)' : ''}${c.sample ? ' · example' : ''}</option>`).join('');
   renderSummary();
 }
 function renderSummary() {
   const c = current(); if (!c) return;
+  if (occasion === 'newpolicy' && ev.repeatFor !== c.id) { guessRepeat(c); renderEventBox(); syncOccText(); }
   const chk = checkCustomer(c), info = occasionInfo(c), p = parseDob(c.dob);
   const zh = p && chineseZodiac(p);
   const ai = val('c-art') === 'ai';
   const setup = [];
+  $('#c-age-row').hidden = !(info && info.medal);
+  if (isEvent(occasion)) { const e = eventChecks(); chk.errors.push(...e.errors); chk.warnings.push(...e.warnings); }
+  if (occasion === 'newpolicy') setup.push(['ok', 'Brand-new customer not in the list yet? <button class="btn small" type="button" id="evAddCust">+ Add them first</button>']);
   if (occasion === 'anniversary' && !info) chk.errors.push(`Add ${c.nickname}’s policy start date first (Customers → Edit). The app won’t guess how many years it has been.`);
   if (occasion === 'cny' && !info) chk.errors.push('This app only knows Chinese New Year dates up to 2030. Ask for an update.');
   if (!settings.photo) setup.push(['warn', 'No face photo yet, so a placeholder is used. Add yours in <b>Me</b>.']);
@@ -1976,6 +2148,8 @@ function renderSummary() {
     ${issuesHtml(chk.errors, chk.warnings)}
     ${setup.map(([k, m]) => `<div class="notice ${k}">${m}</div>`).join('')}`;
   $('#createBtn').disabled = chk.errors.length > 0 || busy;
+  const addBtn = $('#evAddCust');
+  if (addBtn) addBtn.onclick = () => { show('customers'); afterAdd = 'newpolicy'; openForm(null); };
 }
 $('#c-cust').onchange = e => { selectedId = e.target.value; lastArt = null; lastWords = null; clearVoice(); resetSend(); $('#wordsPanel').hidden = true; $('#singPanel').hidden = true; $('#sendPanel').hidden = true; renderSummary(); };
 document.querySelectorAll('input[name="c-art"]').forEach(r => r.onchange = renderSummary);
@@ -1995,9 +2169,11 @@ function stopProgress() { $('#progress').dataset.started = '0'; progress(null); 
 async function aiArtwork(c, pal) {
   const style = STYLES[val('sty')] || STYLES.classic3d, occ = OCC[occasion];
   const motifs = (c.priorities || []).slice(0, 3).join('; ') || 'a joyful celebration';
-  const kind = { birthday: 'birthday greeting', anniversary: 'heartfelt thank-you', cny: 'Chinese New Year greeting' }[occasion];
-  const object = { birthday: 'the cake', anniversary: 'the hand on the heart', cny: 'the oranges or greeting gesture and both hands' }[occasion];
+  const kind = { birthday: 'birthday greeting', anniversary: 'heartfelt thank-you', cny: 'Chinese New Year greeting', claim: 'calm, caring "thinking of you"', newpolicy: ev.repeat ? 'heartfelt thank-you' : 'warm welcome' }[occasion];
+  const object = { birthday: 'the cake', anniversary: 'the hand on the heart', cny: 'the oranges or greeting gesture and both hands', claim: 'the hand on the heart or the fruit basket', newpolicy: 'the welcoming hand or the hand on the heart' }[occasion];
   const scene = {
+    claim: 'a calm, comforting setting with soft warm morning light, gentle greenery and fresh flowers, peaceful and hopeful. Not festive: no balloons, no confetti, no party items. Nothing medical: no hospital, no bed, no medicine',
+    newpolicy: 'an elegant, warm welcome setting with soft golden light and subtle gold ribbons, celebratory but classy',
     birthday: 'a festive celebration scene with balloons, soft confetti and glowing lights',
     anniversary: 'an elegant, warm setting with soft golden light, subtle gold ribbons and laurel details, celebratory but calm',
     cny: 'a festive Chinese New Year scene with red lanterns, plum blossoms, gold accents and soft glowing lights'
@@ -2007,7 +2183,7 @@ Create a horizontal (landscape), premium, "wow" ${kind} picture in ${style[1]}.
 ${(occ.poses[val('pose')] || Object.values(occ.poses)[0])[1]} Show ${object} clearly; keep the person's face fully visible.
 Background: ${scene}, plus tasteful symbolic background details inspired by what the client cares about: ${motifs}. Do not show the client or any other people, only symbolic objects and scenery.
 Colour palette: ${pal.desc}.
-Composition: landscape, waist-up, the person centred, with their whole head, both hands and the cake fully in frame and not cropped, and a little space above the head.
+Composition: landscape, waist-up, the person centred, with their whole head, both hands and ${object} fully in frame and not cropped, and a little space above the head.
 Absolutely no text, letters, numbers, signs or logos anywhere in the image.`;
   return aiImage(prompt, await (await fetch(settings.photo)).blob(), '1536x1024');
 }
@@ -2018,7 +2194,7 @@ async function render(wordsOverride) {
   await fontsReady();
   drawPoster($('#poster'), { customer: c, occasion, palette: palKey, pattern: val('pat'), pose: val('pose'), art: lastArt, photo: await loadImage(settings.photo || PLACEHOLDER),
     cake: occasion === 'birthday' && settings.cakePhoto ? { img: await loadImage(settings.cakePhoto.src), cut: settings.cakePhoto.cut } : null,
-    posterLine: (wordsOverride || lastWords).posterLine, showMedal: $('#c-age').checked, medal: info && info.medal, years: info && info.years,
+    posterLine: (wordsOverride || lastWords).posterLine, showMedal: $('#c-age').checked, medal: info && info.medal, years: info && info.years, again: ev.repeat,
     dateLabel: info ? info.dateLabel : '' });
   invalidateVideo(); // a video made from the old poster is out of date
 }
@@ -2071,7 +2247,11 @@ function renderLyrics() {
   const c = current(); if (!c) return;
   const pr = (c.priorities || [])[0];
   const ask = pr ? ` How’s ${esc(lowerFirst(pr))} going?` : '', info = occasionInfo(c);
-  if (occasion === 'anniversary') $('#lyrics').innerHTML = `<div class="eyebrow">Say this</div>
+  if (occasion === 'claim') $('#lyrics').innerHTML = `<div class="eyebrow">Say this</div>
+    <p class="song">Hi <b>${esc(c.nickname)}</b>, I’m glad everything is settled. Please rest well and take care. I’m here if you need anything.</p>`;
+  else if (occasion === 'newpolicy') $('#lyrics').innerHTML = `<div class="eyebrow">Say this</div>
+    <p class="song">Hi <b>${esc(c.nickname)}</b>, ${ev.repeat ? 'thank you for trusting me again' : 'welcome, and thank you for trusting me'}. I’m always here for you.${ask}</p>`;
+  else if (occasion === 'anniversary') $('#lyrics').innerHTML = `<div class="eyebrow">Say this</div>
     <p class="song">Hi <b>${esc(c.nickname)}</b>, it’s been ${info ? info.years : ''} years since you first trusted me. Thank you, sincerely.${ask}</p>`;
   else if (occasion === 'cny') $('#lyrics').innerHTML = `<div class="eyebrow">Say this</div>
     <p class="song">新年快乐, <b>${esc(c.nickname)}</b>! Gong Xi Fa Cai! Wishing you and your family a wonderful Year of the ${info ? info.animal : ''}.${ask}</p>`;
@@ -2279,7 +2459,12 @@ $('#shareBtn').onclick = async () => {
 $('#sentBtn').onclick = async () => {
   const c = current();
   if (!(await ask(`Mark ${esc(c.nickname)} as sent?`, 'Saves today’s date and this message, so next year’s wish talks about something new.', 'Mark as sent'))) return;
-  c.history = (c.history || []).concat({ date: new Date().toISOString().slice(0, 10), message: $('#w-msg').value, occasion, for: `${occasion}-${(occasionInfo(c) || { date: today0() }).date.getFullYear()}`, sang: sendingVideo() });
+  c.history = (c.history || []).concat({ date: new Date().toISOString().slice(0, 10), message: $('#w-msg').value, occasion,
+    for: isEvent(occasion) ? `${occasion}-${ev.date}` : `${occasion}-${(occasionInfo(c) || { date: today0() }).date.getFullYear()}`, sang: sendingVideo() });
+  // a brand-new customer: offer to save this as their client-since date, so anniversaries start counting
+  const d = eventDate();
+  if (occasion === 'newpolicy' && !ev.repeat && !c.policyDate && d && d <= today0()
+    && await ask(`Save ${esc(c.nickname)}’s client-since date?`, `Use ${d.getDate()} ${MONTHS[d.getMonth()]} ${d.getFullYear()} as their first policy date. The app then reminds you of their policy anniversary every year.`, 'Save date')) c.policyDate = ev.date;
   saveCustomers(); toast(`Logged. ${c.nickname} won't get the same message next time.`);
 };
 
