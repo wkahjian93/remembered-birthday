@@ -52,12 +52,12 @@ On **Create**, pick the occasion first:
 | Occasion | When | What the poster shows | The message |
 | --- | --- | --- | --- |
 | 💙 **Claim done** | Right after a customer's claim is settled | "Take Care", calm emerald with soft lights, a gold heart; you with hand on heart or bringing a fruit basket. No balloons or confetti. | Gentle care for their recovery (or their family's). Never names the illness, hospital or amount, and the **poster never mentions the claim**, because others may see it. Ends by asking how they are. |
-| 🎉 **New policy** | A customer starts a policy with you | **First policy:** "Welcome" + welcome handshake. **Bought again:** "Thank You" + years-together medal. | Thanks them for their trust and says you're there whenever life changes. Never describes the plan, coverage or premium, and never asks for referrals. |
+| 🎉 **New policy** | A customer starts a policy with you | "Thank You" either way. **First policy:** a thank-you handshake and gold heart. **Bought again:** "Thank you again" + years-together medal. | Thanks them for their trust and says you're there whenever life changes. Never describes the plan, coverage or premium, and never asks for referrals. |
 
 - Choose the occasion on **Create**, or open a customer (tap their name) and tap **💙 Claim done** / **🎉 New policy**.
 - **Claim done:** pick the claim type (Hospital stay, Surgery, Accident, Critical illness, Other), whether it was for the customer or a family member, the settled date, and an optional note (e.g. "resting at home"). Notes with amounts, IC or policy numbers are blocked. For a **death claim**, call or visit the family in person; the app doesn't make a poster for that.
 - **New policy:** the app guesses **First policy** or **Bought again** from their earlier policy date (you can change it). Add their reason in their words if you like (e.g. "so Chloe's education is planned").
-- **Brand-new customer?** Tap **+ Add them first**, save them, and you come straight back to the welcome poster. After **Mark as sent**, the app offers to save the policy date as their client-since date, so their anniversary reminders start.
+- **Brand-new customer?** Tap **+ Add them first**, save them, and you come straight back to the thank-you poster. After **Mark as sent**, the app offers to save the policy date as their client-since date, so their anniversary reminders start.
 
 The Customers list shows each customer's next birthday and anniversary, soonest first, with a **Thank-you poster** button when a policy start date is saved. The app won't make an anniversary poster without a real start date, so it never guesses the years.
 

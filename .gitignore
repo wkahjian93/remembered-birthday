@@ -4,3 +4,4 @@
 node_modules/
 *.png
 !docs/icons/*.png
+!docs/logo.png

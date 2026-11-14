@@ -43,6 +43,9 @@ header.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; b
 body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
 .wrap { max-width: 640px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
 header .wrap { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; padding-block: 12px; }
+.brand-row { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.logo { height: 34px; width: auto; flex: none; }
+@media (prefers-color-scheme: dark) { .logo { filter: brightness(0) invert(.92); } }
 .brand { font-family: var(--display); font-size: clamp(19px, 5.4vw, 26px); letter-spacing: .01em; }
 .brand em { font-family: var(--script); font-style: normal; color: var(--accent); font-size: 1.2em; margin-left: 2px; }
 .tagline { color: var(--muted); font-size: 12.5px; text-align: right; }
@@ -179,7 +182,7 @@ code { font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border
 
 <header class="top">
   <div class="wrap">
-    <div class="brand">Customer Relationship<em> App</em></div>
+    <div class="brand-row"><img class="logo" src="logo.png" alt="REDEFINE" width="44" height="26"><div class="brand">Customer Relationship<em> App</em></div></div>
     <div class="tagline">Messages customers reply to</div>
   </div>
 </header>
@@ -1434,11 +1437,11 @@ Goal: the client feels cared for as a person and knows the agent was there when 
 - posterLine: a calm line of care and strength, max 14 words. It must NOT mention the claim, illness, injury, hospital, money or insurance, because other people may see the poster.`,
   newpolicy: `You write a personal thank-you message that a Malaysian life-insurance agent sends to a client who has just started a policy with them.
 Goal: the client feels their trust is valued and that they now have someone who will genuinely look after them, not that they were "closed".
-- First policy with the agent: warmly welcome them and thank them for their trust. Say what the agent will do as a person: stay reachable and help whenever life changes.
+- First policy with the agent: sincerely thank them for choosing to trust the agent with their first policy. It is a thank-you, not a welcome: do not say "welcome" or "welcome to the family". Say what the agent will do as a person: stay reachable and help whenever life changes.
 - Bought again (returning client): thank them for trusting the agent again. If years together are given, mention the number.
 - If "why it matters to them" is given, you may reflect it warmly in their own words. Never describe the plan, its name, benefits, coverage, premium or returns, and never say they are now "protected" or "covered" for anything specific.
 - No referral request, no further offer, no "congratulations on your purchase".
-- posterLine: max 14 words about trust, welcome or the journey together. No product, insurance or money words.`
+- posterLine: max 14 words about gratitude for their trust and the journey together; no "welcome". No product, insurance or money words.`
 };
 const SHARED_RULES = `Rules for every message (where the occasion rules above say something different, follow the occasion rules):
 - Natural Malaysian English, warm, confident, sincere. Sounds like a real friend who pays attention. No corporate tone.
@@ -1501,7 +1504,7 @@ function templateWords(c, occ = occasion) {
     if (ev.repeat) return { posterLine: yrs ? `${yrs} year${yrs === 1 ? '' : 's'} together, and you trusted me again. Thank you` : 'Thank you for trusting me again',
       message: `Hi ${c.nickname}, thank you for trusting me again. 🙏\n\n${yrs ? `After ${yrs} year${yrs === 1 ? '' : 's'} together, it` : 'It'} really means a lot that you chose me once more.${remember} Whenever life changes, big or small, I’m just a message away.${end}`, source: 'template' };
     return { posterLine: 'Thank you for your trust. I’m with you every step of the way',
-      message: `Hi ${c.nickname}, welcome! 😊\n\nThank you for trusting me. I don’t take it lightly.${remember} From today, whenever life changes, big or small, I’m just a message away.${end}`, source: 'template' };
+      message: `Hi ${c.nickname}, thank you so much for trusting me. 🙏\n\nIt really means a lot, and I don’t take it lightly.${remember} From today, whenever life changes, big or small, I’m just a message away.${end}`, source: 'template' };
   }
   if (occ === 'cny') {
     const cny = nextCny(), animal = cny ? cny.animal : '';
@@ -1550,8 +1553,8 @@ const POSES = {
   singing: ['Singing to them', `The person is joyfully singing "Happy Birthday" to the viewer, mouth open mid-song, while holding a beautiful birthday cake with lit candles out toward the viewer in both hands. A few golden musical notes float in the air. ${NOT_CELEBRANT}`]
 };
 const BUBBLE = { birthday: n => `Happy birthday, ${n}!`, anniversary: n => `Thank you, ${n}!`, cny: n => `Gong Xi Fa Cai, ${n}!`,
-  claim: n => `Here for you, ${n}`, newpolicy: (n, again) => again ? `Thank you again, ${n}!` : `Welcome, ${n}!` };
-const HEADLINE = { birthday: 'Happy Birthday', anniversary: 'Thank You', claim: 'Take Care', newpolicy: again => again ? 'Thank You' : 'Welcome' };
+  claim: n => `Here for you, ${n}`, newpolicy: (n, again) => again ? `Thank you again, ${n}!` : `Thank you, ${n}!` };
+const HEADLINE = { birthday: 'Happy Birthday', anniversary: 'Thank You', claim: 'Take Care', newpolicy: again => 'Thank You' };
 function autoPalette(c) {
   if (occasion === 'cny') return 'cny';
   if (occasion === 'anniversary') return 'midnight';
@@ -1751,7 +1754,7 @@ function drawLaurel(g, cx, cy, years, pal) {
   g.fillText(years === 1 ? 'YEAR OF TRUST' : 'YEARS OF TRUST', cx, cy + 70);
   g.restore();
 }
-// a polished gold heart (claim care, and welcome for a new customer)
+// a polished gold heart (claim care, and thank-you for a first policy)
 function drawHeart(g, cx, cy, s) {
   const path = () => { g.beginPath(); g.moveTo(cx, cy + s * 0.95);
     g.bezierCurveTo(cx - s * 1.55, cy - s * 0.05, cx - s * 0.8, cy - s * 1.2, cx, cy - s * 0.45);
@@ -1997,8 +2000,8 @@ const OCC = {
   claim: { title: 'Create a caring poster after a claim', button: 'Create caring poster', medal: '', file: 'take-care',
     poses: { heart: ['Hand on heart', 'The person is smiling gently with one hand on their heart, a kind, caring and reassuring expression toward the viewer. Calm and sincere, not celebratory.'],
       fruit: ['Bringing a fruit basket', 'The person is smiling gently and holding a neat basket of fresh fruit toward the viewer in both hands, the caring gesture of visiting someone to wish them well. Calm and sincere, not celebratory.'] }, pose: 'heart' },
-  newpolicy: { title: 'Create a welcome poster', button: 'Create welcome poster', medal: 'Show the years-together medal', file: 'welcome',
-    poses: { handshake: ['Welcome handshake', 'The person is smiling warmly and reaching one hand out toward the viewer for a friendly, welcoming handshake, confident and sincere.'],
+  newpolicy: { title: 'Create a thank-you poster (first policy)', button: 'Create thank-you poster', medal: 'Show the years-together medal', file: 'thank-you',
+    poses: { handshake: ['Thank-you handshake', 'The person is smiling warmly and reaching one hand out toward the viewer for a sincere handshake of thanks, grateful and confident.'],
       heart: ['Hand on heart', 'The person is smiling warmly with one hand on their heart and a slight, respectful nod toward the viewer, expressing sincere gratitude.'] }, pose: 'handshake' }
 };
 /* claim done / new policy: one-off events the agent fills in (date, type, a short note), not yearly reminders */
@@ -2169,11 +2172,11 @@ function stopProgress() { $('#progress').dataset.started = '0'; progress(null); 
 async function aiArtwork(c, pal) {
   const style = STYLES[val('sty')] || STYLES.classic3d, occ = OCC[occasion];
   const motifs = (c.priorities || []).slice(0, 3).join('; ') || 'a joyful celebration';
-  const kind = { birthday: 'birthday greeting', anniversary: 'heartfelt thank-you', cny: 'Chinese New Year greeting', claim: 'calm, caring "thinking of you"', newpolicy: ev.repeat ? 'heartfelt thank-you' : 'warm welcome' }[occasion];
-  const object = { birthday: 'the cake', anniversary: 'the hand on the heart', cny: 'the oranges or greeting gesture and both hands', claim: 'the hand on the heart or the fruit basket', newpolicy: 'the welcoming hand or the hand on the heart' }[occasion];
+  const kind = { birthday: 'birthday greeting', anniversary: 'heartfelt thank-you', cny: 'Chinese New Year greeting', claim: 'calm, caring "thinking of you"', newpolicy: ev.repeat ? 'heartfelt thank-you' : 'heartfelt thank-you' }[occasion];
+  const object = { birthday: 'the cake', anniversary: 'the hand on the heart', cny: 'the oranges or greeting gesture and both hands', claim: 'the hand on the heart or the fruit basket', newpolicy: 'the outstretched hand or the hand on the heart' }[occasion];
   const scene = {
     claim: 'a calm, comforting setting with soft warm morning light, gentle greenery and fresh flowers, peaceful and hopeful. Not festive: no balloons, no confetti, no party items. Nothing medical: no hospital, no bed, no medicine',
-    newpolicy: 'an elegant, warm welcome setting with soft golden light and subtle gold ribbons, celebratory but classy',
+    newpolicy: 'an elegant, warm setting of gratitude with soft golden light and subtle gold ribbons, celebratory but classy',
     birthday: 'a festive celebration scene with balloons, soft confetti and glowing lights',
     anniversary: 'an elegant, warm setting with soft golden light, subtle gold ribbons and laurel details, celebratory but calm',
     cny: 'a festive Chinese New Year scene with red lanterns, plum blossoms, gold accents and soft glowing lights'
@@ -2250,7 +2253,7 @@ function renderLyrics() {
   if (occasion === 'claim') $('#lyrics').innerHTML = `<div class="eyebrow">Say this</div>
     <p class="song">Hi <b>${esc(c.nickname)}</b>, I’m glad everything is settled. Please rest well and take care. I’m here if you need anything.</p>`;
   else if (occasion === 'newpolicy') $('#lyrics').innerHTML = `<div class="eyebrow">Say this</div>
-    <p class="song">Hi <b>${esc(c.nickname)}</b>, ${ev.repeat ? 'thank you for trusting me again' : 'welcome, and thank you for trusting me'}. I’m always here for you.${ask}</p>`;
+    <p class="song">Hi <b>${esc(c.nickname)}</b>, ${ev.repeat ? 'thank you for trusting me again' : 'thank you so much for trusting me'}. I’m always here for you.${ask}</p>`;
   else if (occasion === 'anniversary') $('#lyrics').innerHTML = `<div class="eyebrow">Say this</div>
     <p class="song">Hi <b>${esc(c.nickname)}</b>, it’s been ${info ? info.years : ''} years since you first trusted me. Thank you, sincerely.${ask}</p>`;
   else if (occasion === 'cny') $('#lyrics').innerHTML = `<div class="eyebrow">Say this</div>
