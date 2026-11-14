@@ -118,7 +118,7 @@ Open the **定联** tab. The red number on it is how many prospects are due. **S
 - Group A/B/C/D (you decide), ⭐ favourite, name and remark.
 - **Results**: Opened, Presented, Closed (with **ANP in RM** and **NOC**, and any date up to today).
 - **After recording Opened** (appointment made): the app offers **📅 Add to REDEFINE Calendar**, with the appointment pre-filled ("Appointment: name", plus the date and time you pick). Check it and tap Add in the calendar.
-- **After recording Presented:** the app offers **🎙 Record in REDEFINE On Field**, so you can speak your meeting notes and build their client farm. Tap **Copy name** first if it helps, then pick them under "Which client?" (or New client).
+- **After recording Presented:** the app offers **🎙 Record in REDEFINE On Field**, so you can speak your meeting notes and build their client farm. On Field opens ready for that person: their own farm record if the name matches exactly, otherwise a new client with that name (you can still pick someone else under "Which client?").
 - **History, with Edit on every chat and result.** Fix a wrong ANP, NOC, date, type or note, or delete a record that was saved by mistake. Each change asks you to confirm.
 
 **Since you started** (bottom of All prospects): total prospects opened, presented and closed, NOC and ANP, closes by group, and a **Closed cases** list showing who closed and which group (A/B/C/D) they were in when they closed. Tap a name to open them.
