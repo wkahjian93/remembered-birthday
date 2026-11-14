@@ -783,6 +783,21 @@ Return JSON only: {"rows": [{"name": "", "platform": ""}], "note": ""}
   window.routineDueCount = () => prospects.filter(p => due(p).days <= 0 && !touchedToday(p)).length;
   window.routineLeave = () => { const bar = $('#reBulk'); if (bar) bar.remove(); };
   window.routineMarkDirty = () => markDirty(); // customer birthdays/anniversaries feed the pop-up counts too
-  if (location.hash === '#routine') setTimeout(() => typeof show === 'function' && show('routine'), 0); // pop-ups open straight here
+  /* pop-ups open #routine; other REDEFINE apps (e.g. On Field) open #routine?find=<name> to jump to that person:
+     one exact name match opens their sheet (Open / Present / Close, remark); otherwise the search shows matches or "+ Add" */
+  function fromLink() {
+    const h = location.hash; if (!/^#routine(\?|$)/.test(h)) return;
+    setTimeout(() => {
+      if (typeof show === 'function') show('routine');
+      const name = (new URLSearchParams(h.split('?')[1] || '').get('find') || '').replace(/\s+/g, ' ').trim();
+      if (!name) return;
+      history.replaceState(null, '', location.pathname + location.search + '#routine');
+      query = name; mode = 'today'; shown = 20; selecting = false; selected.clear(); render();
+      const exact = prospects.filter(p => p.name.replace(/\s+/g, ' ').trim().toUpperCase() === name.toUpperCase());
+      if (exact.length === 1) openProspect(exact[0].id);
+    }, 0);
+  }
+  fromLink();
+  window.addEventListener('hashchange', fromLink);
   setTimeout(markDirty, 8000); // team sign-in loads after this file, so the first sync waits a moment
 })();
