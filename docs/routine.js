@@ -588,11 +588,9 @@
     }
     const back = sheet(`<h2>📊 Presented!</h2>
       <p class="hint" style="margin:0">Next, record the meeting with <b>${esc(p.name)}</b> in REDEFINE On Field. Speak your notes and it builds their client farm and follow-up.</p>
-      <a class="btn primary" data-of target="_blank" rel="noopener" href="${ONFIELD_URL}#/record">🎙 Record in REDEFINE On Field</a>
-      <button type="button" class="btn small" data-copy>Copy “${esc(p.name)}” to paste there</button>
-      <p class="hint" style="margin:0">There, pick ${esc(p.name)} from “Which client?”, or choose New client and say the name.</p>
+      <a class="btn primary" data-of target="_blank" rel="noopener" href="${esc(ONFIELD_URL + '#/record?name=' + encodeURIComponent(p.name))}">🎙 Record in REDEFINE On Field</a>
+      <p class="hint" style="margin:0">Opens On Field ready to record for ${esc(p.name)}: their farm record if the name matches, or a new client with this name.</p>
       <button type="button" class="btn ghost" data-x>Later</button>`);
-    back.querySelector('[data-copy]').onclick = async () => { try { await navigator.clipboard.writeText(p.name); toast('Name copied'); } catch { toast('Couldn’t copy. Type the name there.'); } };
     back.querySelector('[data-of]').addEventListener('click', () => setTimeout(() => back.remove(), 300));
     back.querySelector('[data-x]').onclick = () => back.remove();
   }
