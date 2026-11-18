@@ -137,12 +137,12 @@ Open the **定联** tab. The red number on it is how many prospects are due. **S
 
 **For the Group Manager:** **Team 定联 (numbers only)** at the bottom of Today shows each agent's chats, days, open, present, close, NOC and ANP for this week and last week.
 
-## Contacts: clients, nominees, referrals, prospects, friends
+## Clients
 
-- The **Contacts** tab holds everyone, each with a category: **💼 Client** (bought a policy through you), **📝 Nominee** (nominated by one of your clients), **🔗 Referral** (referred by a client or another contact), **🎯 Prospect** (someone you are approaching) or **😊 Friend**. ePartner imports come in as Clients.
-- **Add a contact:** pick the category first. Nominees and referrals can note who nominated or referred them. Only clients need a birthday and have policy dates; for others the birthday is optional (no birthday, no birthday reminder).
+- The **Clients** tab is your client list. ePartner imports and every 定联 close land here. A person can also be saved with another category if you need it: **💼 Client** (bought a policy through you), **📝 Nominee** (nominated by one of your clients), **🔗 Referral** (referred by a client or another contact), **🎯 Prospect** (someone you are approaching) or **😊 Friend**.
+- **Add a contact:** pick the category first. Nominees and referrals can note who nominated or referred them. Only clients have policy dates. A client can be saved before you know their birthday; the app shows "No birthday saved" until you add it (no birthday, no birthday reminder or poster).
 - **Change a category** (e.g. a nominee buys a policy): open them, tap the new category, Save. It's the same record, so their priorities, wishes and history stay, and the change is noted ("History: Nominee → Client"). When someone becomes a Client the app offers a thank-you poster for their first policy. Marking a New policy poster as sent for a non-client also offers to make them a Client.
-- **All contacts:** filter by category (with counts), **Sort: Next occasion first · Name A–Z · Birthday Jan–Dec** (with month headings), and **Birth month** to see one month only.
+- **All clients:** filter by category (only categories you use are shown), **Sort: Next occasion first · Name A–Z · Birthday Jan–Dec** (with month headings), and **Birth month** to see one month only.
 - **Coming up keeps them apart:** **🎂 Birthdays** (all categories) and **🤝 Policy anniversaries (clients)** are separate boxes, for the next 7 days and for this month. Anniversary and claim posters are for clients only.
 
 ## Priorities, search and 中文
@@ -156,7 +156,7 @@ Open the **定联** tab. The red number on it is how many prospects are due. **S
 
 - A 定联 prospect with the same name as a customer (remarks in brackets are ignored) shows **👤 Also your customer** with their birthday and anniversary, and **Open customer**.
 - A customer who is also a 定联 prospect shows **🤝 Also in 定联: Type B · last chat …** with **Open in 定联**.
-- After you record a **Close** for someone who isn't a customer yet, the app offers **👤 Add as customer**, then takes you to their thank-you poster for the new policy.
+- **A 定联 close goes straight into your client list.** Record **Close** and the person is added to **Clients** (or moved there if they were saved as a nominee, referral, prospect or friend), with the close date as a policy date. Then tap **🎂 Add birthday** (if missing) or **🎉 Thank-you poster for the new policy**.
 
 ## Hundreds of customers: what you see
 

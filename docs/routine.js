@@ -567,7 +567,10 @@
       if (!(await ask(rec ? 'Save this change?' : `Record ${stageWord(stage)}?`, `${esc(p.name)}: ${esc(label)} on ${esc(date)}${isClose ? `, ANP RM ${out.anp.toLocaleString('en-MY')}, NOC ${out.noc}` : ''}.`, rec ? 'Save' : 'Record'))) return;
       p.results = (p.results || []).filter(r => r.id !== out.id).concat(out); save(); box.hidden = true; box.innerHTML = '';
       done();
-      if (!rec && isClose) { celebrate('close', '💰 Close recorded. Well done!'); if (!customerOf(p)) setTimeout(() => addAsCustomer(p), 1600); }
+      if (!rec && isClose) {
+        celebrate('close', '💰 Close recorded. Well done!');
+        if (window.clientFromClose) { const res = window.clientFromClose(p.name.replace(/[(（].*?[)）]/g, '').trim(), date); setTimeout(() => closedClientSheet(p, res), 1600); }
+      }
       else if (!rec && (stage === 'open' || stage === 'present')) nextAppSheet(p, stage);
       else toast(rec ? 'Changed' : 'Recorded');
     };
@@ -585,6 +588,17 @@
     if (/^\d{2}:\d{2}$/.test(s || '')) qs.set('s', s);
     qs.set('n', '定联 prospect, appointment made');
     return CAL_URL + '#/new?' + qs.toString();
+  }
+  // after a close they're already in the client list: ask for the birthday (if missing) and offer the thank-you poster
+  function closedClientSheet(p, res) {
+    const back = sheet(`<h2>💼 ${esc(p.name)} is now in your client list</h2>
+      <p class="hint" style="margin:0">${res.made ? 'Added to Clients' : 'Moved to Clients'}, with today’s close as a policy date, so their policy anniversary is remembered.${res.noDob ? ' Add their birthday to get birthday reminders too.' : ''}</p>
+      ${res.noDob ? '<button type="button" class="btn primary" data-dob>🎂 Add birthday</button>' : ''}
+      <button type="button" class="btn ${res.noDob ? '' : 'primary'}" data-ty>🎉 Thank-you poster for the new policy</button>
+      <button type="button" class="btn ghost" data-x>Later</button>`);
+    back.querySelector('[data-x]').onclick = () => back.remove();
+    if (back.querySelector('[data-dob]')) back.querySelector('[data-dob]').onclick = () => { back.remove(); document.querySelectorAll('.sheet-back').forEach(x => x.remove()); window.openClientDob(res.id); };
+    back.querySelector('[data-ty]').onclick = () => { back.remove(); document.querySelectorAll('.sheet-back').forEach(x => x.remove()); window.thankYouFor(res.id); };
   }
   // after a close: offer to save them as a customer, so their birthday and policy anniversary get remembered
   function addAsCustomer(p) {

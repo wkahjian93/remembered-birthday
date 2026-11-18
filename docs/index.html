@@ -229,7 +229,7 @@ code { font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border
     </details>
 
     <div class="panel" id="custListPanel">
-      <div class="row" style="justify-content:space-between"><h2>My contacts</h2><span class="hint" id="custCount"></span></div>
+      <div class="row" style="justify-content:space-between"><h2>My clients</h2><span class="hint" id="custCount"></span></div>
       <input type="search" id="custQ" placeholder="🔍 Search name or what they care about" autocomplete="off">
       <div class="chipset" id="custCats"></div>
       <div class="two">
@@ -240,10 +240,10 @@ code { font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border
       <div id="custList" style="display:grid;gap:8px"></div>
       <button class="btn" type="button" id="custMore" hidden>Show 20 more</button>
     </div>
-    <button class="btn primary big" id="addCustBtn" type="button">+ Add a contact</button>
+    <button class="btn primary big" id="addCustBtn" type="button">+ Add a client</button>
 
     <form id="custForm" class="panel" hidden novalidate>
-      <h2 id="custFormTitle">New contact</h2>
+      <h2 id="custFormTitle">New client</h2>
       <div class="eyebrow">Category</div>
       <div class="seg" id="f-cat" role="radiogroup" aria-label="Category"></div>
       <small class="hint" id="f-cat-hint" style="margin-top:-4px"></small>
@@ -293,16 +293,16 @@ code { font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border
       <p class="hint">Don't enter IC numbers, policy numbers or medical details. Nickname, birthday and these notes are sent to OpenAI to write the wish.</p>
       <div id="custFormIssues" style="display:grid;gap:8px"></div>
       <div class="row">
-        <button class="btn primary grow" type="submit" id="custSaveBtn">Save contact</button>
+        <button class="btn primary grow" type="submit" id="custSaveBtn">Save client</button>
         <button class="btn ghost" type="button" id="custCancelBtn">Cancel</button>
       </div>
-      <button class="btn danger" type="button" id="custDeleteBtn" hidden>Delete this contact</button>
+      <button class="btn danger" type="button" id="custDeleteBtn" hidden>Delete this client</button>
     </form>
 
     <details class="panel" id="backupPanel">
       <summary>☁️ Sync &amp; backup <span class="hint" id="lastBackup"></span></summary>
       <p class="hint" style="margin:0" data-syncstate></p>
-      <p class="hint" style="margin:0">Signed in on the team link, your contacts, 定联 prospects and Me details are saved on the REDEFINE team server under your email, so your phone, iPad and laptop show the same thing and nothing is lost if you delete the app. Only you can see your list. A backup file is still a good extra copy.</p>
+      <p class="hint" style="margin:0">Signed in on the team link, your clients, 定联 prospects and Me details are saved on the REDEFINE team server under your email, so your phone, iPad and laptop show the same thing and nothing is lost if you delete the app. Only you can see your list. A backup file is still a good extra copy.</p>
       <button class="btn small" type="button" id="syncNowBtn" style="justify-self:start">☁️ Sync now</button>
       <div class="row">
         <button class="btn small" type="button" id="exportBtn">Download backup</button>
@@ -530,7 +530,7 @@ code { font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border
   <div class="wrap" role="tablist">
     <button type="button" role="tab" data-view="customers" aria-selected="true">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>
-      Contacts</button>
+      Clients</button>
     <button type="button" role="tab" data-view="create" aria-selected="false">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21h16M5 21v-7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v7"/><path d="M5 16c2 1.5 4 1.5 7 0s5-1.5 7 0"/><path d="M12 12V8M12 5.5c.8-.8.8-1.7 0-2.5-.8.8-.8 1.7 0 2.5z"/></svg>
       Create</button>
@@ -652,7 +652,7 @@ function checkCustomer(raw) {
   else if (nickname.length > 18) warnings.push('Long nickname. It will be printed smaller on the poster.');
   const p = parseDob(raw.dob);
   const category = CTYPE_KEYS.includes(raw.category) ? raw.category : 'client';
-  if (!raw.dob) (category === 'client' ? errors : warnings).push(category === 'client' ? 'Add their date of birth.' : 'No birthday saved, so there will be no birthday reminder for them.');
+  if (!raw.dob) warnings.push(category === 'client' ? 'No birthday yet, so no birthday reminder or birthday poster. Add it when you know it.' : 'No birthday saved, so there will be no birthday reminder for them.');
   else if (!p) errors.push('The date of birth is not a real date.');
   else {
     const dt = new Date(p.y, p.mo - 1, p.d);
@@ -792,18 +792,20 @@ function renderCustomers() {
   const list = $('#custList'), real = customers.filter(c => !c.sample).length;
   $('#custTabs').querySelectorAll('[data-cm]').forEach(b => {
     b.classList.toggle('on', b.dataset.cm === custMode);
-    if (b.dataset.cm === 'all') b.textContent = `All contacts (${customers.length})`;
+    if (b.dataset.cm === 'all') b.textContent = `All clients (${customers.length})`;
     b.onclick = () => { custMode = b.dataset.cm; renderCustomers(); $('main').scrollTo({ top: 0 }); };
   });
   $('#monthPanel').hidden = custMode !== 'soon'; $('#importPanel').hidden = custMode !== 'soon'; $('#custListPanel').hidden = custMode !== 'all';
   $('#custCount').textContent = `${customers.length} total`;
   const catCount = k => customers.filter(c => ctype(c) === k).length;
-  $('#custCats').innerHTML = [['all', 'All', customers.length], ...CTYPE_KEYS.map(k => [k, `${CTYPES[k][0]} ${CTYPES[k][2]}`, catCount(k)])]
+  const usedCats = CTYPE_KEYS.filter(k => catCount(k) && k !== 'client');
+  $('#custCats').hidden = !usedCats.length && custCat === 'all';
+  $('#custCats').innerHTML = [['all', 'All', customers.length], ...CTYPE_KEYS.filter(k => k === 'client' || catCount(k) || k === custCat).map(k => [k, `${CTYPES[k][0]} ${CTYPES[k][2]}`, catCount(k)])]
     .map(([k, l, n]) => `<button type="button" data-cc="${k}" class="${k === custCat ? 'on' : ''}">${l} (${n})</button>`).join('');
   $('#custCats').querySelectorAll('[data-cc]').forEach(b => b.onclick = () => { custCat = b.dataset.cc; custShown = 20; renderCustomers(); });
   $('#custFilters').innerHTML = CUST_FILTERS.map(([k, l]) => `<button type="button" data-cf="${k}" class="${k === custF ? 'on' : ''}">${l}</button>`).join('');
   $('#custFilters').querySelectorAll('[data-cf]').forEach(b => b.onclick = () => { custF = b.dataset.cf; custShown = 20; renderCustomers(); });
-  if (!customers.length) { list.innerHTML = '<div class="empty">No contacts yet. Use <b>Import from ePartner</b> on Coming up, or add one below.</div>'; $('#custMore').hidden = true; return; }
+  if (!customers.length) { list.innerHTML = '<div class="empty">No clients yet. Use <b>Import from ePartner</b> on Coming up, or add one below.</div>'; $('#custMore').hidden = true; return; }
   const q = custQ.trim().toUpperCase(), m = today0().getMonth();
   const rows = customers.map(c => { const occ = nextOccasions(c); return { c, occ, next: occ.slice().sort((a, b) => a.days - b.days)[0] }; })
     .filter(({ c }) => (custCat === 'all' || ctype(c) === custCat) && (!custMonth || (parseDob(c.dob) || {}).mo === +custMonth))
@@ -826,7 +828,7 @@ function renderCustomers() {
       <span class="cname" data-edit="${c.id}" role="button" tabindex="0"><b>${esc(c.nickname)}</b>${ctag(c)}${c.noRemind ? ' 🔕' : ''}${c.sample ? '<span class="tag-sample">Ex</span>' : ''}<span class="cmeta">${esc(line)}${(c.priorities || [])[0] ? ` · ${esc(c.priorities[0])}` : ''}</span></span>
       ${next ? `<button type="button" class="cbtn" data-make="${c.id}" data-occ="${next.occ}">Poster</button>` : ''}
     </div>`;
-  }).join('') + '</div>' : `<p class="hint">No contacts match${q ? ` “${esc(custQ)}”` : ''}.</p>`;
+  }).join('') + '</div>' : `<p class="hint">No clients match${q ? ` “${esc(custQ)}”` : ''}.</p>`;
   $('#custMore').hidden = rows.length <= custShown;
   $('#custMore').textContent = `Show 20 more (${Math.max(0, rows.length - custShown)} left)`;
   wireOccActions(list);
@@ -842,7 +844,7 @@ $('#custMore').onclick = () => { custShown += 20; renderCustomers(); };
 let editingId = null;
 function openForm(id) {
   editingId = id || null; const c = customers.find(x => x.id === id) || {};
-  $('#custFormTitle').textContent = id ? `Edit ${c.nickname}` : 'New contact';
+  $('#custFormTitle').textContent = id ? `Edit ${c.nickname}` : 'New client';
   formCat = id ? ctype(c) : (afterAdd === 'newpolicy' ? 'client' : (custCat !== 'all' ? custCat : 'client'));
   radios($('#f-cat'), 'fcat', Object.fromEntries(CTYPE_KEYS.map(k => [k, `${CTYPES[k][0]} ${CTYPES[k][1]}`])), formCat);
   $('#f-via').value = c.via || '';
@@ -868,7 +870,7 @@ let formCat = 'client';
 function syncFormCat() { // show only the fields that fit this category
   const cl = formCat === 'client';
   $('#f-clientOnly').hidden = !cl; $('#f-via-row').hidden = !['nominee', 'referral'].includes(formCat);
-  $('#f-dob-label').textContent = cl ? 'Date of birth *' : 'Date of birth (for birthday reminders)';
+  $('#f-dob-label').textContent = 'Date of birth (for birthday reminders)';
   $('#f-remind-label').textContent = cl ? '🔔 Remind me about their birthday and policy anniversary' : '🔔 Remind me about their birthday';
   $('#f-cat-hint').textContent = [CTYPES[formCat][3] + '.', $('#f-cat-hint').dataset.hist || ''].filter(Boolean).join(' ');
 }
@@ -878,6 +880,16 @@ $('#addCustBtn').onclick = () => { afterAdd = null; openForm(null); };
 let afterAdd = null; // 'newpolicy' when the agent came from Create to add a brand-new customer
 // links from 定联: open a customer, or add a prospect who just closed as a new customer (then their thank-you poster)
 window.openCustomer = id => { show('customers'); custMode = 'all'; renderCustomers(); openForm(id); };
+window.clientFromClose = (name, date) => { // 定联 close: add to the client list (or turn an existing contact into a client)
+  const k = nameKey(name); let c = customers.find(x => !x.sample && (custKey(x) === k || nameKey(x.nickname) === k)), made = false;
+  if (c) { if (ctype(c) !== 'client') { c.catHistory = (c.catHistory || []).concat({ date: new Date().toISOString().slice(0, 10), from: ctype(c), to: 'client' }); c.category = 'client'; } }
+  else { c = { id: uid(), nickname: name, fullName: name, dob: '', gender: '', priorities: [], since: null, policyDate: '', notes: '', history: [], category: 'client', source: '定联' }; customers.push(c); made = true; }
+  if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) { c.policyDates = [...new Set([...policyDatesOf(c), date])].sort(); c.policyDate = c.policyDates[0]; c.since = c.since || +c.policyDate.slice(0, 4); }
+  saveCustomers(); renderCustomers();
+  return { id: c.id, made, noDob: !c.dob };
+};
+window.openClientDob = id => { show('customers'); custMode = 'all'; renderCustomers(); openForm(id); setTimeout(() => { $('#f-dob').scrollIntoView({ block: 'center' }); $('#f-dob').focus(); }, 60); };
+window.thankYouFor = id => { selectedId = id; setOccasion('newpolicy'); show('create'); };
 window.addCustomerFrom = name => { show('customers'); afterAdd = 'newpolicy'; openForm(null); $('#f-nick').value = name; $('#f-dob').focus(); };
 // claim / new-policy poster straight from a customer's edit form
 document.querySelectorAll('[data-evmake]').forEach(b => b.onclick = () => {
@@ -895,7 +907,7 @@ $('#custForm').onsubmit = async e => {
   if (warnings.length && !(await ask('Save with these notes?', warnings.map(esc).join('<br>'), 'Save anyway'))) return;
   const twin = customers.find(c => c.id !== editingId && !c.sample && samePerson(c, { nickname: data.nickname, dob: data.dob }));
   if (twin) { // never save the same person twice
-    if (await ask(`${esc(twin.nickname)} is already saved`, `A contact with this name and birthday already exists (${CTYPES[ctype(twin)][1]}). To change their category, edit them instead. Open ${esc(twin.nickname)} to add these details there instead?`, 'Open existing')) openForm(twin.id);
+    if (await ask(`${esc(twin.nickname)} is already saved`, `A client with this name and birthday already exists (${CTYPES[ctype(twin)][1]}). To change their category, edit them instead. Open ${esc(twin.nickname)} to add these details there instead?`, 'Open existing')) openForm(twin.id);
     return;
   }
   let becameClient = false;
@@ -909,7 +921,7 @@ $('#custForm').onsubmit = async e => {
     Object.assign(c, data, { noRemind: !$('#f-remind').checked }); delete c.sample;
   } else customers.push(Object.assign({ id: uid(), history: [] }, data, { noRemind: !$('#f-remind').checked }));
   const added = !editingId && customers[customers.length - 1], savedId = editingId;
-  saveCustomers(); closeForm(); renderCustomers(); toast('Contact saved');
+  saveCustomers(); closeForm(); renderCustomers(); toast('Client saved');
   if (becameClient && !afterEdit && await ask('Now a client 🎉', 'Make a thank-you poster for their first policy?', 'Make thank-you poster')) { selectedId = savedId; setOccasion('newpolicy'); show('create'); return; }
   if (added && afterAdd) { const o = afterAdd; afterAdd = null; selectedId = added.id; setOccasion(o); show('create'); }
   else if (!added && afterEdit) { const o = afterEdit; afterEdit = null; setOccasion(o); show('create'); }
@@ -1005,7 +1017,7 @@ function renderMonth() {
     ${monthBox('birthday', '🎂 Birthdays this month', 'none this month.')}
     ${monthBox('anniversary', '🤝 Policy anniversaries this month', 'none this month.')}
     <p class="hint" style="margin:0">Next month (${MONTH_NAMES[nm]}): ${next.filter(o => o.occ === 'birthday').length} birthday${next.filter(o => o.occ === 'birthday').length === 1 ? '' : 's'}, ${next.filter(o => o.occ === 'anniversary').length} policy anniversar${next.filter(o => o.occ === 'anniversary').length === 1 ? 'y' : 'ies'}.</p>
-    <button class="btn" type="button" id="viewAllCust">📋 View all ${customers.length} contacts</button>
+    <button class="btn" type="button" id="viewAllCust">📋 View all ${customers.length} clients</button>
     <div class="row">
       <button class="btn small primary" type="button" id="calNewBtn" ${fresh ? '' : 'disabled'}>📅 Add ${fresh ? fresh : 'new'} customer${fresh === 1 ? '' : 's'} to my calendar</button>
       <button class="btn small" type="button" id="calAllBtn">Full calendar + monthly summaries</button>
@@ -1170,7 +1182,7 @@ function reviewState(v) {
   const m = v.match && customers.find(c => c.id === v.match);
   const chk = checkCustomer({ nickname: v.nickname, dob: v.dob, policyDate: v.policyDate, priorities: m ? m.priorities : [] });
   const ch = m ? changesFor(m, v) : [];
-  const kind = chk.errors.length || v.notes.length || v.noInforce || v.mine ? 'attention' : m ? (ch.length ? 'update' : 'same') : 'new';
+  const kind = chk.errors.length || !v.dob || v.notes.length || v.noInforce || v.mine ? 'attention' : m ? (ch.length ? 'update' : 'same') : 'new';
   return { m, chk, ch, kind };
 }
 function renderReview() {
@@ -1191,7 +1203,7 @@ function renderReview() {
       const status = m ? (ch.length ? `Updates ${esc(m.nickname)}: ${ch.map(x => esc(x[1])).join(', ')}` : `Already saved as ${esc(m.nickname)}`) : 'New';
       const facts = [v.dob ? `Born ${v.dob}` : 'No birthday', v.policyDate ? `Client since ${v.policyDate}` : v.noInforce ? 'No in-force policy' : v.inforce ? 'In force, starts soon' : 'No policy date',
         `${v.policies} polic${v.policies === 1 ? 'y' : 'ies'}${v.inforce ? `, ${v.inforce} in force` : ''}`].join(' · ');
-      const flags = [...chk.errors.map(e => ['bad', e]), ...v.notes.map(e => ['warn', e]),
+      const flags = [...chk.errors.map(e => ['bad', e]), ...(v.dob ? [] : [['bad', 'No birthday read for this row. Type it in below, or untick the row.']]), ...v.notes.map(e => ['warn', e]),
         ...(v.noInforce ? [['warn', `None of their policies is in force (${[...new Set(v.statuses)].join(', ')}). Unticked.`]] : []),
         ...(v.mine ? [['warn', 'This looks like your own policy. Unticked.']] : [])];
       return `<div class="review-row ${v.include ? '' : 'off'}">
@@ -1237,7 +1249,7 @@ async function saveReview() {
   rows.forEach(v => {
     const m = v.match && customers.find(c => c.id === v.match);
     const chk = checkCustomer({ nickname: v.nickname, dob: v.dob, policyDate: v.policyDate, priorities: m ? m.priorities : [], since: m ? m.since : '' });
-    if (chk.errors.length) { bad.push(v.fullName); return; }
+    if (chk.errors.length || !v.dob) { bad.push(v.fullName); return; }
     if (m) { if (changesFor(m, v).length) updates.push([m, v]); }
     else adds.push(v);
   });
@@ -2484,8 +2496,8 @@ function renderSummary() {
   $('#c-age-row').hidden = !(info && info.medal);
   if (isEvent(occasion)) { const e = eventChecks(); chk.errors.push(...e.errors); chk.warnings.push(...e.warnings); }
   if (occasion === 'newpolicy') setup.push(['ok', 'Brand-new customer not in the list yet? <button class="btn small" type="button" id="evAddCust">+ Add them first</button>']);
-  if (['anniversary', 'claim'].includes(occasion) && !isClient(c)) chk.errors.push(`${c.nickname} is a ${CTYPES[ctype(c)][1].toLowerCase()}, not a client. Policy anniversary and claim posters are for clients. Change their category in Contacts if they bought a policy.`);
-  if (occasion === 'birthday' && !c.dob) chk.errors.push(`No birthday saved for ${c.nickname}. Add it in Contacts → Edit.`);
+  if (['anniversary', 'claim'].includes(occasion) && !isClient(c)) chk.errors.push(`${c.nickname} is a ${CTYPES[ctype(c)][1].toLowerCase()}, not a client. Policy anniversary and claim posters are for clients. Change their category in Clients if they bought a policy.`);
+  if (occasion === 'birthday' && !c.dob) chk.errors.push(`No birthday saved for ${c.nickname}. Add it in Clients → Edit.`);
   if (occasion === 'anniversary' && !info && isClient(c)) chk.errors.push(`Add ${c.nickname}’s policy start date first (Customers → Edit). The app won’t guess how many years it has been.`);
   if (occasion === 'cny' && !info) chk.errors.push('This app only knows Chinese New Year dates up to 2030. Ask for an update.');
   if (!settings.photo) setup.push(['warn', 'No face photo yet, so a placeholder is used. Add yours in <b>Me</b>.']);
