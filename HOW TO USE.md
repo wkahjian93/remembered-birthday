@@ -142,6 +142,7 @@ Open the **定联** tab. The red number on it is how many prospects are due. **S
 - **✏️ Priorities** sits beside Wish / Skip in Coming up (gold "Add priorities" when the customer has none). On Create, the "No priorities yet" warning is a button: tap it, add 1–3 things, Save, and you're back on Create.
 - **Search on Create:** type part of a name above the Customer list.
 - **中文:** on Create, choose **Poster and message language → 中文**. The poster headline (生日快乐, 感谢有你, 新年快乐, 保重身体, 感谢信任), speech bubble, poster line and WhatsApp message are in Chinese. With team AI the message is written in natural Malaysian-Chinese style; without AI a Chinese template is used (priorities are quoted as you typed them). The app remembers your choice.
+- **中文 message for the client, any poster:** under the WhatsApp message, tap **中文 message** (or **English message**). Only the message is rewritten; the poster stays as it is. **Write a different message** keeps the language you picked.
 
 ## 定联 and customers, linked
 

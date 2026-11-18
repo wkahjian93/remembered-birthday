@@ -31,6 +31,7 @@
 }
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; }
+html { overflow: hidden; } /* only main scrolls; the page itself must never move */
 /* app frame: header on top, the tab bar at the bottom, and only the middle scrolls, so the bar can never drift up the screen
    (iPhone moves position:fixed bars while the page scrolls or the keyboard closes) */
 body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--body); -webkit-font-smoothing: antialiased;
@@ -145,8 +146,8 @@ textarea { min-height: 110px; resize: vertical; line-height: 1.45; }
 
 .evbox { display: grid; gap: 10px; }
 .evbox[hidden] { display: none; }
-.seg { display: flex; gap: 6px; flex-wrap: wrap; }
-.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg { display: flex; gap: 6px; flex-wrap: wrap; position: relative; } /* keeps the hidden radios inside, so tapping one never scrolls the page */
+.seg input { position: absolute; left: 0; top: 0; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
 .seg label { border: 1px solid var(--line); border-radius: 999px; padding: 7px 12px; font-size: 13.5px; font-weight: 600; cursor: pointer; display: inline-flex; gap: 6px; align-items: center; }
 .seg input:checked + label { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); }
 .seg input:focus-visible + label { outline: 3px solid var(--accent); outline-offset: 2px; }
@@ -373,6 +374,11 @@ code { font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border
       <label class="field">Poster line
         <textarea id="w-line" style="min-height:70px" maxlength="140"></textarea>
       </label>
+      <div class="eyebrow">WhatsApp message language</div>
+      <div class="seg" role="radiogroup" aria-label="WhatsApp message language">
+        <input type="radio" name="mlang" id="mlang-en" value="en"><label for="mlang-en">English message</label>
+        <input type="radio" name="mlang" id="mlang-zh" value="zh"><label for="mlang-zh">中文 message</label>
+      </div>
       <label class="field">WhatsApp message
         <textarea id="w-msg" style="min-height:220px"></textarea>
         <small id="w-src"></small>
@@ -1631,8 +1637,8 @@ const SHARED_RULES = `Rules for every message (where the occasion rules above sa
 Return JSON only: {"posterLine": "...", "message": "..."}`;
 // 中文: same rules, written the way Malaysian Chinese friends text each other
 const ZH_RULES = `LANGUAGE: write BOTH posterLine and message in Simplified Chinese, the warm, natural way Malaysian Chinese friends text each other (not formal, not mainland-official, no slang that sounds fake). Keep the customer's name and the sign-off exactly as given (they may be in English). If a priority is written in English, say it naturally in Chinese, keeping names of people and places as written. posterLine: at most 20 Chinese characters. Message: 80-150 Chinese characters, 2-3 short paragraphs.`;
-async function aiWords(c, occ = occasion) {
-  const sys = OCCASION_RULES[occ] + '\n' + SHARED_RULES + (lang === 'zh' ? '\n' + ZH_RULES : '');
+async function aiWords(c, occ = occasion, lg = lang) {
+  const sys = OCCASION_RULES[occ] + '\n' + SHARED_RULES + (lg === 'zh' ? '\n' + ZH_RULES : '');
   const user = customerBrief(c, occ) + `\nSign-off: ${settings.signoff || settings.name || ''}`;
   let j;
   if (team) {
@@ -1661,8 +1667,8 @@ const CATS = [
 const catOf = s => (CATS.find(([, re]) => re.test(s)) || ['other'])[0];
 // lower-case only ordinary leading words ("The…", "Saving…"); names like "Chloe" keep their capital
 const lowerFirst = s => /^(the|a|an|my|her|his|their|your|our|new|first|being|\w+ing)\b/i.test(s) ? s.charAt(0).toLowerCase() + s.slice(1) : s;
-function templateWords(c, occ = occasion) {
-  if (lang === 'zh') return templateWordsZh(c, occ);
+function templateWords(c, occ = occasion, lg = lang) {
+  if (lg === 'zh') return templateWordsZh(c, occ);
   const pr = (c.priorities || []).slice(0, 3), sign = settings.signoff || settings.name || '';
   const first = pr[0] ? catOf(pr[0]) : 'other';
   const q = pr[0] ? `\n\nBy the way, how's everything with ${lowerFirst(pr[0])}?` : '';
@@ -2227,9 +2233,25 @@ let occasion = 'birthday';
 let lang = settings.lang === 'zh' ? 'zh' : 'en'; // poster + message language, remembered on this phone
 document.querySelector(`#lang-${lang}`).checked = true;
 document.querySelectorAll('input[name="lang"]').forEach(r => r.onchange = async () => {
-  lang = r.value; settings.lang = lang; store.set(KEY_S, settings);
+  lang = r.value; settings.lang = lang; store.set(KEY_S, settings); syncMsgLang(lang);
   if (lastWords && !busy) { lastWords = templateWords(current()); $('#w-line').value = lastWords.posterLine; $('#w-msg').value = lastWords.message; await render(); resetSend();
     toast(lang === 'zh' ? '已换成中文。按 “Write a different message” 让 AI 重写' : 'Switched to English. Tap "Write a different message" for AI wording'); }
+});
+/* the WhatsApp message can be in another language than the poster (e.g. English poster, 中文 message for the client) */
+let msgLang = lang;
+function syncMsgLang(v) { msgLang = v; const r = document.querySelector(`#mlang-${v}`); if (r) r.checked = true; }
+syncMsgLang(lang);
+document.querySelectorAll('input[name="mlang"]').forEach(r => r.onchange = async () => {
+  const c = current(); if (!c || !lastWords || busy) { syncMsgLang(r.value); return; }
+  const want = r.value; busy = true; $('#rewordBtn').disabled = true;
+  $('#w-src').textContent = want === 'zh' ? '正在写中文信息…' : 'Writing the English message…';
+  let w, note = '';
+  try { w = aiReady() ? await aiWords(c, occasion, want) : templateWords(c, occasion, want); }
+  catch (e) { w = templateWords(c, occasion, want); note = ` AI wording failed, so a template was used. ${e.message}`; }
+  finally { busy = false; $('#rewordBtn').disabled = false; }
+  msgLang = want; lastWords = Object.assign({}, lastWords, { message: w.message }); $('#w-msg').value = w.message; resetSend();
+  $('#w-src').textContent = (w.source === 'ai' ? `Written by ${team ? 'team AI' : settings.textModel} in ${want === 'zh' ? '中文' : 'English'}. Check every fact before sending.` : `${want === 'zh' ? '中文' : 'English'} template. Edit anything before sending.`) + note;
+  toast(want === 'zh' ? '信息已换成中文 (poster unchanged)' : 'Message switched to English (poster unchanged)');
 });
 const OCC = {
   birthday: { title: 'Create a birthday poster', button: 'Create birthday poster', medal: 'Show the age they’re turning on the poster', file: 'happy-birthday', poses: POSES, pose: 'presenting' },
@@ -2461,8 +2483,12 @@ async function create(wordsOnly) {
   const hasKey = aiReady(), wantAi = val('c-art') === 'ai';
   try {
     progress('Writing a message only you could send…');
-    if (hasKey) { try { lastWords = await aiWords(c); } catch (e) { notes.push(['warn', `AI wording failed, so a template was used instead. ${e.message}`]); lastWords = templateWords(c); } }
-    else lastWords = templateWords(c);
+    // a new poster starts with the message in the poster's language; "Write a different message" keeps the chosen message language
+    if (!wordsOnly) syncMsgLang(lang);
+    const lg = wordsOnly ? msgLang : lang, prevLine = lastWords && lastWords.posterLine;
+    if (hasKey) { try { lastWords = await aiWords(c, occasion, lg); } catch (e) { notes.push(['warn', `AI wording failed, so a template was used instead. ${e.message}`]); lastWords = templateWords(c, occasion, lg); } }
+    else lastWords = templateWords(c, occasion, lg);
+    if (wordsOnly && lg !== lang && prevLine) lastWords.posterLine = prevLine; // the poster stays in its own language
     if (!wordsOnly) {
       lastArt = null;
       if (wantAi && hasKey && settings.photo) {
