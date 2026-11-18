@@ -471,6 +471,19 @@
       ...(p.groupHistory || []).map(h => ({ kind: 'group', date: h.date, text: `↕ Moved ${h.from} → ${h.to}` }))]
       .sort((a, b) => b.date.localeCompare(a.date));
   }
+  /* a 定联 prospect who is also a customer: same name (remarks in brackets ignored), shown with their birthday/anniversary */
+  const nk = s => String(s || '').replace(/[(（].*?[)）]/g, '').toUpperCase().replace(/[^A-Z一-鿿]/g, '');
+  function customerOf(p) {
+    const list = typeof customers !== 'undefined' && Array.isArray(customers) ? customers : [], k = nk(p.name);
+    return k ? list.find(c => !c.sample && (nk(c.fullName) === k || nk(c.nickname) === k)) || null : null;
+  }
+  function customerLine(p) {
+    const c = customerOf(p); if (!c) return '';
+    const occ = typeof nextOccasions === 'function' ? nextOccasions(c) : [];
+    const bits = occ.map(o => `${o.occ === 'birthday' ? '🎂' : '🤝'} ${o.date.getDate()} ${MONTHS[o.date.getMonth()]}${o.days === 0 ? ' (today)' : ` (in ${o.days}d)`}`);
+    return `<div class="notice ok" style="padding:8px 10px"><span>👤 <b>Also your customer</b>${c.nickname !== p.name ? ` (${esc(c.nickname)})` : ''}${bits.length ? ' · ' + bits.join(' · ') : ''}</span>
+      <button type="button" class="btn small" data-opencust="${c.id}" style="justify-self:start">Open customer</button></div>`;
+  }
   function openProspect(id) {
     const p = byId(id); if (!p) return;
     p.openedAt = new Date().toISOString(); store.set(KEY_P, prospects);
@@ -478,6 +491,7 @@
     const back = sheet(`
       <div class="row" style="justify-content:space-between"><h2 style="overflow-wrap:anywhere">${esc(p.name)}</h2><button type="button" class="btn small ghost" data-x>Close</button></div>
       <div class="hint">${p.lastTouch ? `Last chat ${p.lastTouch}` : 'Never contacted'} · ${d.days <= 0 ? 'Due now' : `next chat in ${d.days} days`}</div>
+      ${customerLine(p)}
       <button type="button" class="btn primary" data-logone>✓ Log a chat (any time, even before it’s due)</button>
       <div class="mini-label">Group (you decide: upgrade when you get closer)</div>
       <div class="seg-g">${GROUPS.map(g => `<button type="button" data-g="${g}" class="${p.group === g ? 'on g' + g : ''}">${g}</button>`).join('')}</div>
@@ -506,6 +520,7 @@
       q('[data-ginfo]').textContent = `${GROUP_INFO[group]} · chat every ${rset.gaps[group]} days`;
     });
     q('[data-x]').onclick = () => back.remove();
+    if (q('[data-opencust]')) q('[data-opencust]').onclick = () => { back.remove(); if (window.openCustomer) window.openCustomer(q('[data-opencust]').dataset.opencust); };
     q('[data-logone]').onclick = () => { back.remove(); openLogSheet([p.id]); };
     back.querySelectorAll('[data-res]').forEach(b => b.onclick = () => resultForm(p, b.dataset.res, q('[data-resform]'), null, () => { drawHist(); render(); }));
     q('[data-savep]').onclick = () => {
@@ -552,7 +567,7 @@
       if (!(await ask(rec ? 'Save this change?' : `Record ${stageWord(stage)}?`, `${esc(p.name)}: ${esc(label)} on ${esc(date)}${isClose ? `, ANP RM ${out.anp.toLocaleString('en-MY')}, NOC ${out.noc}` : ''}.`, rec ? 'Save' : 'Record'))) return;
       p.results = (p.results || []).filter(r => r.id !== out.id).concat(out); save(); box.hidden = true; box.innerHTML = '';
       done();
-      if (!rec && isClose) celebrate('close', '💰 Close recorded. Well done!');
+      if (!rec && isClose) { celebrate('close', '💰 Close recorded. Well done!'); if (!customerOf(p)) setTimeout(() => addAsCustomer(p), 1600); }
       else if (!rec && (stage === 'open' || stage === 'present')) nextAppSheet(p, stage);
       else toast(rec ? 'Changed' : 'Recorded');
     };
@@ -570,6 +585,14 @@
     if (/^\d{2}:\d{2}$/.test(s || '')) qs.set('s', s);
     qs.set('n', '定联 prospect, appointment made');
     return CAL_URL + '#/new?' + qs.toString();
+  }
+  // after a close: offer to save them as a customer, so their birthday and policy anniversary get remembered
+  function addAsCustomer(p) {
+    const back = sheet(`<h2>Add ${esc(p.name)} as a customer?</h2>
+      <p class="hint" style="margin:0">Then the app remembers their birthday and policy anniversary, and you can send a thank-you poster for the new policy.</p>
+      <button type="button" class="btn primary" data-add>👤 Add as customer</button><button type="button" class="btn ghost" data-x>Later</button>`);
+    back.querySelector('[data-x]').onclick = () => back.remove();
+    back.querySelector('[data-add]').onclick = () => { back.remove(); if (window.addCustomerFrom) window.addCustomerFrom(p.name.replace(/[(（].*?[)）]/g, '').trim()); };
   }
   function nextAppSheet(p, stage) {
     if (stage === 'open') {
@@ -816,6 +839,9 @@ Return JSON only: {"rows": [{"name": "", "platform": ""}], "note": ""}
   window.renderRoutine = render;
   window.routineDueCount = () => prospects.filter(p => due(p).days <= 0 && !touchedToday(p)).length;
   window.routineLeave = () => { const bar = $('#reBulk'); if (bar) bar.remove(); };
+  // for the customer form: this customer's 定联 record, if they're also a prospect
+  window.routineFor = c => { const k = [nk(c.fullName), nk(c.nickname)].filter(Boolean); const p = prospects.find(x => k.includes(nk(x.name))); return p ? { id: p.id, name: p.name, group: p.group, lastTouch: p.lastTouch } : null; };
+  window.openProspectById = id => { if (typeof show === 'function') show('routine'); setTimeout(() => openProspect(id), 50); };
   window.routineMarkDirty = () => markDirty(); // customer birthdays/anniversaries feed the pop-up counts too
   /* pop-ups open #routine; other REDEFINE apps (e.g. On Field) open #routine?find=<name> to jump to that person:
      one exact name match opens their sheet (Open / Present / Close, remark); otherwise the search shows matches or "+ Add" */

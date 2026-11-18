@@ -7,6 +7,7 @@
 
 1. **Open the team app on your phone:** https://remembered.dwz-rooms-server.workers.dev
    - Sign in with your email and the 6-digit code sent to you. You stay signed in for 7 days. Only emails your team leader has approved can get in.
+   - **There is no password**, so there's nothing to forget or reset: each time you sign in, a new code goes to your email. No code? Check spam, or ask your team leader to check your email is on the team list.
    - Open it in Chrome (Android) or Safari (iPhone), then **Add to Home Screen**. It opens like an app with its own candle icon.
    - Your customers and photos stay on your phone only. AI is paid for by the team, with daily limits, so you don't need your own key.
 2. In the app, tap **Me**:
@@ -63,7 +64,12 @@ The Customers list shows each customer's next birthday and anniversary, soonest 
 
 ## Import customers from ePartner
 
-**Best way: copy and paste (no AI, nothing leaves your phone)**
+**Best way: the ePartner PDF (no AI, nothing leaves your phone)**
+1. In ePartner, open the Policy Listing and save it as PDF.
+2. In the app: **Customers → Import from ePartner → 📄 ePartner PDF, Excel or CSV**, and pick the PDF.
+3. Long names that wrap onto two lines are joined back together. If ePartner says "There are a total of 419 records" but the PDF holds fewer, the app tells you how many were cut off, so you can save the PDF again or paste the rest.
+
+**Or copy and paste (also no AI)**
 1. In ePartner, open the policy list ("There are a total of … records").
 2. Select the whole table from "No." to the last row and copy it.
 3. In the app: **Customers → Import from ePartner → Paste ePartner list**, then **Read pasted list**.
@@ -80,13 +86,15 @@ Then **check before saving**. Use the filters (Needs a look / New / Updates / No
 
 **Re-import a newer list** the same way: birthdays and policy dates are replaced with the new values, while your nicknames, priorities and message history are kept. Customers not on the new list are shown so you can remove them, but nothing is removed unless you tick it and confirm.
 
-Other ways: **Photo or screenshot (AI)**, for a few rows when you can't copy (it sends the image to the AI, so crop out what you don't need), or **Import CSV file**.
+Other ways: **Excel (.xlsx) or CSV** with Policy Holder / Name, DOB and Commencement columns (same 📄 button, read on your phone), or **Photo or screenshot (AI)** for a few rows when you can't copy (it sends the image to the AI, so crop out what you don't need).
+
+**One customer, many policies.** The same name and birthday is always one customer. The earliest policy is their client-since date (for the anniversary); later policy dates are kept and shown when you edit them ("Policies started: …"). If a customer is ever saved twice, the top of Customers shows **Merge duplicates**: it keeps one, with all priorities, wishes and policy dates. Adding someone by hand who already exists opens the existing one instead.
 
 ## Reminders
 
 - **Inside the app:** every time you open it, **Coming up in the next 7 days** shows at the top, followed by **This month**. Each has a Create button. On phones that support it, the app icon shows a count.
 - **Phone calendar:** **Add new customers to my calendar** creates yearly birthday and anniversary entries that remind you 3 days before and at 9am on the day. **Full calendar + monthly summaries** also adds a summary on the 1st of each month. On iPhone, import into a new calendar called "Customers" so you can replace it later.
-- Your customer list stays only on your phone. Keep a backup (Customers → Backup & restore).
+- **Your data stays only on this device**, not in the cloud, and phone, iPad and laptop don't sync. Deleting the app, clearing browser data or changing phone erases it, so: **Customers → 💾 Backup & restore → Download backup** every month and keep the file in Google Drive, iCloud or WhatsApp. The backup holds customers, 定联 prospects with their chats and results, and your Me details (never the OpenAI key). On another device, tap **Restore from backup**. The panel shows when you last backed up (orange after 30 days).
 
 ## 定联 (Routine Engagement)
 
@@ -129,6 +137,18 @@ Open the **定联** tab. The red number on it is how many prospects are due. **S
 
 **For the Group Manager:** **Team 定联 (numbers only)** at the bottom of Today shows each agent's chats, days, open, present, close, NOC and ANP for this week and last week.
 
+## Priorities, search and 中文
+
+- **✏️ Priorities** sits beside Wish / Skip in Coming up (gold "Add priorities" when the customer has none). On Create, the "No priorities yet" warning is a button: tap it, add 1–3 things, Save, and you're back on Create.
+- **Search on Create:** type part of a name above the Customer list.
+- **中文:** on Create, choose **Poster and message language → 中文**. The poster headline (生日快乐, 感谢有你, 新年快乐, 保重身体, 感谢信任), speech bubble, poster line and WhatsApp message are in Chinese. With team AI the message is written in natural Malaysian-Chinese style; without AI a Chinese template is used (priorities are quoted as you typed them). The app remembers your choice.
+
+## 定联 and customers, linked
+
+- A 定联 prospect with the same name as a customer (remarks in brackets are ignored) shows **👤 Also your customer** with their birthday and anniversary, and **Open customer**.
+- A customer who is also a 定联 prospect shows **🤝 Also in 定联: Type B · last chat …** with **Open in 定联**.
+- After you record a **Close** for someone who isn't a customer yet, the app offers **👤 Add as customer**, then takes you to their thank-you poster for the new policy.
+
 ## Hundreds of customers: what you see
 
 - **Coming up in the next 7 days** (top of Customers): who to decide on, each with **🎂 Wish** / **🤝 Thank** (make the poster) or **Skip** (no more reminders for that occasion this year, with Undo). Undecided people come first; a busy week shows 5, with the rest folded below.
@@ -161,7 +181,7 @@ Open the **定联** tab. The red number on it is how many prospects are due. **S
 
 ## Good to know
 
-- **Privacy:** customer list, photo and key stay in your phone's browser. Nickname, birthday, priorities and your photo are sent to OpenAI only when you tap Create. Use **Backup & restore** monthly, because clearing browser data erases the list.
+- **Privacy:** customer list, photo and key stay in your phone's browser. Nickname, birthday, priorities and your photo are sent to OpenAI only when you tap Create. PDF, Excel, CSV and paste imports are read on the phone. Use **Backup & restore** monthly, because clearing browser data erases the list.
 - **Cost:** you pay OpenAI per image and per message. Check current prices on OpenAI's pricing page. Medium quality is the sweet spot.
 - **Models:** default is `gpt-image-2` for images and `gpt-5-mini` for writing. You can change both in **Me** if OpenAI renames them.
 - **Kelly** is a made-up example customer. Delete her once you've added real customers.

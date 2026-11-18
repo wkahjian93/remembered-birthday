@@ -12,7 +12,7 @@
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Allura&family=Cormorant+Garamond:ital,wght@1,600&family=Gloock&family=Ma+Shan+Zheng&family=Manrope:wght@400;500;600;700;800&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Allura&family=Cormorant+Garamond:ital,wght@1,600&family=Gloock&family=Ma+Shan+Zheng&family=Manrope:wght@400;500;600;700;800&family=Noto+Serif+SC:wght@600&display=swap">
 <style>
 /* Layout: one-column phone app, sticky header, bottom tab bar; poster preview is the hero of the Create tab. */
 :root {
@@ -30,15 +30,20 @@
     --ok: #6fd19d; --warn: #f3b65c; --bad: #ff8a80; --warn-bg: #3a2a12; --bad-bg: #3d1715; --ok-bg: #12301f; color-scheme: dark; }
 }
 * { box-sizing: border-box; }
-html, body { margin: 0; }
+html, body { margin: 0; height: 100%; }
+/* app frame: header on top, the tab bar at the bottom, and only the middle scrolls, so the bar can never drift up the screen
+   (iPhone moves position:fixed bars while the page scrolls or the keyboard closes) */
 body { background: var(--bg); color: var(--ink); font: 15px/1.5 var(--body); -webkit-font-smoothing: antialiased;
-  padding-top: env(safe-area-inset-top, 0px); padding-bottom: calc(76px + env(safe-area-inset-bottom, 0px)); }
+  box-sizing: border-box; height: 100vh; height: 100dvh; overflow: hidden; display: flex; flex-direction: column;
+  padding-top: env(safe-area-inset-top, 0px); }
+body > main { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior-y: contain; -webkit-overflow-scrolling: touch; }
+body > header.top, body > nav.tabs { flex: none; }
 img { max-width: 100%; }
 [hidden] { display: none !important; }
 button, input, select, textarea { font: inherit; color: inherit; }
 :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
 
-header.top { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--bg);
+header.top { position: relative; z-index: 5; background: var(--bg);
   border-bottom: 1px solid var(--line); }
 body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--bg); }
 .wrap { max-width: 640px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
@@ -90,6 +95,9 @@ textarea { min-height: 110px; resize: vertical; line-height: 1.45; }
 .notice.bad { background: var(--bad-bg); color: var(--bad); }
 .notice.ok { background: var(--ok-bg); color: var(--ok); }
 .notice b { font-weight: 800; }
+.notice-btn { width: 100%; text-align: left; border: 1.5px dashed currentColor; cursor: pointer; font: inherit; }
+.notice-go { font-weight: 800; text-decoration: underline; }
+.btn.pri-missing { border: 1.5px dashed var(--warn); color: var(--warn); background: var(--warn-bg); }
 
 /* customer list */
 .cust { display: grid; grid-template-columns: 56px 1fr; gap: 12px; align-items: start; padding: 14px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface); }
@@ -152,7 +160,7 @@ textarea { min-height: 110px; resize: vertical; line-height: 1.45; }
   background: repeating-conic-gradient(var(--surface-2) 0 25%, var(--bg) 0 50%) 0 0 / 14px 14px; }
 
 /* tab bar */
-nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; background: var(--surface); border-top: 1px solid var(--line);
+nav.tabs { position: relative; z-index: 6; background: var(--surface); border-top: 1px solid var(--line);
   padding-bottom: env(safe-area-inset-bottom, 0px); padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px); }
 nav.tabs .wrap { display: grid; grid-template-columns: repeat(4, 1fr); padding-block: 6px; }
 .tab-count { background: var(--accent); color: var(--accent-ink); border-radius: 999px; font-size: 10.5px; padding: 0 6px; margin-left: 2px; }
@@ -195,12 +203,13 @@ code { font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border
       <p class="lede">Birthdays and policy anniversaries, soonest first. Each card holds what the customer cares about, so every message sounds like you remembered.</p>
     </div>
     <div class="re-tabs" id="custTabs" role="tablist"><button type="button" data-cm="soon">Coming up</button><button type="button" data-cm="all">All customers</button></div>
+    <div id="dupeBox"></div>
     <div class="panel" id="monthPanel"></div>
 
     <details class="panel" id="importPanel">
-      <summary><b>📥 Import from ePartner</b> <span class="hint">paste the list, photo or CSV</span></summary>
+      <summary><b>📥 Import from ePartner</b> <span class="hint">PDF, paste, Excel, CSV or photo</span></summary>
       <div style="display:grid;gap:12px;margin-top:10px">
-        <p class="hint" style="margin:0">Best: in ePartner, select the whole policy list table, copy it, and paste it here. It’s read on this phone only, with no AI, and works for hundreds of policies at once. Only Policy Holder, DOB, Commencement Date and Status are kept. You check every row before anything is saved.</p>
+        <p class="hint" style="margin:0">Best: download the ePartner Policy Listing as PDF and tap <b>📄 ePartner PDF, Excel or CSV</b>, or select the whole table in ePartner, copy it, and paste it here. It’s read on this phone only, with no AI, and works for hundreds of policies at once. Only Policy Holder, DOB, Commencement Date and Status are kept. You check every row before anything is saved.</p>
       <label class="field">Paste ePartner list
         <textarea id="pasteBox" placeholder="Long-press here and tap Paste" style="min-height:90px"></textarea>
       </label>
@@ -208,8 +217,8 @@ code { font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border
       <div class="row">
         <label class="btn small" for="scanFile">📷 Photo or screenshot (AI)</label>
         <input type="file" id="scanFile" accept="image/*" multiple hidden>
-        <label class="btn small" for="csvFile">Import CSV file</label>
-        <input type="file" id="csvFile" accept=".csv,text/csv,.txt,text/plain" hidden>
+        <label class="btn small" for="csvFile">📄 ePartner PDF, Excel or CSV</label>
+        <input type="file" id="csvFile" accept=".pdf,application/pdf,.xlsx,.xls,.csv,text/csv,.txt,text/plain" hidden>
       </div>
       <div id="scanStatus" style="display:grid;gap:8px"></div>
       <div id="reviewBox" style="display:grid;gap:10px" hidden></div>
@@ -262,8 +271,10 @@ code { font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border
       <label class="check"><input type="checkbox" id="f-remind" checked> 🔔 Remind me about this customer’s birthday and anniversary</label>
       <label class="field">Policy start date (for the anniversary thank-you)
         <input type="date" id="f-policy">
+        <small id="f-policies" hidden></small>
         <small>Optional. Use the date their first policy with you started. The app counts the years and reminds you each year.</small>
       </label>
+      <div class="notice ok" id="f-dl" hidden></div>
       <p class="hint">Don't enter IC numbers, policy numbers or medical details. Nickname, birthday and these notes are sent to OpenAI to write the wish.</p>
       <div id="custFormIssues" style="display:grid;gap:8px"></div>
       <div class="row">
@@ -273,9 +284,9 @@ code { font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border
       <button class="btn danger" type="button" id="custDeleteBtn" hidden>Delete this customer</button>
     </form>
 
-    <details class="panel">
-      <summary>Backup &amp; restore</summary>
-      <p class="hint" style="margin:0">Your customer list lives only in this phone's browser. Clearing browser data erases it, so keep a backup file.</p>
+    <details class="panel" id="backupPanel">
+      <summary>💾 Backup &amp; restore <span class="hint" id="lastBackup"></span></summary>
+      <p class="hint" style="margin:0">Everything lives only on this device: customers, 定联 prospects and your Me details. Deleting the app, clearing browser data or changing phone erases it. Download a backup every month (save it to Google Drive, iCloud or WhatsApp yourself), and use <b>Restore from backup</b> on a new phone, iPad or laptop.</p>
       <div class="row">
         <button class="btn small" type="button" id="exportBtn">Download backup</button>
         <label class="btn small" for="importFile">Restore from backup</label>
@@ -300,8 +311,15 @@ code { font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border
         <input type="radio" name="occ" id="occ-claim" value="claim"><label for="occ-claim">💙 Claim done</label>
         <input type="radio" name="occ" id="occ-newpolicy" value="newpolicy"><label for="occ-newpolicy">🎉 New policy</label>
       </div>
+      <div class="eyebrow">Poster and message language</div>
+      <div class="seg" role="radiogroup" aria-label="Language">
+        <input type="radio" name="lang" id="lang-en" value="en"><label for="lang-en">English</label>
+        <input type="radio" name="lang" id="lang-zh" value="zh"><label for="lang-zh">中文</label>
+      </div>
       <label class="field">Customer
+        <input type="search" id="c-find" placeholder="🔍 Search customer name" autocomplete="off" enterkeyhint="search">
         <select id="c-cust"></select>
+        <small id="c-find-n" hidden></small>
       </label>
       <div class="evbox" id="eventBox" hidden>
         <div id="ev-claim" class="evbox">
@@ -649,7 +667,7 @@ function show(view) {
   if (view === 'routine' && window.renderRoutine) window.renderRoutine();
   if (view !== 'routine' && window.routineLeave) window.routineLeave();
   updateRoutineCount();
-  window.scrollTo(0, 0);
+  $('main').scrollTo(0, 0);
 }
 document.querySelectorAll('nav.tabs button').forEach(b => b.onclick = () => show(b.dataset.view));
 
@@ -669,9 +687,12 @@ function nextOccasions(c) { // the coming birthday and anniversary, each with it
 function occActions(o) {
   if (o.done === 'sent') return '<span class="chip ok">✓ Wished</span>';
   if (o.done === 'skipped') return `<span class="chip">Skipped</span><button class="btn small ghost" data-unskip="${o.c.id}" data-occ="${o.occ}" data-year="${o.date.getFullYear()}">Undo</button>`;
-  return `<button class="btn small primary" data-make="${o.c.id}" data-occ="${o.occ}">${o.occ === 'birthday' ? '🎂 Wish' : '🤝 Thank'}</button><button class="btn small" data-skip="${o.c.id}" data-occ="${o.occ}" data-year="${o.date.getFullYear()}">Skip</button>`;
+  return `<button class="btn small primary" data-make="${o.c.id}" data-occ="${o.occ}">${o.occ === 'birthday' ? '🎂 Wish' : '🤝 Thank'}</button><button class="btn small" data-skip="${o.c.id}" data-occ="${o.occ}" data-year="${o.date.getFullYear()}">Skip</button>${priBtn(o.c)}`;
 }
+// ✏️ to add or edit what the customer cares about (gold when none yet, because the wish would be generic)
+const priBtn = c => `<button class="btn small ${(c.priorities || []).length ? 'ghost' : 'pri-missing'}" data-pri="${c.id}">✏️ ${(c.priorities || []).length ? 'Priorities' : 'Add priorities'}</button>`;
 function wireOccActions(root) {
+  root.querySelectorAll('[data-pri]').forEach(b => b.onclick = () => openPriorities(b.dataset.pri, null));
   root.querySelectorAll('[data-make]').forEach(b => b.onclick = () => { selectedId = b.dataset.make; setOccasion(b.dataset.occ); show('create'); });
   root.querySelectorAll('[data-skip]').forEach(b => b.onclick = async () => {
     const c = customers.find(x => x.id === b.dataset.skip), occ = b.dataset.occ, year = b.dataset.year; if (!c) return;
@@ -685,15 +706,61 @@ function wireOccActions(root) {
     saveCustomers(); renderCustomers(); toast('Reminder back on');
   });
 }
+/* one person = one customer: same name and same birthday (or one birthday missing). All their policy start dates are kept;
+   the earliest is "client since" and drives the policy anniversary. */
+const custKey = c => nameKey(c.fullName || c.nickname);
+const samePerson = (a, b) => custKey(a) && custKey(a) === custKey(b) && (!a.dob || !b.dob || a.dob === b.dob);
+function policyDatesOf(c) { return [...new Set([...(c.policyDates || []), c.policyDate].filter(Boolean))].sort(); }
+function findDupes() {
+  const groups = [], used = new Set(), real = customers.filter(c => !c.sample);
+  real.forEach(a => { if (used.has(a.id)) return; const g = real.filter(b => !used.has(b.id) && samePerson(a, b));
+    if (g.length > 1) { g.forEach(x => used.add(x.id)); groups.push(g); } });
+  return groups;
+}
+function mergeInto(keep, others) { // keep their wishes, priorities and every policy date; nothing is lost
+  const all = [keep, ...others];
+  keep.priorities = [...new Map(all.flatMap(c => c.priorities || []).map(p => [p.toLowerCase(), p])).values()];
+  keep.history = all.flatMap(c => c.history || []).sort((a, b) => String(a.date).localeCompare(String(b.date)));
+  keep.notes = [...new Set(all.map(c => c.notes).filter(Boolean))].join('; ');
+  keep.dob = keep.dob || (others.find(c => c.dob) || {}).dob || '';
+  keep.gender = keep.gender || (others.find(c => c.gender) || {}).gender || '';
+  keep.fullName = keep.fullName || (others.find(c => c.fullName) || {}).fullName || '';
+  keep.policyDates = [...new Set(all.flatMap(policyDatesOf))].sort();
+  keep.policyDate = keep.policyDates[0] || '';
+  const sinces = all.map(c => c.since).filter(Boolean); keep.since = sinces.length ? Math.min(...sinces) : (keep.policyDate ? +keep.policyDate.slice(0, 4) : null);
+  keep.noRemind = all.every(c => c.noRemind);
+  customers = customers.filter(c => !others.includes(c));
+}
+const richness = c => (c.priorities || []).length * 3 + (c.history || []).length + (c.notes ? 1 : 0);
+function renderDupes() {
+  const box = $('#dupeBox'), groups = findDupes();
+  if (!groups.length) { box.innerHTML = ''; return; }
+  const extra = groups.reduce((n, g) => n + g.length - 1, 0);
+  box.innerHTML = `<div class="notice warn"><b>${extra} duplicate customer${extra === 1 ? '' : 's'} found</b>
+    <span>${groups.slice(0, 4).map(g => esc(g[0].nickname)).join(', ')}${groups.length > 4 ? ` and ${groups.length - 4} more` : ''} ${groups.length === 1 ? 'is' : 'are'} saved more than once. Merging keeps one customer each, with every priority, wish and policy date.</span>
+    <button class="btn small primary" type="button" id="mergeDupes" style="justify-self:start;margin-top:6px">Merge duplicates</button></div>`;
+  $('#mergeDupes').onclick = async () => {
+    const list = groups.map(g => `${esc(g[0].nickname)} (${g.length}×, policies from ${[...new Set(g.flatMap(policyDatesOf))].sort().map(d => esc(d)).join(', ') || 'no dates'})`).join('<br>');
+    if (!(await ask(`Merge ${groups.length} customer${groups.length === 1 ? '' : 's'}?`, `${list}<br><br>Each becomes one customer. The earliest policy date becomes their client-since date; the later ones are kept too.`, 'Merge'))) return;
+    groups.forEach(g => { const sorted = g.slice().sort((a, b) => richness(b) - richness(a)); mergeInto(sorted[0], sorted.slice(1)); });
+    saveCustomers(); renderCustomers(); toast('Duplicates merged');
+  };
+}
 let custQ = '', custF = 'all', custShown = 20, custMode = 'soon'; // Coming up (daily view) or All customers (full list)
 const CUST_FILTERS = [['all', 'All'], ['30', 'Next 30 days'], ['month', 'This month'], ['open', 'Not wished yet'], ['off', '🔕 Reminders off']];
+function renderBackupAge() {
+  const el = $('#lastBackup'); if (!el) return; const d = settings.lastBackup;
+  const days = d ? Math.round((today0() - new Date(d)) / 864e5) : null;
+  el.textContent = d ? `· last backup ${days === 0 ? 'today' : `${days} days ago`}` : '· no backup yet';
+  el.style.color = days == null || days > 30 ? 'var(--warn)' : '';
+}
 function renderCustomers() {
-  renderMonth();
+  renderMonth(); renderDupes(); renderBackupAge();
   const list = $('#custList'), real = customers.filter(c => !c.sample).length;
   $('#custTabs').querySelectorAll('[data-cm]').forEach(b => {
     b.classList.toggle('on', b.dataset.cm === custMode);
     if (b.dataset.cm === 'all') b.textContent = `All customers (${customers.length})`;
-    b.onclick = () => { custMode = b.dataset.cm; renderCustomers(); window.scrollTo({ top: 0 }); };
+    b.onclick = () => { custMode = b.dataset.cm; renderCustomers(); $('main').scrollTo({ top: 0 }); };
   });
   $('#monthPanel').hidden = custMode !== 'soon'; $('#importPanel').hidden = custMode !== 'soon'; $('#custListPanel').hidden = custMode !== 'all';
   $('#custCount').textContent = `${customers.length} total`;
@@ -731,6 +798,13 @@ function openForm(id) {
   $('#f-nick').value = c.nickname || ''; $('#f-dob').value = c.dob || ''; $('#f-gender').value = c.gender || '';
   $('#f-pri').value = (c.priorities || []).join('\n'); $('#f-since').value = c.since || ''; $('#f-notes').value = c.notes || '';
   $('#f-policy').value = c.policyDate || ''; $('#f-remind').checked = !c.noRemind;
+  const pds = id ? policyDatesOf(c) : [];
+  $('#f-policies').hidden = pds.length < 2;
+  const dl = id && window.routineFor ? window.routineFor(c) : null; // also a 定联 prospect?
+  $('#f-dl').hidden = !dl;
+  $('#f-dl').innerHTML = dl ? `<span>🤝 <b>Also in 定联</b>: Type ${dl.group} · ${dl.lastTouch ? `last chat ${esc(dl.lastTouch)}` : 'no chat yet'}</span><button type="button" class="btn small" id="f-dl-open" style="justify-self:start">Open in 定联</button>` : '';
+  if (dl) $('#f-dl-open').onclick = () => { closeForm(); window.openProspectById(dl.id); };
+  $('#f-policies').textContent = pds.length > 1 ? `Policies started: ${pds.map((d, i) => d + (i ? '' : ' (first)')).join(', ')}` : '';
   $('#custFormIssues').innerHTML = ''; $('#custDeleteBtn').hidden = !id; $('#f-events').hidden = !id;
   $('#custForm').hidden = false; $('#addCustBtn').hidden = true; $('#f-nick').focus();
   $('#custForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -738,12 +812,15 @@ function openForm(id) {
 function closeForm() { $('#custForm').hidden = true; $('#addCustBtn').hidden = false; editingId = null; }
 $('#addCustBtn').onclick = () => { afterAdd = null; openForm(null); };
 let afterAdd = null; // 'newpolicy' when the agent came from Create to add a brand-new customer
+// links from 定联: open a customer, or add a prospect who just closed as a new customer (then their thank-you poster)
+window.openCustomer = id => { show('customers'); custMode = 'all'; renderCustomers(); openForm(id); };
+window.addCustomerFrom = name => { show('customers'); afterAdd = 'newpolicy'; openForm(null); $('#f-nick').value = name; $('#f-dob').focus(); };
 // claim / new-policy poster straight from a customer's edit form
 document.querySelectorAll('[data-evmake]').forEach(b => b.onclick = () => {
   const id = editingId; if (!id) return; closeForm();
   selectedId = id; setOccasion(b.dataset.evmake); show('create');
 });
-$('#custCancelBtn').onclick = closeForm;
+$('#custCancelBtn').onclick = () => { const o = afterEdit; afterEdit = null; afterAdd = null; closeForm(); if (o) { setOccasion(o); show('create'); } };
 $('#custForm').onsubmit = async e => {
   e.preventDefault();
   const { errors, warnings, data } = checkCustomer({ nickname: $('#f-nick').value, dob: $('#f-dob').value, gender: $('#f-gender').value,
@@ -751,22 +828,40 @@ $('#custForm').onsubmit = async e => {
   $('#custFormIssues').innerHTML = issuesHtml(errors, warnings);
   if (errors.length) return;
   if (warnings.length && !(await ask('Save with these notes?', warnings.map(esc).join('<br>'), 'Save anyway'))) return;
+  const twin = customers.find(c => c.id !== editingId && !c.sample && samePerson(c, { nickname: data.nickname, dob: data.dob }));
+  if (twin) { // never save the same person twice
+    if (await ask(`${esc(twin.nickname)} is already saved`, `A customer with this name and birthday already exists. Open ${esc(twin.nickname)} to add these details there instead?`, 'Open existing')) openForm(twin.id);
+    return;
+  }
   if (editingId) {
     const c = customers.find(x => x.id === editingId);
     if (!(await ask(`Save changes to ${esc(c.nickname)}?`, 'This replaces the details you saved before.', 'Save changes'))) return;
+    if (data.policyDate !== c.policyDate) c.policyDates = [...new Set([data.policyDate, ...policyDatesOf(c).filter(d => d > data.policyDate)].filter(Boolean))].sort();
     Object.assign(c, data, { noRemind: !$('#f-remind').checked }); delete c.sample;
   } else customers.push(Object.assign({ id: uid(), history: [] }, data, { noRemind: !$('#f-remind').checked }));
   const added = !editingId && customers[customers.length - 1];
   saveCustomers(); closeForm(); renderCustomers(); toast('Customer saved');
   if (added && afterAdd) { const o = afterAdd; afterAdd = null; selectedId = added.id; setOccasion(o); show('create'); }
+  else if (!added && afterEdit) { const o = afterEdit; afterEdit = null; setOccasion(o); show('create'); }
 };
+// open a customer's form at the priorities box; from Create, saving brings the agent back to Create
+let afterEdit = null;
+function openPriorities(id, backTo) {
+  if (!customers.some(c => c.id === id)) return;
+  show('customers'); openForm(id); afterEdit = backTo;
+  setTimeout(() => { const f = $('#f-pri'); f.scrollIntoView({ block: 'center' }); f.focus(); }, 60);
+}
 $('#custDeleteBtn').onclick = async () => {
   const c = customers.find(x => x.id === editingId); if (!c) return;
   if (!(await ask(`Delete ${esc(c.nickname)}?`, 'Their details and send history will be removed from this phone. This cannot be undone.', 'Delete', true))) return;
   customers = customers.filter(x => x.id !== editingId); saveCustomers(); closeForm(); renderCustomers(); toast('Customer deleted');
 };
-$('#exportBtn').onclick = () => {
-  const blob = new Blob([JSON.stringify({ app: 'Customer Relationship App', exported: new Date().toISOString(), customers }, null, 2)], { type: 'application/json' });
+const KEY_P = 'remembered.prospects.v1', KEY_R = 'remembered.routine.v1';
+$('#exportBtn').onclick = () => { // one file with everything on this device (never the OpenAI key)
+  const me = Object.assign({}, settings); delete me.apiKey;
+  const blob = new Blob([JSON.stringify({ app: 'Customer Relationship App', version: 2, exported: new Date().toISOString(), customers,
+    prospects: store.get(KEY_P, []), routine: store.get(KEY_R, null), settings: me }, null, 2)], { type: 'application/json' });
+  settings.lastBackup = new Date().toISOString().slice(0, 10); store.set(KEY_S, settings); renderBackupAge();
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `customer-app-backup-${new Date().toISOString().slice(0, 10)}.json`;
   document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
 };
@@ -775,13 +870,21 @@ $('#importFile').onchange = async e => {
   let incoming;
   try { const j = JSON.parse(await f.text()); incoming = Array.isArray(j) ? j : j.customers; if (!Array.isArray(incoming)) throw 0; }
   catch { return ask('Not a backup file', 'This file is not a Customer Relationship App backup. Nothing was changed.', 'OK'); }
+  let j2 = {}; try { j2 = JSON.parse(await f.text()); } catch {}
+  const pIn = Array.isArray(j2.prospects) ? j2.prospects.filter(p => p && p.id && p.name) : [];
   const good = [], bad = [];
   incoming.forEach(r => { const chk = checkCustomer(r || {}); (chk.errors.length ? bad : good).push(chk.errors.length ? (r && r.nickname) || 'Unnamed' : Object.assign({ id: r.id || uid(), history: Array.isArray(r.history) ? r.history : [] }, chk.data)); });
   const dupes = good.filter(g => customers.some(c => c.id === g.id)).length;
-  const msg = `${good.length} customer(s) ready to restore${dupes ? `, ${dupes} will replace existing entries` : ''}.` + (bad.length ? `<br>${bad.length} skipped because of missing or invalid data: ${bad.map(esc).join(', ')}.` : '');
-  if (!good.length || !(await ask('Restore backup?', msg, 'Restore'))) return;
+  const msg = `${good.length} customer(s) ready to restore${dupes ? `, ${dupes} will replace existing entries` : ''}.` + (pIn.length ? `<br>${pIn.length} 定联 prospect(s) with their chats and results.` : '') + (j2.settings && !settings.name ? '<br>Your Me details (name, sign-off, photos).' : '') + (bad.length ? `<br>${bad.length} skipped because of missing or invalid data: ${bad.map(esc).join(', ')}.` : '');
+  if ((!good.length && !pIn.length) || !(await ask('Restore backup?', msg, 'Restore'))) return;
   good.forEach(g => { const i = customers.findIndex(c => c.id === g.id); if (i >= 0) customers[i] = g; else customers.push(g); });
-  saveCustomers(); renderCustomers(); toast('Backup restored');
+  // keep fields checkCustomer doesn't know about (policy dates list, reminders off, source)
+  good.forEach(g => { const src = incoming.find(r => r && r.id === g.id); if (src) ['policyDates', 'noRemind', 'source', 'fullName'].forEach(k => { if (src[k] != null) g[k] = src[k]; }); });
+  saveCustomers();
+  if (pIn.length) { const cur = store.get(KEY_P, []); pIn.forEach(p => { const i = cur.findIndex(x => x.id === p.id); if (i >= 0) cur[i] = p; else cur.push(p); });
+    store.set(KEY_P, cur); if (j2.routine && !store.get(KEY_R, null)) store.set(KEY_R, j2.routine); }
+  if (j2.settings && !settings.name) { const keep = settings.apiKey; settings = Object.assign({}, DEFAULT_SETTINGS, j2.settings, { apiKey: keep }); store.set(KEY_S, settings); }
+  toast('Backup restored'); setTimeout(() => location.reload(), 700); // reload so 定联 and Me pick up the restored data
 };
 
 /* ---------- this month: birthdays and anniversaries, plus phone calendar reminders ---------- */
@@ -831,7 +934,7 @@ function renderMonth() {
       ? '<p class="hint" style="margin:0">🔔 Pop-ups are on: you get a pop-up on the day of each birthday and anniversary, and the day before.</p>'
       : '<button class="btn small" type="button" id="occPushBtn">🔔 Get pop-ups for birthdays and anniversaries</button>') : ''}`;
   wireOccActions($('#monthPanel'));
-  $('#viewAllCust').onclick = () => { custMode = 'all'; renderCustomers(); window.scrollTo({ top: 0 }); };
+  $('#viewAllCust').onclick = () => { custMode = 'all'; renderCustomers(); $('main').scrollTo({ top: 0 }); };
   $('#calNewBtn').onclick = () => exportCalendar(false);
   if ($('#occPushBtn')) $('#occPushBtn').onclick = () => { show('routine'); setTimeout(() => { const b = $('#rePush'); if (b) b.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 150); };
   $('#calAllBtn').onclick = () => exportCalendar(true);
@@ -977,6 +1080,8 @@ function changesFor(m, v) {
   const out = [];
   if (v.dob && m.dob !== v.dob) out.push(['dob', `birthday ${m.dob || 'blank'} → ${v.dob}`]);
   if (v.policyDate && m.policyDate !== v.policyDate) out.push(['policyDate', `policy start ${m.policyDate || 'blank'} → ${v.policyDate}`]);
+  else { const known = policyDatesOf(m), fresh = [...new Set(v.startDates || [])].filter(d => !known.includes(d));
+    if (fresh.length) out.push(['policyDates', `new polic${fresh.length === 1 ? 'y' : 'ies'} from ${fresh.join(', ')}`]); }
   return out;
 }
 let removeIds = new Set(); // saved customers the agent chose to remove because they're not on the new list
@@ -1062,10 +1167,10 @@ async function saveReview() {
     removing.length && `remove ${removing.length} (${removing.slice(0, 6).map(c => esc(c.nickname)).join(', ')}${removing.length > 6 ? '…' : ''}) and their message history, which can’t be undone`].filter(Boolean);
   if (!(await ask('Save these changes?', `This will ${parts.join(', ')}. Nicknames, priorities and message history of updated customers are kept.`, 'Save changes', !!removing.length))) return;
   adds.forEach(v => customers.push({ id: uid(), nickname: v.nickname, fullName: v.fullName, dob: v.dob, gender: '', priorities: [], since: v.since,
-    policyDate: v.policyDate, notes: '', history: [], source: 'epartner' }));
+    policyDate: v.policyDate, policyDates: [...new Set(v.startDates)].sort(), notes: '', history: [], source: 'epartner' }));
   updates.forEach(([m, v]) => { // the newer ePartner list wins for dates
     if (v.dob) m.dob = v.dob;
-    if (v.policyDate) m.policyDate = v.policyDate;
+    if (v.policyDate) { m.policyDates = [...new Set([...v.startDates, ...policyDatesOf(m).filter(d => d >= v.policyDate)])].sort(); m.policyDate = v.policyDate; }
     if (v.since && (!m.since || m.since > v.since)) m.since = v.since;
     m.fullName = v.fullName; m.updatedFrom = new Date().toISOString().slice(0, 10);
   });
@@ -1142,7 +1247,7 @@ function parseCsv(text) {
     for (const ch of line) { if (ch === '"') q = !q; else if (ch === delim && !q) { out.push(cur.trim()); cur = ''; } else cur += ch; }
     out.push(cur.trim()); return out; };
   const rows = lines.map(split);
-  const hi = rows.findIndex(r => r.some(h => /name/i.test(h)) && r.some(h => /birth|dob/i.test(h)));
+  const hi = rows.findIndex(r => r.some(h => /name|holder/i.test(h)) && r.some(h => /birth|dob/i.test(h)));
   if (hi < 0) throw new Error('Couldn\u2019t find "Name" and "Date of birth" column headings in this file.');
   const h = rows[hi], col = re => h.findIndex(x => re.test(x));
   const holder = col(/policy\s*holder|owner/i);
@@ -1163,11 +1268,84 @@ $('#pasteBtn').onclick = () => {
   try { readListText(text, 'pasted list'); $('#pasteBox').value = ''; } // the pasted text (with policy numbers) isn't kept
   catch (err) { $('#scanStatus').innerHTML = `<div class="notice bad">${esc(err.message)} Copy the whole table, including the heading row.</div>`; }
 };
+const loadScript = src => new Promise((ok, fail) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = () => fail(new Error('Couldn’t load the file reader. Check your internet and try again.')); document.head.appendChild(s); });
+/* ePartner "Policy Listing" PDF, read on this phone (pdf.js, no AI). Each word sits at a position on the page, so it's put
+   into the column whose heading is above it. A record starts at a 10-digit policy number; long names wrap onto the next
+   lines, which are added to the same record. Only Policy Holder, DOB, Commencement and Status are kept. */
+async function parsePdfListing(file) {
+  if (!window.pdfjsLib) { await loadScript('vendor/pdf.min.js'); window.pdfjsLib.GlobalWorkerOptions.workerSrc = 'vendor/pdf.worker.min.js'; }
+  const doc = await window.pdfjsLib.getDocument({ data: new Uint8Array(await file.arrayBuffer()) }).promise;
+  const rows = []; let cols = null, cur = null, expected = 0;
+  const DATE = /\b(\d{1,2}\/\d{1,2}\/\d{4})\b/;
+  for (let pn = 1; pn <= doc.numPages; pn++) {
+    const page = await doc.getPage(pn), tc = await page.getTextContent();
+    const items = tc.items.filter(i => i.str.trim()).map(i => ({ s: i.str.trim(), x: i.transform[4], y: i.transform[5] }));
+    items.forEach(i => { const m = i.s.match(/total of\s+(\d+)\s+records/i); if (m) expected = +m[1]; });
+    const dobH = items.find(i => /^DOB$/i.test(i.s)); let top = Infinity;
+    if (dobH) { // read the column headings on this page
+      const row = items.filter(i => Math.abs(i.y - dobH.y) < 3).sort((a, b) => a.x - b.x);
+      const at = re => (row.find(i => re.test(i.s)) || {}).x;
+      const hx = { no: at(/^No\.?$/i), pno: at(/^Policy\s*No/i), holder: at(/Holder/i), dob: dobH.x, la: at(/Assured/i), com: at(/Commence/i), status: at(/^Status/i) };
+      const after = (x, next) => row.filter(i => i.x > x + 1).map(i => i.x)[0] || next;
+      if (hx.pno != null && hx.holder != null && hx.la != null && hx.com != null) {
+        const mid = (a, b) => (a + b) / 2;
+        cols = { pno: [mid(hx.no ?? hx.pno - 25, hx.pno), mid(hx.pno, hx.holder)], holder: [mid(hx.pno, hx.holder), mid(hx.holder, hx.dob)],
+          dob: [mid(hx.holder, hx.dob), mid(hx.dob, hx.la)], com: [mid(hx.la, hx.com), mid(hx.com, after(hx.com, hx.com + 90))],
+          status: hx.status != null ? [mid(row.filter(i => i.x < hx.status - 1).map(i => i.x).pop() ?? hx.status - 50, hx.status), mid(hx.status, after(hx.status, hx.status + 70))] : null };
+      }
+      top = Math.min(...items.filter(i => Math.abs(i.y - dobH.y) < 30 && i.y <= dobH.y).map(i => i.y)) - 2; // below the 2-line heading
+    }
+    if (!cols) continue;
+    const inCol = (i, c) => c && i.x >= c[0] && i.x < c[1];
+    // group the words into lines, top of the page first
+    const lines = [];
+    items.filter(i => i.y < top).sort((a, b) => b.y - a.y || a.x - b.x).forEach(i => {
+      const l = lines[lines.length - 1]; if (l && Math.abs(l.y - i.y) < 2.5) l.items.push(i); else lines.push({ y: i.y, items: [i] });
+    });
+    for (const l of lines) {
+      const pno = l.items.find(i => (inCol(i, cols.pno) || i.x < cols.holder[0]) && /\d{10}$/.test(i.s.replace(/\s/g, '')));
+      if (pno) { cur = { name: [], dob: '', commencement: '', status: [], y: l.y }; rows.push(cur); }
+      else if (!cur || cur.y - l.y > 60) { cur = null; continue; } // too far from the record: page footer or other text
+      cur.y = l.y;
+      l.items.forEach(i => {
+        if (inCol(i, cols.holder)) cur.name.push(i.s);
+        else if (inCol(i, cols.dob) && !cur.dob && DATE.test(i.s)) cur.dob = i.s.match(DATE)[1];
+        else if (inCol(i, cols.com) && !cur.commencement && DATE.test(i.s)) cur.commencement = i.s.match(DATE)[1];
+        else if (inCol(i, cols.status)) cur.status.push(i.s);
+      });
+    }
+  }
+  if (!cols) throw new Error('This PDF doesn’t look like an ePartner policy listing (no "Policy Holder" and "DOB" headings found).');
+  const out = rows.map(r => ({ name: r.name.join(' '), dob: r.dob, commencement: r.commencement, anniversary: '', status: r.status.join(' ') }));
+  out.expected = expected; // ePartner says "There are a total of N records"; fewer read means the PDF was cut off
+  return out;
+}
+// Excel (.xlsx / .xls): the first sheet with headings, dates as day/month/year, then read like a CSV
+async function excelToText(file) {
+  if (!window.XLSX) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
+  const wb = window.XLSX.read(await file.arrayBuffer(), { type: 'array', cellDates: true });
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const day = d => `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')}/${d.getFullYear()}`; // real dates, never US-style text
+  return window.XLSX.utils.sheet_to_json(ws, { header: 1, raw: true, defval: '' })
+    .map(r => r.map(v => (v instanceof Date ? day(v) : String(v)).replace(/[\t\r\n]+/g, ' ')).join('\t')).join('\n');
+}
 $('#csvFile').onchange = async e => {
   const f = e.target.files[0]; e.target.value = ''; if (!f) return;
+  const status = $('#scanStatus');
   try {
-    readListText(await f.text(), f.name);
-  } catch (err) { $('#scanStatus').innerHTML = `<div class="notice bad">${esc(err.message)}</div>`; }
+    if (/\.pdf$/i.test(f.name) || f.type === 'application/pdf') {
+      status.innerHTML = '<div class="notice ok">Reading the PDF on this phone…</div>';
+      const rows = await parsePdfListing(f);
+      if (!rows.length) throw new Error('No policies found in this PDF. Use the ePartner Policy Listing PDF.');
+      const n = addFound(rows, f.name);
+      status.innerHTML = `<div class="notice ok">${esc(f.name)}: read ${rows.length} polic${rows.length === 1 ? 'y' : 'ies'}, ${n} new policy holder${n === 1 ? '' : 's'} (${review.length} in this import). Nothing left this phone.</div>`;
+      if (rows.expected > rows.length) status.innerHTML += `<div class="notice warn"><b>Only ${rows.length} of ${rows.expected} policies are in this PDF.</b> ePartner lists ${rows.expected}, but the PDF stops early (the last ${rows.expected - rows.length} rows were cut off when it was saved). Save the PDF again with more pages, or import the rest by pasting.</div>`;
+      renderReview(); $('#reviewBox').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    } else if (/\.xlsx?$/i.test(f.name)) {
+      status.innerHTML = '<div class="notice ok">Reading the Excel file on this phone…</div>';
+      readListText(await excelToText(f), f.name);
+    } else readListText(await f.text(), f.name);
+  } catch (err) { status.innerHTML = `<div class="notice bad">${esc(err.message || 'Couldn’t read this file.')}</div>`; }
 };
 
 /* ---------- settings ---------- */
@@ -1451,8 +1629,10 @@ const SHARED_RULES = `Rules for every message (where the occasion rules above sa
 - WhatsApp message: 60-110 words, 2-3 short paragraphs, at most 2 emojis, then a final line with the sign-off exactly as given.
 - posterLine: one heartfelt line for the poster, max 16 words, references one priority without private details, no emojis, no hashtags.
 Return JSON only: {"posterLine": "...", "message": "..."}`;
+// 中文: same rules, written the way Malaysian Chinese friends text each other
+const ZH_RULES = `LANGUAGE: write BOTH posterLine and message in Simplified Chinese, the warm, natural way Malaysian Chinese friends text each other (not formal, not mainland-official, no slang that sounds fake). Keep the customer's name and the sign-off exactly as given (they may be in English). If a priority is written in English, say it naturally in Chinese, keeping names of people and places as written. posterLine: at most 20 Chinese characters. Message: 80-150 Chinese characters, 2-3 short paragraphs.`;
 async function aiWords(c, occ = occasion) {
-  const sys = OCCASION_RULES[occ] + '\n' + SHARED_RULES;
+  const sys = OCCASION_RULES[occ] + '\n' + SHARED_RULES + (lang === 'zh' ? '\n' + ZH_RULES : '');
   const user = customerBrief(c, occ) + `\nSign-off: ${settings.signoff || settings.name || ''}`;
   let j;
   if (team) {
@@ -1482,6 +1662,7 @@ const catOf = s => (CATS.find(([, re]) => re.test(s)) || ['other'])[0];
 // lower-case only ordinary leading words ("The…", "Saving…"); names like "Chloe" keep their capital
 const lowerFirst = s => /^(the|a|an|my|her|his|their|your|our|new|first|being|\w+ing)\b/i.test(s) ? s.charAt(0).toLowerCase() + s.slice(1) : s;
 function templateWords(c, occ = occasion) {
+  if (lang === 'zh') return templateWordsZh(c, occ);
   const pr = (c.priorities || []).slice(0, 3), sign = settings.signoff || settings.name || '';
   const first = pr[0] ? catOf(pr[0]) : 'other';
   const q = pr[0] ? `\n\nBy the way, how's everything with ${lowerFirst(pr[0])}?` : '';
@@ -1532,6 +1713,45 @@ function templateWords(c, occ = occasion) {
   return { posterLine: lines[first], message: `Happy birthday, ${c.nickname}! 🎉${milestone}\n\n${body} ${thanks}${end}`, source: 'template' };
 }
 
+function templateWordsZh(c, occ) { // used when there's no AI; priorities are quoted as written
+  const pr = (c.priorities || []).slice(0, 2), n = c.nickname, sign = settings.signoff || settings.name || '';
+  const signEnd = sign ? `
+
+${sign}` : '', ask = pr[0] ? `
+
+对了，「${pr[0]}」最近怎么样了？` : '';
+  const yrs = yearsWithMe(c, occ), trust = yrs ? `谢谢你这${yrs}年来的信任，我一直很珍惜。` : '谢谢你一直以来的信任。';
+  const out = (posterLine, message) => ({ posterLine, message, source: 'template' });
+  if (occ === 'anniversary') { const na = nextAnniversary(c.policyDate), y = na ? na.years : 0;
+    return out(y ? `${y}年的信任，谢谢你一路同行` : '谢谢你的信任，一路有你',
+      `${n}，今天是你信任我的第${y}年了。🙏
+
+真心谢谢你。${pr[0] ? `我一直记得「${pr[0]}」对你有多重要。` : ''}能陪你走这段路，是我的荣幸。生活里有任何变化，我都在。${ask}${signEnd}`); }
+  if (occ === 'cny') { const cy = nextCny(), z = cy ? cy.zh : '';
+    return out('新春快乐，阖家幸福，万事如意', `新年快乐，${n}！🧧
+
+愿${z}年为你和家人带来满满的好消息${pr[0] ? `，也祝「${pr[0]}」一切顺利` : ''}。${trust}祝你们团圆温馨，新的一年平安喜乐。${ask}${signEnd}`); }
+  if (occ === 'claim') { const fam = ev.who === 'family';
+    return out(fam ? '愿你的家人好好休养，平安顺心' : '愿你好好休息，一切慢慢好起来',
+      `${n}，很高兴理赔的事都处理好了，${fam ? '家里' : '你'}可以安心休养了。🙏
+
+慢慢来，不用急。${pr[0] ? `我知道「${pr[0]}」对你很重要，等你准备好了，再跟我分享好消息。` : ''}有任何需要，随时找我。
+
+${fam ? '家里大家都还好吗？' : '最近身体感觉怎么样？'}${signEnd}`); }
+  if (occ === 'newpolicy') { const y = ev.repeat ? yearsUpTo(c.policyDate, eventDate()) : 0;
+    if (ev.repeat) return out(y ? `${y}年的情谊，谢谢你再次信任我` : '谢谢你再次信任我',
+      `${n}，谢谢你再一次信任我。🙏
+
+${y ? `认识${y}年了，` : ''}你愿意再次选择我，对我意义很大。${pr[0] ? `我记得「${pr[0]}」对你很重要，会一直为你加油。` : ''}生活里有任何变化，大大小小，我都在。${ask}${signEnd}`);
+    return out('谢谢你的信任，我会一路陪着你', `${n}，真的很谢谢你的信任。🙏
+
+这份信任我不会辜负。${pr[0] ? `我记得「${pr[0]}」对你很重要，会一直为你加油。` : ''}从今天起，生活里有任何变化，大大小小，我都在。${ask}${signEnd}`); }
+  return out('愿你新的一岁，健康快乐，所愿皆成',
+    `${n}，生日快乐！🎉
+
+${pr[0] ? `每次聊起「${pr[0]}」，你都特别有光，我真的很欣赏。` : '祝你新的一岁身体健康，天天开心。'}${trust}${ask}${signEnd}`);
+}
+
 /* ---------- poster design ---------- */
 const PALETTES = {
   auto: { label: 'Auto' },
@@ -1554,6 +1774,10 @@ const POSES = {
 };
 const BUBBLE = { birthday: n => `Happy birthday, ${n}!`, anniversary: n => `Thank you, ${n}!`, cny: n => `Gong Xi Fa Cai, ${n}!`,
   claim: n => `Here for you, ${n}`, newpolicy: (n, again) => again ? `Thank you again, ${n}!` : `Thank you, ${n}!` };
+const HEADLINE_ZH = { birthday: '生日快乐', anniversary: '感谢有你', claim: '保重身体', newpolicy: again => again ? '再次感谢' : '感谢信任' };
+const BUBBLE_ZH = { birthday: n => `${n}，生日快乐！`, anniversary: n => `谢谢你，${n}！`, cny: n => `${n}，恭喜发财！`,
+  claim: n => `${n}，我一直都在`, newpolicy: (n, again) => again ? `再次谢谢你，${n}！` : `谢谢你，${n}！` };
+const bubbleText = o => (o.lang === 'zh' ? BUBBLE_ZH : BUBBLE)[o.occasion](o.customer.nickname, o.again);
 const HEADLINE = { birthday: 'Happy Birthday', anniversary: 'Thank You', claim: 'Take Care', newpolicy: again => 'Thank You' };
 function autoPalette(c) {
   if (occasion === 'cny') return 'cny';
@@ -1814,7 +2038,7 @@ function drawLantern(g, x, y, s, pal) {
 }
 // ivory speech bubble with a gold edge, pointing at the agent's portrait
 function drawBubble(g, text, x, y, w, tipX, tipY, pal) {
-  const font = 'italic 600 {px}px "Cormorant Garamond", Georgia, serif';
+  const font = CJK.test(text) ? '600 {px}px "Noto Serif SC", "Songti SC", "SimSun", serif' : 'italic 600 {px}px "Cormorant Garamond", Georgia, serif';
   const fit = fitText(g, text, font, 56, 34, w - 56, 3);
   const lh = fit.px * 1.1, h = fit.lines.length * lh + 44;
   g.save();
@@ -1839,9 +2063,17 @@ function drawNotes(g, cx, cy, r, pal, rnd) {
   });
   g.restore();
 }
+const CJK = /[⺀-鿿豈-﫿＀-￯　-〿]/;
+const NO_LINE_START = /^[，。！？、；：」』）》”’…,.!?;:)]/;
 function wrapLines(g, text, maxW, maxLines) {
-  const words = String(text).split(/\s+/).filter(Boolean), lines = []; let cur = '';
-  for (const w of words) { const t = cur ? cur + ' ' + w : w; if (g.measureText(t).width > maxW && cur) { lines.push(cur); cur = w; } else cur = t; }
+  // Chinese characters can break anywhere (punctuation stays with the character before it); other words break at spaces
+  const tokens = String(text).match(/[⺀-鿿豈-﫿＀-￯　-〿]|[^\s⺀-鿿豈-﫿＀-￯　-〿]+/g) || [];
+  const lines = []; let cur = '', prev = '';
+  for (const w of tokens) {
+    const sep = cur && !CJK.test(prev) && !CJK.test(w) ? ' ' : '', t = cur + sep + w;
+    if (g.measureText(t).width > maxW && cur && !NO_LINE_START.test(w)) { lines.push(cur); cur = w; } else cur = t;
+    prev = w;
+  }
   if (cur) lines.push(cur);
   return lines.length <= maxLines ? lines : null;
 }
@@ -1850,7 +2082,7 @@ function fitText(g, text, font, startPx, minPx, maxW, maxLines) {
   g.font = font.replace('{px}', minPx); return { px: minPx, lines: wrapLines(g, text, maxW, 99).slice(0, maxLines) };
 }
 async function fontsReady() {
-  const faces = ['120px Allura', '120px Gloock', '700 40px Manrope', '600 30px Manrope', 'italic 600 50px "Cormorant Garamond"', '100px "Ma Shan Zheng"'];
+  const faces = ['120px Allura', '120px Gloock', '700 40px Manrope', '600 30px Manrope', 'italic 600 50px "Cormorant Garamond"', '100px "Ma Shan Zheng"', '600 50px "Noto Serif SC"'];
   try { await Promise.race([Promise.all(faces.map(f => document.fonts.load(f))), new Promise(r => setTimeout(r, 3000))]); } catch {}
 }
 // where the AI picture sits on the 1080x1350 poster (3:2, matching the 1536x1024 image we ask for)
@@ -1899,7 +2131,7 @@ function drawPoster(canvas, o) {
     // fade the lower body into the velvet so the quote stays readable
     const fade = g.createLinearGradient(0, H - 470, 0, H); fade.addColorStop(0, pal.deep + '00'); fade.addColorStop(0.45, pal.deep + 'd0'); fade.addColorStop(1, pal.deep + 'fa');
     g.fillStyle = fade; g.fillRect(0, H - 470, W, 470);
-    drawBubble(g, BUBBLE[o.occasion](o.customer.nickname, o.again), 660, 420, 360, 640, 560, pal);
+    drawBubble(g, bubbleText(o), 660, 420, 360, 640, 560, pal);
   } else {
     velvet(g, W, H, pal);
     drawPattern(g, o.pattern, pal, rnd, W, H, null);
@@ -1921,11 +2153,13 @@ function drawPoster(canvas, o) {
     else if (o.occasion === 'cny') drawOranges(g, 664, 1010, pal);
     else drawCake(g, 664, 1012, pal);
     if (o.occasion === 'birthday' && o.pose === 'singing') drawNotes(g, cx, cy, r, pal, rnd);
-    drawBubble(g, BUBBLE[o.occasion](o.customer.nickname, o.again), 610, 418, 400, 560, 560, pal);
+    drawBubble(g, bubbleText(o), 610, 418, 400, 560, 560, pal);
   }
   ornateFrame(g, W, H);
   // headline + name in embossed gold and pearl
+  const zhHead = o.lang === 'zh' && o.occasion !== 'cny' ? HEADLINE_ZH[o.occasion] : '';
   if (o.occasion === 'cny') text3D(g, '新年快乐', W / 2, 166, '118px "Ma Shan Zheng", "STKaiti", "KaiTi", serif', 118);
+  else if (zhHead) text3D(g, typeof zhHead === 'function' ? zhHead(o.again) : zhHead, W / 2, 166, '118px "Ma Shan Zheng", "STKaiti", "KaiTi", serif', 118);
   else { const hl = HEADLINE[o.occasion] || HEADLINE.birthday; text3D(g, typeof hl === 'function' ? hl(o.again) : hl, W / 2, 172, '128px Allura, cursive', 128); }
   const nameFit = fitText(g, o.customer.nickname, '{px}px Gloock, Georgia, serif', 150, 64, W - 200, 1);
   const nameBase = 172 + 30 + nameFit.px * 0.82;
@@ -1954,7 +2188,7 @@ function drawPoster(canvas, o) {
     g.restore();
   }
   // poster line in classic italic serif
-  const lineFont = 'italic 600 {px}px "Cormorant Garamond", Georgia, serif';
+  const lineFont = o.lang === 'zh' ? '600 {px}px "Noto Serif SC", "Songti SC", "SimSun", serif' : 'italic 600 {px}px "Cormorant Garamond", Georgia, serif';
   const lineFit = o.art ? fitText(g, '“' + o.posterLine + '”', lineFont, 50, 32, W - 200, 2) : fitText(g, '“' + o.posterLine + '”', lineFont, 58, 36, W - 220, 3);
   g.save(); g.shadowColor = 'rgba(0,0,0,.6)'; g.shadowBlur = 14; g.shadowOffsetY = 3;
   g.fillStyle = pal.text; g.font = lineFont.replace('{px}', lineFit.px);
@@ -1990,6 +2224,13 @@ function current() { return customers.find(c => c.id === selectedId); }
 
 /* ---------- occasions: birthday, policy anniversary thank-you, Chinese New Year ---------- */
 let occasion = 'birthday';
+let lang = settings.lang === 'zh' ? 'zh' : 'en'; // poster + message language, remembered on this phone
+document.querySelector(`#lang-${lang}`).checked = true;
+document.querySelectorAll('input[name="lang"]').forEach(r => r.onchange = async () => {
+  lang = r.value; settings.lang = lang; store.set(KEY_S, settings);
+  if (lastWords && !busy) { lastWords = templateWords(current()); $('#w-line').value = lastWords.posterLine; $('#w-msg').value = lastWords.message; await render(); resetSend();
+    toast(lang === 'zh' ? '已换成中文。按 “Write a different message” 让 AI 重写' : 'Switched to English. Tap "Write a different message" for AI wording'); }
+});
 const OCC = {
   birthday: { title: 'Create a birthday poster', button: 'Create birthday poster', medal: 'Show the age they’re turning on the poster', file: 'happy-birthday', poses: POSES, pose: 'presenting' },
   anniversary: { title: 'Create a thank-you poster', button: 'Create thank-you poster', medal: 'Show the years-together medal', file: 'thank-you',
@@ -2117,8 +2358,15 @@ function renderCreate() {
   const sorted = customers.map(c => ({ c, info: occasionInfo(c) }))
     .sort((a, b) => occasion === 'newpolicy' ? order.get(b.c.id) - order.get(a.c.id) // newest added first
       : occasion === 'cny' || occasion === 'claim' ? a.c.nickname.localeCompare(b.c.nickname) : (a.info ? a.info.days : 9999) - (b.info ? b.info.days : 9999));
-  if (!current()) selectedId = sorted[0].c.id;
-  sel.innerHTML = sorted.map(({ c, info }) => `<option value="${c.id}" ${c.id === selectedId ? 'selected' : ''}>${esc(c.nickname)}${
+  const q = nameKey($('#c-find').value);
+  const shown = q ? sorted.filter(({ c }) => nameKey(c.nickname).includes(q) || nameKey(c.fullName).includes(q)) : sorted;
+  $('#c-find-n').hidden = !q; $('#c-find-n').textContent = shown.length ? `${shown.length} match${shown.length === 1 ? '' : 'es'}` : 'No customer with that name';
+  if (!shown.length) { sel.innerHTML = '<option value="">No match</option>'; return; }
+  if (!current() || (q && !shown.some(x => x.c.id === selectedId))) { // pick the first match, as if chosen from the list
+    selectedId = shown[0].c.id; lastArt = null; lastWords = null; clearVoice(); resetSend();
+    $('#wordsPanel').hidden = true; $('#singPanel').hidden = true; $('#sendPanel').hidden = true;
+  }
+  sel.innerHTML = shown.map(({ c, info }) => `<option value="${c.id}" ${c.id === selectedId ? 'selected' : ''}>${esc(c.nickname)}${
     occasion === 'cny' || isEvent(occasion) ? '' : info ? ` (${info.date.getDate()} ${MONTHS[info.date.getMonth()]})` : occasion === 'anniversary' ? ' (no policy date)' : ''}${c.sample ? ' · example' : ''}</option>`).join('');
   renderSummary();
 }
@@ -2148,12 +2396,15 @@ function renderSummary() {
       ${occasion === 'birthday' && p ? `<span class="chip">${westernSign(p.mo, p.d)}</span>` : ''}${zh ? `<span class="chip">Born in the Year of the ${zh}</span>` : ''}
     </div>
     <div class="chips">${(c.priorities || []).map(x => `<span class="chip">${esc(x)}</span>`).join('')}</div>
-    ${issuesHtml(chk.errors, chk.warnings)}
+    ${issuesHtml(chk.errors, chk.warnings.filter(w => !/^No priorities yet/.test(w)))}
+    ${(c.priorities || []).length ? '' : `<button type="button" class="notice warn notice-btn" id="addPriBtn"><span><b>Check:</b> No priorities yet. The wish will be warm but generic.</span><span class="notice-go">✏️ Tap to add 1–3 things ${esc(c.nickname)} cares about →</span></button>`}
     ${setup.map(([k, m]) => `<div class="notice ${k}">${m}</div>`).join('')}`;
   $('#createBtn').disabled = chk.errors.length > 0 || busy;
+  const pb = $('#addPriBtn'); if (pb) pb.onclick = () => openPriorities(c.id, occasion);
   const addBtn = $('#evAddCust');
   if (addBtn) addBtn.onclick = () => { show('customers'); afterAdd = 'newpolicy'; openForm(null); };
 }
+$('#c-find').oninput = () => renderCreate();
 $('#c-cust').onchange = e => { selectedId = e.target.value; lastArt = null; lastWords = null; clearVoice(); resetSend(); $('#wordsPanel').hidden = true; $('#singPanel').hidden = true; $('#sendPanel').hidden = true; renderSummary(); };
 document.querySelectorAll('input[name="c-art"]').forEach(r => r.onchange = renderSummary);
 
@@ -2197,7 +2448,7 @@ async function render(wordsOverride) {
   await fontsReady();
   drawPoster($('#poster'), { customer: c, occasion, palette: palKey, pattern: val('pat'), pose: val('pose'), art: lastArt, photo: await loadImage(settings.photo || PLACEHOLDER),
     cake: occasion === 'birthday' && settings.cakePhoto ? { img: await loadImage(settings.cakePhoto.src), cut: settings.cakePhoto.cut } : null,
-    posterLine: (wordsOverride || lastWords).posterLine, showMedal: $('#c-age').checked, medal: info && info.medal, years: info && info.years, again: ev.repeat,
+    posterLine: (wordsOverride || lastWords).posterLine, showMedal: $('#c-age').checked, medal: info && info.medal, years: info && info.years, again: ev.repeat, lang,
     dateLabel: info ? info.dateLabel : '' });
   invalidateVideo(); // a video made from the old poster is out of date
 }
