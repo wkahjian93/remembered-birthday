@@ -38,12 +38,43 @@ export default {
       if (url.pathname === '/api/push-off' && request.method === 'POST') return await pushOff(request, env, email);
       if (url.pathname === '/api/push-test' && request.method === 'POST') return await pushTest(env, email, ctx);
       if (url.pathname === '/api/name' && request.method === 'POST') return await saveName(request, env, email);
+      if (url.pathname === '/api/sync' && request.method === 'POST') return await sync(request, env, email);
       return fail(404, 'Not found.');
     } catch {
       return fail(500, 'The team server had a problem. Try again in a minute.');
     }
   }
 };
+
+/* ---------- cloud sync: the same contacts, 定联 prospects and Me details on every device ----------
+   One row per record (coll c = contact, p = 定联 prospect, m = Me / settings), always under the signed-in email,
+   so an agent only ever reads and writes their own rows. Each change carries the device's time (u); the newer
+   change wins. Deletions are kept as empty "deleted" rows so other devices remove them too. su is the server's
+   write order: a device asks for everything after the last su it saw (with a few seconds' overlap). */
+const SYNC_COLLS = ['c', 'p', 'm'], SYNC_PAGE = 400, SYNC_MAX_ROW = 1800000;
+async function sync(request, env, email) {
+  if (!env.DB) return fail(503, 'Sync is not set up on the team server yet.');
+  let b; try { b = await request.json(); } catch { return fail(400, 'Bad request.'); }
+  const since = Math.max(0, Number(b.since) || 0);
+  const changes = Array.isArray(b.changes) ? b.changes.slice(0, 1500) : [];
+  let su = Date.now() * 1000, skipped = 0;
+  const stmts = [];
+  for (const ch of changes) {
+    if (!ch || !SYNC_COLLS.includes(ch.coll) || typeof ch.id !== 'string' || !ch.id || ch.id.length > 80) { skipped++; continue; }
+    const data = ch.deleted ? '' : JSON.stringify(ch.data ?? null);
+    if (data.length > SYNC_MAX_ROW) { skipped++; continue; }
+    const u = Math.min(Number(ch.u) || 0, Date.now() + 864e5); // a device clock far in the future can't win forever
+    stmts.push(env.DB.prepare(`INSERT INTO rec (email, coll, id, data, u, deleted, su) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
+      ON CONFLICT (email, coll, id) DO UPDATE SET data = excluded.data, u = excluded.u, deleted = excluded.deleted, su = excluded.su
+      WHERE excluded.u > rec.u`).bind(email, ch.coll, ch.id, data, u, ch.deleted ? 1 : 0, su++));
+  }
+  for (let i = 0; i < stmts.length; i += 50) await env.DB.batch(stmts.slice(i, i + 50));
+  const { results = [] } = await env.DB.prepare('SELECT coll, id, data, u, deleted, su FROM rec WHERE email = ?1 AND su > ?2 ORDER BY su LIMIT ?3')
+    .bind(email, since, SYNC_PAGE).all();
+  const rows = results.map(r => ({ coll: r.coll, id: r.id, u: r.u, deleted: !!r.deleted, data: r.deleted ? null : JSON.parse(r.data || 'null') }));
+  const cursor = results.length ? results[results.length - 1].su : since;
+  return json({ cursor, more: results.length === SYNC_PAGE, rows, saved: stmts.length, skipped });
+}
 
 /* ---------- who is asking: Cloudflare Access token, checked again here ---------- */
 // Access does the email login; verifying its signed token in the Worker means a misconfigured

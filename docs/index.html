@@ -96,6 +96,8 @@ textarea { min-height: 110px; resize: vertical; line-height: 1.45; }
 .notice.bad { background: var(--bad-bg); color: var(--bad); }
 .notice.ok { background: var(--ok-bg); color: var(--ok); }
 .notice b { font-weight: 800; }
+.ctag { display: inline-block; width: max-content; justify-self: start; font-size: 11px; font-weight: 700; padding: 1px 7px; margin-left: 6px; border-radius: 999px; background: var(--surface-2); color: var(--muted); vertical-align: 1px; }
+.cmonth { font-weight: 800; font-size: 13px; color: var(--accent); padding: 10px 2px 2px; border-bottom: 1px solid var(--line); }
 .notice-btn { width: 100%; text-align: left; border: 1.5px dashed currentColor; cursor: pointer; font: inherit; }
 .notice-go { font-weight: 800; text-decoration: underline; }
 .btn.pri-missing { border: 1.5px dashed var(--warn); color: var(--warn); background: var(--warn-bg); }
@@ -216,7 +218,7 @@ code { font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border
       </label>
       <button class="btn primary" type="button" id="pasteBtn">Read pasted list</button>
       <div class="row">
-        <label class="btn small" for="scanFile">📷 Photo or screenshot (AI)</label>
+        <label class="btn small" for="scanFile">📷 Photos or screenshots (AI, pick several)</label>
         <input type="file" id="scanFile" accept="image/*" multiple hidden>
         <label class="btn small" for="csvFile">📄 ePartner PDF, Excel or CSV</label>
         <input type="file" id="csvFile" accept=".pdf,application/pdf,.xlsx,.xls,.csv,text/csv,.txt,text/plain" hidden>
@@ -227,21 +229,33 @@ code { font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border
     </details>
 
     <div class="panel" id="custListPanel">
-      <div class="row" style="justify-content:space-between"><h2>My customers</h2><span class="hint" id="custCount"></span></div>
+      <div class="row" style="justify-content:space-between"><h2>My contacts</h2><span class="hint" id="custCount"></span></div>
       <input type="search" id="custQ" placeholder="🔍 Search name or what they care about" autocomplete="off">
+      <div class="chipset" id="custCats"></div>
+      <div class="two">
+        <label class="mini-label">Sort<select id="custSort"><option value="soon">Next occasion first</option><option value="az">Name A–Z</option><option value="month">Birthday Jan–Dec</option></select></label>
+        <label class="mini-label">Birth month<select id="custMonth"><option value="">Any month</option></select></label>
+      </div>
       <div class="chipset" id="custFilters"></div>
       <div id="custList" style="display:grid;gap:8px"></div>
       <button class="btn" type="button" id="custMore" hidden>Show 20 more</button>
     </div>
-    <button class="btn primary big" id="addCustBtn" type="button">+ Add a customer</button>
+    <button class="btn primary big" id="addCustBtn" type="button">+ Add a contact</button>
 
     <form id="custForm" class="panel" hidden novalidate>
-      <h2 id="custFormTitle">New customer</h2>
+      <h2 id="custFormTitle">New contact</h2>
+      <div class="eyebrow">Category</div>
+      <div class="seg" id="f-cat" role="radiogroup" aria-label="Category"></div>
+      <small class="hint" id="f-cat-hint" style="margin-top:-4px"></small>
+      <label class="field" id="f-via-row">Nominated or referred by (optional)
+        <input type="text" id="f-via" maxlength="40" list="viaNames" autocomplete="off" placeholder="e.g. Kelly">
+        <datalist id="viaNames"></datalist>
+      </label>
       <label class="field">Nickname (what you call them) *
         <input type="text" id="f-nick" maxlength="30" autocomplete="off" placeholder="e.g. Kelly">
       </label>
       <div class="two">
-        <label class="field">Date of birth *
+        <label class="field"><span id="f-dob-label">Date of birth *</span>
           <input type="date" id="f-dob">
         </label>
         <label class="field">Gender
@@ -256,38 +270,40 @@ code { font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border
         <small>One per line, as a short phrase that fits "I remember…". These become the "you still remember" moments.</small>
         <textarea id="f-pri" placeholder="Chloe starting Primary 1 next year&#10;the Penang Bridge half marathon&#10;saving up for a first home in Bayan Lepas"></textarea>
       </label>
-      <div class="two">
-        <label class="field">Customer since (year)
-          <input type="number" id="f-since" inputmode="numeric" placeholder="e.g. 2019">
-        </label>
-        <label class="field">Recent news (optional)
-          <input type="text" id="f-notes" maxlength="140" placeholder="e.g. just got promoted">
-        </label>
-      </div>
+      <label class="field">Recent news (optional)
+        <input type="text" id="f-notes" maxlength="140" placeholder="e.g. just got promoted">
+      </label>
+      <div id="f-clientOnly" class="evbox">
+      <label class="field">Client since (year)
+        <input type="number" id="f-since" inputmode="numeric" placeholder="e.g. 2019">
+      </label>
       <div class="row" id="f-events" hidden>
         <span class="hint" style="margin:0">Make a poster for:</span>
         <button class="btn small" type="button" data-evmake="claim">💙 Claim done</button>
         <button class="btn small" type="button" data-evmake="newpolicy">🎉 New policy</button>
       </div>
-      <label class="check"><input type="checkbox" id="f-remind" checked> 🔔 Remind me about this customer’s birthday and anniversary</label>
       <label class="field">Policy start date (for the anniversary thank-you)
         <input type="date" id="f-policy">
         <small id="f-policies" hidden></small>
         <small>Optional. Use the date their first policy with you started. The app counts the years and reminds you each year.</small>
       </label>
+      </div>
+      <label class="check"><input type="checkbox" id="f-remind" checked> <span id="f-remind-label">🔔 Remind me about their birthday and policy anniversary</span></label>
       <div class="notice ok" id="f-dl" hidden></div>
       <p class="hint">Don't enter IC numbers, policy numbers or medical details. Nickname, birthday and these notes are sent to OpenAI to write the wish.</p>
       <div id="custFormIssues" style="display:grid;gap:8px"></div>
       <div class="row">
-        <button class="btn primary grow" type="submit" id="custSaveBtn">Save customer</button>
+        <button class="btn primary grow" type="submit" id="custSaveBtn">Save contact</button>
         <button class="btn ghost" type="button" id="custCancelBtn">Cancel</button>
       </div>
-      <button class="btn danger" type="button" id="custDeleteBtn" hidden>Delete this customer</button>
+      <button class="btn danger" type="button" id="custDeleteBtn" hidden>Delete this contact</button>
     </form>
 
     <details class="panel" id="backupPanel">
-      <summary>💾 Backup &amp; restore <span class="hint" id="lastBackup"></span></summary>
-      <p class="hint" style="margin:0">Everything lives only on this device: customers, 定联 prospects and your Me details. Deleting the app, clearing browser data or changing phone erases it. Download a backup every month (save it to Google Drive, iCloud or WhatsApp yourself), and use <b>Restore from backup</b> on a new phone, iPad or laptop.</p>
+      <summary>☁️ Sync &amp; backup <span class="hint" id="lastBackup"></span></summary>
+      <p class="hint" style="margin:0" data-syncstate></p>
+      <p class="hint" style="margin:0">Signed in on the team link, your contacts, 定联 prospects and Me details are saved on the REDEFINE team server under your email, so your phone, iPad and laptop show the same thing and nothing is lost if you delete the app. Only you can see your list. A backup file is still a good extra copy.</p>
+      <button class="btn small" type="button" id="syncNowBtn" style="justify-self:start">☁️ Sync now</button>
       <div class="row">
         <button class="btn small" type="button" id="exportBtn">Download backup</button>
         <label class="btn small" for="importFile">Restore from backup</label>
@@ -514,7 +530,7 @@ code { font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border
   <div class="wrap" role="tablist">
     <button type="button" role="tab" data-view="customers" aria-selected="true">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>
-      Customers</button>
+      Contacts</button>
     <button type="button" role="tab" data-view="create" aria-selected="false">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 21h16M5 21v-7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v7"/><path d="M5 16c2 1.5 4 1.5 7 0s5-1.5 7 0"/><path d="M12 12V8M12 5.5c.8-.8.8-1.7 0-2.5-.8.8-.8 1.7 0 2.5z"/></svg>
       Create</button>
@@ -545,7 +561,7 @@ if (!Array.isArray(customers)) {
   store.set(KEY_C, customers);
 }
 customers.forEach(c => { if (c.sample && c.policyDate === undefined) c.policyDate = '2019-11-20'; }); // older copies of the example
-const saveCustomers = () => { const ok = store.set(KEY_C, customers); if (window.routineMarkDirty) window.routineMarkDirty(); return ok; };
+const saveCustomers = () => { const ok = store.set(KEY_C, customers); if (window.routineMarkDirty) window.routineMarkDirty(); if (window.syncSoon) window.syncSoon(); return ok; };
 
 /* ---------- small helpers ---------- */
 const $ = s => document.querySelector(s);
@@ -635,7 +651,8 @@ function checkCustomer(raw) {
   else if (/^[\d\W_]+$/u.test(nickname)) errors.push('The nickname has no letters. Check it.');
   else if (nickname.length > 18) warnings.push('Long nickname. It will be printed smaller on the poster.');
   const p = parseDob(raw.dob);
-  if (!raw.dob) errors.push('Add their date of birth.');
+  const category = CTYPE_KEYS.includes(raw.category) ? raw.category : 'client';
+  if (!raw.dob) (category === 'client' ? errors : warnings).push(category === 'client' ? 'Add their date of birth.' : 'No birthday saved, so there will be no birthday reminder for them.');
   else if (!p) errors.push('The date of birth is not a real date.');
   else {
     const dt = new Date(p.y, p.mo - 1, p.d);
@@ -658,11 +675,20 @@ function checkCustomer(raw) {
     else if (since !== null && pp.y < since) warnings.push(`The policy started in ${pp.y}, before "Customer since" ${since}. Check which is right.`);
   }
   if (/\b\d{6}-?\d{2}-?\d{4}\b/.test(priorities.join(' ') + ' ' + (raw.notes || ''))) errors.push('That looks like an IC number. Remove it before saving.');
-  return { errors, warnings, data: { nickname, dob: raw.dob, gender, priorities, since, policyDate, notes: String(raw.notes || '').trim() } };
+  return { errors, warnings, data: { nickname, dob: raw.dob || '', gender, priorities, since, policyDate, notes: String(raw.notes || '').trim(), category, via: String(raw.via || '').replace(/\s+/g, ' ').trim().slice(0, 40) } };
 }
 function issuesHtml(errors, warnings) {
   return errors.map(e => `<div class="notice bad"><b>Fix:</b> ${esc(e)}</div>`).join('') + warnings.map(w => `<div class="notice warn"><b>Check:</b> ${esc(w)}</div>`).join('');
 }
+
+/* ---------- contact categories: a person keeps one record when their category changes ---------- */
+const CTYPES = { client: ['💼', 'Client', 'Clients', 'Bought a policy through you'], nominee: ['📝', 'Nominee', 'Nominees', 'Nominated by one of your clients'],
+  referral: ['🔗', 'Referral', 'Referrals', 'Referred to you by a client or another contact'], prospect: ['🎯', 'Prospect', 'Prospects', 'Someone you are approaching'],
+  friend: ['😊', 'Friend', 'Friends', 'A personal friend, not necessarily a prospect or client'] };
+const CTYPE_KEYS = Object.keys(CTYPES);
+const ctype = c => (c && CTYPE_KEYS.includes(c.category)) ? c.category : 'client';
+const isClient = c => ctype(c) === 'client';
+const ctag = c => isClient(c) ? '' : `<span class="ctag">${CTYPES[ctype(c)][0]} ${CTYPES[ctype(c)][1]}</span>`;
 
 /* ---------- views ---------- */
 function show(view) {
@@ -684,7 +710,7 @@ function doneFor(c, occ, year) {
   return !h.length ? '' : h.some(x => !x.skipped) ? 'sent' : 'skipped';
 }
 function nextOccasions(c) { // the coming birthday and anniversary, each with its wished/skipped state
-  const out = [], nb = nextBirthday(c.dob), na = nextAnniversary(c.policyDate);
+  const out = [], nb = nextBirthday(c.dob), na = isClient(c) ? nextAnniversary(c.policyDate) : null;
   if (nb) out.push({ c, occ: 'birthday', days: nb.days, date: nb.date, what: `turns ${nb.turning}`, done: doneFor(c, 'birthday', nb.date.getFullYear()) });
   if (na) out.push({ c, occ: 'anniversary', days: na.days, date: na.date, what: `${na.years} year${na.years === 1 ? '' : 's'} with you`, done: doneFor(c, 'anniversary', na.date.getFullYear()) });
   return out;
@@ -752,9 +778,10 @@ function renderDupes() {
     saveCustomers(); renderCustomers(); toast('Duplicates merged');
   };
 }
-let custQ = '', custF = 'all', custShown = 20, custMode = 'soon'; // Coming up (daily view) or All customers (full list)
+let custQ = '', custF = 'all', custShown = 20, custMode = 'soon', custCat = 'all', custSort = 'soon', custMonth = ''; // Coming up (daily view) or All customers (full list)
 const CUST_FILTERS = [['all', 'All'], ['30', 'Next 30 days'], ['month', 'This month'], ['open', 'Not wished yet'], ['off', '🔕 Reminders off']];
 function renderBackupAge() {
+  if (window.syncState) window.syncState();
   const el = $('#lastBackup'); if (!el) return; const d = settings.lastBackup;
   const days = d ? Math.round((today0() - new Date(d)) / 864e5) : null;
   el.textContent = d ? `· last backup ${days === 0 ? 'today' : `${days} days ago`}` : '· no backup yet';
@@ -765,30 +792,41 @@ function renderCustomers() {
   const list = $('#custList'), real = customers.filter(c => !c.sample).length;
   $('#custTabs').querySelectorAll('[data-cm]').forEach(b => {
     b.classList.toggle('on', b.dataset.cm === custMode);
-    if (b.dataset.cm === 'all') b.textContent = `All customers (${customers.length})`;
+    if (b.dataset.cm === 'all') b.textContent = `All contacts (${customers.length})`;
     b.onclick = () => { custMode = b.dataset.cm; renderCustomers(); $('main').scrollTo({ top: 0 }); };
   });
   $('#monthPanel').hidden = custMode !== 'soon'; $('#importPanel').hidden = custMode !== 'soon'; $('#custListPanel').hidden = custMode !== 'all';
   $('#custCount').textContent = `${customers.length} total`;
+  const catCount = k => customers.filter(c => ctype(c) === k).length;
+  $('#custCats').innerHTML = [['all', 'All', customers.length], ...CTYPE_KEYS.map(k => [k, `${CTYPES[k][0]} ${CTYPES[k][2]}`, catCount(k)])]
+    .map(([k, l, n]) => `<button type="button" data-cc="${k}" class="${k === custCat ? 'on' : ''}">${l} (${n})</button>`).join('');
+  $('#custCats').querySelectorAll('[data-cc]').forEach(b => b.onclick = () => { custCat = b.dataset.cc; custShown = 20; renderCustomers(); });
   $('#custFilters').innerHTML = CUST_FILTERS.map(([k, l]) => `<button type="button" data-cf="${k}" class="${k === custF ? 'on' : ''}">${l}</button>`).join('');
   $('#custFilters').querySelectorAll('[data-cf]').forEach(b => b.onclick = () => { custF = b.dataset.cf; custShown = 20; renderCustomers(); });
-  if (!customers.length) { list.innerHTML = '<div class="empty">No customers yet. Use <b>Import from ePartner</b> above, or add one below.</div>'; $('#custMore').hidden = true; return; }
+  if (!customers.length) { list.innerHTML = '<div class="empty">No contacts yet. Use <b>Import from ePartner</b> on Coming up, or add one below.</div>'; $('#custMore').hidden = true; return; }
   const q = custQ.trim().toUpperCase(), m = today0().getMonth();
   const rows = customers.map(c => { const occ = nextOccasions(c); return { c, occ, next: occ.slice().sort((a, b) => a.days - b.days)[0] }; })
-    .filter(({ c, occ }) => (!q || (c.nickname + ' ' + (c.fullName || '') + ' ' + (c.priorities || []).join(' ') + ' ' + (c.notes || '')).toUpperCase().includes(q))
+    .filter(({ c }) => (custCat === 'all' || ctype(c) === custCat) && (!custMonth || (parseDob(c.dob) || {}).mo === +custMonth))
+    .filter(({ c, occ }) => (!q || (c.nickname + ' ' + (c.fullName || '') + ' ' + (c.priorities || []).join(' ') + ' ' + (c.notes || '') + ' ' + (c.via || '')).toUpperCase().includes(q))
       && (custF === 'all' || (custF === '30' && occ.some(o => o.days <= 30)) || (custF === 'month' && occ.some(o => o.date.getMonth() === m && o.days <= 31))
         || (custF === 'open' && !c.noRemind && occ.some(o => o.days <= 30 && !o.done)) || (custF === 'off' && c.noRemind)))
-    .sort((a, b) => (a.next ? a.next.days : 9999) - (b.next ? b.next.days : 9999));
+    .sort(custSort === 'az' ? (a, b) => a.c.nickname.localeCompare(b.c.nickname)
+      : custSort === 'month' ? (a, b) => bdKey(a.c) - bdKey(b.c) || a.c.nickname.localeCompare(b.c.nickname)
+      : (a, b) => (a.next ? a.next.days : 9999) - (b.next ? b.next.days : 9999));
   const inDays = n => n === 0 ? 'today' : `in ${n}d`;
-  list.innerHTML = rows.length ? '<div class="clist">' + rows.slice(0, custShown).map(({ c, occ, next }) => { // one compact line per customer
-    const when = !next ? '?' : next.days === 0 ? 'Today' : `${next.date.getDate()} ${MONTHS[next.date.getMonth()]}`;
-    const line = occ.map(o => `${o.occ === 'birthday' ? '🎂' : '🤝'} ${o.days === 0 ? 'today' : `${o.days}d`}${o.done === 'sent' ? ' ✓' : o.done === 'skipped' ? ' –' : ''}`).join(' · ') || 'Birthday needs fixing';
-    return `<div class="crow">
+  let lastMonth = null; // month headings when sorted by birthday
+  const heading = c => { if (custSort !== 'month') return ''; const p = parseDob(c.dob), m = p ? p.mo : 0; if (m === lastMonth) return ''; lastMonth = m;
+    return `<div class="cmonth">${m ? MONTH_NAMES[m - 1] : 'No birthday saved'}</div>`; };
+  list.innerHTML = rows.length ? '<div class="clist">' + rows.slice(0, custShown).map(({ c, occ, next }) => { // one compact line per contact
+    const bd = parseDob(c.dob);
+    const when = custSort === 'month' ? (bd ? `${bd.d} ${MONTHS[bd.mo - 1]}` : '–') : !next ? '–' : next.days === 0 ? 'Today' : `${next.date.getDate()} ${MONTHS[next.date.getMonth()]}`;
+    const line = occ.map(o => `${o.occ === 'birthday' ? '🎂' : '🤝'} ${o.days === 0 ? 'today' : `${o.days}d`}${o.done === 'sent' ? ' ✓' : o.done === 'skipped' ? ' –' : ''}`).join(' · ') || (c.dob ? 'Birthday needs fixing' : 'No birthday saved');
+    return heading(c) + `<div class="crow">
       <span class="cwhen ${next && next.days === 0 ? 'today' : ''}">${esc(when)}</span>
-      <span class="cname" data-edit="${c.id}" role="button" tabindex="0"><b>${esc(c.nickname)}</b>${c.noRemind ? ' 🔕' : ''}${c.sample ? '<span class="tag-sample">Ex</span>' : ''}<span class="cmeta">${esc(line)}${(c.priorities || [])[0] ? ` · ${esc(c.priorities[0])}` : ''}</span></span>
+      <span class="cname" data-edit="${c.id}" role="button" tabindex="0"><b>${esc(c.nickname)}</b>${ctag(c)}${c.noRemind ? ' 🔕' : ''}${c.sample ? '<span class="tag-sample">Ex</span>' : ''}<span class="cmeta">${esc(line)}${(c.priorities || [])[0] ? ` · ${esc(c.priorities[0])}` : ''}</span></span>
       ${next ? `<button type="button" class="cbtn" data-make="${c.id}" data-occ="${next.occ}">Poster</button>` : ''}
     </div>`;
-  }).join('') + '</div>' : `<p class="hint">No customers match${q ? ` “${esc(custQ)}”` : ''}.</p>`;
+  }).join('') + '</div>' : `<p class="hint">No contacts match${q ? ` “${esc(custQ)}”` : ''}.</p>`;
   $('#custMore').hidden = rows.length <= custShown;
   $('#custMore').textContent = `Show 20 more (${Math.max(0, rows.length - custShown)} left)`;
   wireOccActions(list);
@@ -796,11 +834,22 @@ function renderCustomers() {
   if (!renderCustomers.opened) { renderCustomers.opened = true; $('#importPanel').open = real === 0; } // import folds away once you have customers
 }
 $('#custQ').oninput = e => { custQ = e.target.value; custShown = 20; renderCustomers(); };
+const bdKey = c => { const p = parseDob(c.dob); return p ? p.mo * 100 + p.d : 9999; }; // Jan 1 first, no birthday last
+$('#custMonth').innerHTML += ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((m, i) => `<option value="${i + 1}">${m}</option>`).join('');
+$('#custSort').onchange = e => { custSort = e.target.value; custShown = 20; renderCustomers(); };
+$('#custMonth').onchange = e => { custMonth = e.target.value; custShown = 20; renderCustomers(); };
 $('#custMore').onclick = () => { custShown += 20; renderCustomers(); };
 let editingId = null;
 function openForm(id) {
   editingId = id || null; const c = customers.find(x => x.id === id) || {};
-  $('#custFormTitle').textContent = id ? `Edit ${c.nickname}` : 'New customer';
+  $('#custFormTitle').textContent = id ? `Edit ${c.nickname}` : 'New contact';
+  formCat = id ? ctype(c) : (afterAdd === 'newpolicy' ? 'client' : (custCat !== 'all' ? custCat : 'client'));
+  radios($('#f-cat'), 'fcat', Object.fromEntries(CTYPE_KEYS.map(k => [k, `${CTYPES[k][0]} ${CTYPES[k][1]}`])), formCat);
+  $('#f-via').value = c.via || '';
+  $('#viaNames').innerHTML = customers.filter(x => isClient(x) && x.id !== id).slice(0, 400).map(x => `<option value="${esc(x.nickname)}">`).join('');
+  const hist = (c.catHistory || []).map(h => `${CTYPES[h.from] ? CTYPES[h.from][1] : h.from} → ${CTYPES[h.to] ? CTYPES[h.to][1] : h.to} (${h.date})`).join(', ');
+  $('#f-cat-hint').dataset.hist = hist ? `History: ${hist}` : '';
+  syncFormCat();
   $('#f-nick').value = c.nickname || ''; $('#f-dob').value = c.dob || ''; $('#f-gender').value = c.gender || '';
   $('#f-pri').value = (c.priorities || []).join('\n'); $('#f-since').value = c.since || ''; $('#f-notes').value = c.notes || '';
   $('#f-policy').value = c.policyDate || ''; $('#f-remind').checked = !c.noRemind;
@@ -815,6 +864,15 @@ function openForm(id) {
   $('#custForm').hidden = false; $('#addCustBtn').hidden = true; $('#f-nick').focus();
   $('#custForm').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
+let formCat = 'client';
+function syncFormCat() { // show only the fields that fit this category
+  const cl = formCat === 'client';
+  $('#f-clientOnly').hidden = !cl; $('#f-via-row').hidden = !['nominee', 'referral'].includes(formCat);
+  $('#f-dob-label').textContent = cl ? 'Date of birth *' : 'Date of birth (for birthday reminders)';
+  $('#f-remind-label').textContent = cl ? '🔔 Remind me about their birthday and policy anniversary' : '🔔 Remind me about their birthday';
+  $('#f-cat-hint').textContent = [CTYPES[formCat][3] + '.', $('#f-cat-hint').dataset.hist || ''].filter(Boolean).join(' ');
+}
+document.addEventListener('change', e => { if (e.target.name === 'fcat') { formCat = e.target.value; syncFormCat(); } });
 function closeForm() { $('#custForm').hidden = true; $('#addCustBtn').hidden = false; editingId = null; }
 $('#addCustBtn').onclick = () => { afterAdd = null; openForm(null); };
 let afterAdd = null; // 'newpolicy' when the agent came from Create to add a brand-new customer
@@ -830,23 +888,29 @@ $('#custCancelBtn').onclick = () => { const o = afterEdit; afterEdit = null; aft
 $('#custForm').onsubmit = async e => {
   e.preventDefault();
   const { errors, warnings, data } = checkCustomer({ nickname: $('#f-nick').value, dob: $('#f-dob').value, gender: $('#f-gender').value,
-    priorities: $('#f-pri').value, since: $('#f-since').value, notes: $('#f-notes').value, policyDate: $('#f-policy').value });
+    priorities: $('#f-pri').value, since: formCat === 'client' ? $('#f-since').value : '', notes: $('#f-notes').value, policyDate: formCat === 'client' ? $('#f-policy').value : '',
+    category: formCat, via: ['nominee', 'referral'].includes(formCat) ? $('#f-via').value : '' });
   $('#custFormIssues').innerHTML = issuesHtml(errors, warnings);
   if (errors.length) return;
   if (warnings.length && !(await ask('Save with these notes?', warnings.map(esc).join('<br>'), 'Save anyway'))) return;
   const twin = customers.find(c => c.id !== editingId && !c.sample && samePerson(c, { nickname: data.nickname, dob: data.dob }));
   if (twin) { // never save the same person twice
-    if (await ask(`${esc(twin.nickname)} is already saved`, `A customer with this name and birthday already exists. Open ${esc(twin.nickname)} to add these details there instead?`, 'Open existing')) openForm(twin.id);
+    if (await ask(`${esc(twin.nickname)} is already saved`, `A contact with this name and birthday already exists (${CTYPES[ctype(twin)][1]}). To change their category, edit them instead. Open ${esc(twin.nickname)} to add these details there instead?`, 'Open existing')) openForm(twin.id);
     return;
   }
+  let becameClient = false;
   if (editingId) {
     const c = customers.find(x => x.id === editingId);
     if (!(await ask(`Save changes to ${esc(c.nickname)}?`, 'This replaces the details you saved before.', 'Save changes'))) return;
-    if (data.policyDate !== c.policyDate) c.policyDates = [...new Set([data.policyDate, ...policyDatesOf(c).filter(d => d > data.policyDate)].filter(Boolean))].sort();
+    becameClient = ctype(c) !== 'client' && data.category === 'client';
+    if (ctype(c) !== data.category) c.catHistory = (c.catHistory || []).concat({ date: new Date().toISOString().slice(0, 10), from: ctype(c), to: data.category });
+    if (data.category !== 'client') { data.policyDate = c.policyDate || ''; data.since = c.since || null; } // kept, in case they become a client again
+    else if (data.policyDate !== c.policyDate) c.policyDates = [...new Set([data.policyDate, ...policyDatesOf(c).filter(d => d > data.policyDate)].filter(Boolean))].sort();
     Object.assign(c, data, { noRemind: !$('#f-remind').checked }); delete c.sample;
   } else customers.push(Object.assign({ id: uid(), history: [] }, data, { noRemind: !$('#f-remind').checked }));
-  const added = !editingId && customers[customers.length - 1];
-  saveCustomers(); closeForm(); renderCustomers(); toast('Customer saved');
+  const added = !editingId && customers[customers.length - 1], savedId = editingId;
+  saveCustomers(); closeForm(); renderCustomers(); toast('Contact saved');
+  if (becameClient && !afterEdit && await ask('Now a client 🎉', 'Make a thank-you poster for their first policy?', 'Make thank-you poster')) { selectedId = savedId; setOccasion('newpolicy'); show('create'); return; }
   if (added && afterAdd) { const o = afterAdd; afterAdd = null; selectedId = added.id; setOccasion(o); show('create'); }
   else if (!added && afterEdit) { const o = afterEdit; afterEdit = null; setOccasion(o); show('create'); }
 };
@@ -863,6 +927,7 @@ $('#custDeleteBtn').onclick = async () => {
   customers = customers.filter(x => x.id !== editingId); saveCustomers(); closeForm(); renderCustomers(); toast('Customer deleted');
 };
 const KEY_P = 'remembered.prospects.v1', KEY_R = 'remembered.routine.v1';
+$('#syncNowBtn').onclick = () => { if (!team) return toast('Sync works on the team link after you sign in.'); toast('Syncing…'); window.syncNow(); };
 $('#exportBtn').onclick = () => { // one file with everything on this device (never the OpenAI key)
   const me = Object.assign({}, settings); delete me.apiKey;
   const blob = new Blob([JSON.stringify({ app: 'Customer Relationship App', version: 2, exported: new Date().toISOString(), customers,
@@ -898,7 +963,7 @@ const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'Ju
 function occasionsInMonth(year, month) { // month 0-11; every birthday and anniversary that falls in it
   const out = [];
   customers.forEach(c => {
-    const b = parseDob(c.dob), p = parseDob(c.policyDate);
+    const b = parseDob(c.dob), p = isClient(c) ? parseDob(c.policyDate) : null;
     if (b && b.mo - 1 === month) out.push({ c, occ: 'birthday', day: b.mo === 2 && b.d === 29 && !isLeap(year) ? 28 : b.d, what: `turns ${year - b.y}` });
     if (p && p.mo - 1 === month && year > p.y) out.push({ c, occ: 'anniversary', day: p.mo === 2 && p.d === 29 && !isLeap(year) ? 28 : p.d, what: `${year - p.y} year${year - p.y === 1 ? '' : 's'} with you` });
   });
@@ -913,24 +978,34 @@ function renderMonth() {
   const waiting = soon.filter(o => !o.done).length;
   try { if (navigator.setAppBadge) waiting ? navigator.setAppBadge(waiting) : navigator.clearAppBadge(); } catch {}
   const when = d => d === 0 ? 'Today' : d === 1 ? 'Tomorrow' : `In ${d} days`;
-  $('#monthPanel').innerHTML = `${soon.length ? `<div class="notice ${waiting ? 'warn' : 'ok'}" style="gap:8px"><b>Coming up in the next 7 days${waiting ? ` · ${waiting} to decide` : ' · all done'}</b>
-      ${(() => { // undecided first; the rest of a busy week folds away so the screen stays short
-        const order = soon.slice().sort((x, y) => (!!x.done - !!y.done) || (x.days - y.days));
-        const item = o => `<div class="row" style="justify-content:space-between;gap:6px"><span style="min-width:0;flex:1 1 160px">${when(o.days)}: ${o.occ === 'birthday' ? '🎂' : '🤝'} <b>${esc(o.c.nickname)}</b> ${esc(o.what)}</span>
-        <span class="row" style="gap:6px">${occActions(o)}</span></div>`;
-        return order.slice(0, 5).map(item).join('') + (order.length > 5 ? `<details><summary class="hint">Show ${order.length - 5} more this week</summary><div style="display:grid;gap:8px;margin-top:8px">${order.slice(5).map(item).join('')}</div></details>` : '');
-      })()}</div>` : ''}
-    <div class="row" style="justify-content:space-between"><h2>This month: ${MONTH_NAMES[m]}</h2>
-      <span class="chip gold">${list.filter(o => o.occ === 'birthday').length} 🎂 · ${list.filter(o => o.occ === 'anniversary').length} 🤝</span></div>
-    ${list.length ? `<details ${list.length <= 8 ? 'open' : ''}><summary class="hint">${list.length <= 8 ? 'Everyone this month' : `Show all ${list.length} this month`}</summary><ul class="month-list" style="margin-top:8px">${list.map(o => {
+  const soonBox = (occ, title, empty) => { // birthdays (everyone) and policy anniversaries (clients) in separate boxes
+    const items = soon.filter(o => o.occ === occ), open = items.filter(o => !o.done).length;
+    if (!items.length) return `<p class="hint" style="margin:0">${title}: ${empty}</p>`;
+    const order = items.slice().sort((x, y) => (!!x.done - !!y.done) || (x.days - y.days)); // undecided first; a busy week folds away
+    const item = o => `<div class="row" style="justify-content:space-between;gap:6px"><span style="min-width:0;flex:1 1 160px">${when(o.days)}: <b>${esc(o.c.nickname)}</b>${ctag(o.c)} ${esc(o.what)}</span>
+      <span class="row" style="gap:6px">${occActions(o)}</span></div>`;
+    return `<div class="notice ${open ? 'warn' : 'ok'}" style="gap:8px"><b>${title}${open ? ` · ${open} to decide` : ' · all done'}</b>
+      ${order.slice(0, 5).map(item).join('')}${order.length > 5 ? `<details><summary class="hint">Show ${order.length - 5} more this week</summary><div style="display:grid;gap:8px;margin-top:8px">${order.slice(5).map(item).join('')}</div></details>` : ''}</div>`;
+  };
+  const monthBox = (occ, title, empty) => {
+    const items = list.filter(o => o.occ === occ);
+    if (!items.length) return `<p class="hint" style="margin:0">${title}: ${empty}</p>`;
+    return `<details ${items.length <= 6 ? 'open' : ''}><summary><b>${title} (${items.length})</b></summary><ul class="month-list" style="margin-top:8px">${items.map(o => {
       const done = doneFor(o.c, o.occ, y);
       return `<li class="${o.day < t.getDate() || done ? 'past' : ''}"><span class="d">${o.day} ${MONTHS[m]}</span>
-      <span style="min-width:0">${o.occ === 'birthday' ? '🎂' : '🤝'} ${esc(o.c.nickname)}${o.c.noRemind ? ' 🔕' : ''} <span class="hint">${esc(o.what)}</span></span>
+      <span style="min-width:0">${esc(o.c.nickname)}${ctag(o.c)}${o.c.noRemind ? ' 🔕' : ''} <span class="hint">${esc(o.what)}</span></span>
       ${done === 'sent' ? '<span class="chip ok">✓</span>' : done === 'skipped' ? '<span class="chip">Skipped</span>' : `<button class="btn small" data-make="${o.c.id}" data-occ="${o.occ}">${o.occ === 'birthday' ? 'Wish' : 'Thank'}</button>`}</li>`;
-    }).join('')}</ul></details>`
-      : '<p class="hint" style="margin:0">No customer birthdays or policy anniversaries this month.</p>'}
-    <p class="hint" style="margin:0">Next month (${MONTH_NAMES[nm]}): ${next.length ? `${next.length} occasion${next.length === 1 ? '' : 's'}` : 'none yet'}.</p>
-    <button class="btn" type="button" id="viewAllCust">📋 View all ${customers.length} customers</button>
+    }).join('')}</ul></details>`;
+  };
+  $('#monthPanel').innerHTML = `<h2>Next 7 days</h2>
+    ${soonBox('birthday', '🎂 Birthdays', 'none in the next 7 days.')}
+    ${soonBox('anniversary', '🤝 Policy anniversaries (clients)', 'none in the next 7 days.')}
+    <div class="row" style="justify-content:space-between"><h2>This month: ${MONTH_NAMES[m]}</h2>
+      <span class="chip gold">${list.filter(o => o.occ === 'birthday').length} 🎂 · ${list.filter(o => o.occ === 'anniversary').length} 🤝</span></div>
+    ${monthBox('birthday', '🎂 Birthdays this month', 'none this month.')}
+    ${monthBox('anniversary', '🤝 Policy anniversaries this month', 'none this month.')}
+    <p class="hint" style="margin:0">Next month (${MONTH_NAMES[nm]}): ${next.filter(o => o.occ === 'birthday').length} birthday${next.filter(o => o.occ === 'birthday').length === 1 ? '' : 's'}, ${next.filter(o => o.occ === 'anniversary').length} policy anniversar${next.filter(o => o.occ === 'anniversary').length === 1 ? 'y' : 'ies'}.</p>
+    <button class="btn" type="button" id="viewAllCust">📋 View all ${customers.length} contacts</button>
     <div class="row">
       <button class="btn small primary" type="button" id="calNewBtn" ${fresh ? '' : 'disabled'}>📅 Add ${fresh ? fresh : 'new'} customer${fresh === 1 ? '' : 's'} to my calendar</button>
       <button class="btn small" type="button" id="calAllBtn">Full calendar + monthly summaries</button>
@@ -1234,14 +1309,14 @@ $('#scanFile').onchange = async e => {
   if (!aiReady()) { status.innerHTML = '<div class="notice warn">Reading photos needs team AI (sign in on the team link) or your own OpenAI key in <b>Me</b>. You can import a CSV file instead.</div>'; return; }
   if (!(await ask('Read this list with AI?', `${files.length} photo${files.length === 1 ? '' : 's'} will be sent to the AI to read names, birthdays and policy dates. Crop out anything you don\u2019t need first. Check that your company allows customer lists to be processed this way.`, 'Read the list'))) return;
   const msgs = [];
-  for (let i = 0; i < files.length; i++) {
-    status.innerHTML = `<div class="notice ok">Reading photo ${i + 1} of ${files.length}\u2026 (about 10\u201330 seconds each)</div>`;
-    try {
-      const { rows, note } = await readListPhoto(files[i]);
-      const n = addFound(rows, `photo ${i + 1}`);
-      msgs.push(['ok', `Photo ${i + 1}: found ${n} customer${n === 1 ? '' : 's'}.${note ? ' ' + note : ''}`]);
-    } catch (err) { msgs.push(['bad', `Photo ${i + 1}: ${err.message}`]); }
-  }
+  let done = 0; const tick = () => { status.innerHTML = `<div class="notice ok">Reading ${files.length} photo${files.length === 1 ? '' : 's'}, 3 at a time\u2026 ${done} done (about 10\u201330 seconds each)</div>`; }; tick();
+  const results = await inPool(files, 3, async f => { try { return await readListPhoto(f); } catch (err) { return { err }; } finally { done++; tick(); } });
+  results.forEach((r, i) => { // added in photo order, so nothing gets mixed up
+    if (r.err) { msgs.push(['bad', `Photo ${i + 1}: ${r.err.message}`]); return; }
+    const n = addFound(r.rows, `photo ${i + 1}`);
+    msgs.push(['ok', `Photo ${i + 1}: found ${n} new customer${n === 1 ? '' : 's'}.${r.note ? ' ' + r.note : ''}`]);
+  });
+  msgs.push(['ok', 'Need more? Tap \ud83d\udcf7 again: new photos are added to this same list.']);
   status.innerHTML = msgs.map(([k, m]) => `<div class="notice ${k}">${esc(m)}</div>`).join('');
   renderReview(); $('#reviewBox').scrollIntoView({ behavior: 'smooth', block: 'start' });
 };
@@ -1274,6 +1349,12 @@ $('#pasteBtn').onclick = () => {
   try { readListText(text, 'pasted list'); $('#pasteBox').value = ''; } // the pasted text (with policy numbers) isn't kept
   catch (err) { $('#scanStatus').innerHTML = `<div class="notice bad">${esc(err.message)} Copy the whole table, including the heading row.</div>`; }
 };
+// run a job for each item, a few at a time; results come back in the original order
+async function inPool(items, size, job) {
+  const out = new Array(items.length); let next = 0;
+  await Promise.all(Array.from({ length: Math.min(size, items.length) }, async () => { while (next < items.length) { const i = next++; out[i] = await job(items[i], i); } }));
+  return out;
+}
 const loadScript = src => new Promise((ok, fail) => { const s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = () => fail(new Error('Couldn’t load the file reader. Check your internet and try again.')); document.head.appendChild(s); });
 /* ePartner "Policy Listing" PDF, read on this phone (pdf.js, no AI). Each word sits at a position on the page, so it's put
    into the column whose heading is above it. A record starts at a 10-digit policy number; long names wrap onto the next
@@ -1399,7 +1480,7 @@ $('#saveSettingsBtn').onclick = async () => {
   if (changes.length && !(await ask('Save changes?', `This will ${changes.join(' and ')}.`, 'Save'))) return;
   if (next.apiKey && !/^sk-/.test(next.apiKey)) { if (!(await ask('Unusual API key', 'OpenAI keys normally start with "sk-". Save it anyway?', 'Save anyway'))) return; }
   const before = settings; settings = next;
-  if (store.set(KEY_S, settings)) { pendingPhoto = null; pendingCake = undefined; toast('Details saved'); loadSettingsForm(); sendName(); }
+  if (store.set(KEY_S, settings)) { pendingPhoto = null; pendingCake = undefined; toast('Details saved'); loadSettingsForm(); sendName(); if (window.syncSoon) window.syncSoon(); }
   else settings = before;
 };
 
@@ -1591,6 +1672,7 @@ function customerBrief(c, occ) {
     occ === 'cny' && cny ? `New year: Year of the ${cny.animal} (${cny.year})` : '',
     occ === 'cny' && zodiac ? `Their own Chinese zodiac: ${zodiac}` : '',
     ...eventBrief(c, occ),
+    isClient(c) ? '' : `Relationship: ${CTYPES[ctype(c)][1].toLowerCase()} (${CTYPES[ctype(c)][3].toLowerCase()}), NOT a client yet. Do not thank them for their trust as a client, do not mention years as a client, policies or insurance.`,
     `Things they care about and prioritise:\n- ${(c.priorities || []).join('\n- ') || '(none recorded)'}`,
     c.notes ? `Recent news: ${c.notes}` : '', yearsWithMe(c, occ) ? `My client for ${yearsWithMe(c, occ)} year${yearsWithMe(c, occ) === 1 ? '' : 's'} (since ${c.policyDate || c.since})` : c.since ? `My customer since: ${c.since}` : '',
     occ === 'birthday' && p ? `Star sign: ${westernSign(p.mo, p.d)}` : '',
@@ -1715,7 +1797,7 @@ function templateWords(c, occ = occasion, lg = lang) {
   }
   const milestone = nb && nb.turning % 10 === 0 && nb.turning >= 30 ? ` ${nb.turning} looks great on you!` : '';
   const yrs = yearsWithMe(c, 'birthday');
-  const thanks = yrs ? `Thank you for ${yrs} year${yrs === 1 ? '' : 's'} of trust. It means a lot.` : c.since ? `Thank you for trusting me since ${c.since}. It means a lot.` : 'Thank you for letting me be part of your journey.';
+  const thanks = !isClient(c) ? 'Wishing you a wonderful year ahead.' : yrs ? `Thank you for ${yrs} year${yrs === 1 ? '' : 's'} of trust. It means a lot.` : c.since ? `Thank you for trusting me since ${c.since}. It means a lot.` : 'Thank you for letting me be part of your journey.';
   return { posterLine: lines[first], message: `Happy birthday, ${c.nickname}! 🎉${milestone}\n\n${body} ${thanks}${end}`, source: 'template' };
 }
 
@@ -1726,7 +1808,7 @@ function templateWordsZh(c, occ) { // used when there's no AI; priorities are qu
 ${sign}` : '', ask = pr[0] ? `
 
 对了，「${pr[0]}」最近怎么样了？` : '';
-  const yrs = yearsWithMe(c, occ), trust = yrs ? `谢谢你这${yrs}年来的信任，我一直很珍惜。` : '谢谢你一直以来的信任。';
+  const yrs = yearsWithMe(c, occ), trust = !isClient(c) ? '祝你新的一年一切顺心。' : yrs ? `谢谢你这${yrs}年来的信任，我一直很珍惜。` : '谢谢你一直以来的信任。';
   const out = (posterLine, message) => ({ posterLine, message, source: 'template' });
   if (occ === 'anniversary') { const na = nextAnniversary(c.policyDate), y = na ? na.years : 0;
     return out(y ? `${y}年的信任，谢谢你一路同行` : '谢谢你的信任，一路有你',
@@ -2402,7 +2484,9 @@ function renderSummary() {
   $('#c-age-row').hidden = !(info && info.medal);
   if (isEvent(occasion)) { const e = eventChecks(); chk.errors.push(...e.errors); chk.warnings.push(...e.warnings); }
   if (occasion === 'newpolicy') setup.push(['ok', 'Brand-new customer not in the list yet? <button class="btn small" type="button" id="evAddCust">+ Add them first</button>']);
-  if (occasion === 'anniversary' && !info) chk.errors.push(`Add ${c.nickname}’s policy start date first (Customers → Edit). The app won’t guess how many years it has been.`);
+  if (['anniversary', 'claim'].includes(occasion) && !isClient(c)) chk.errors.push(`${c.nickname} is a ${CTYPES[ctype(c)][1].toLowerCase()}, not a client. Policy anniversary and claim posters are for clients. Change their category in Contacts if they bought a policy.`);
+  if (occasion === 'birthday' && !c.dob) chk.errors.push(`No birthday saved for ${c.nickname}. Add it in Contacts → Edit.`);
+  if (occasion === 'anniversary' && !info && isClient(c)) chk.errors.push(`Add ${c.nickname}’s policy start date first (Customers → Edit). The app won’t guess how many years it has been.`);
   if (occasion === 'cny' && !info) chk.errors.push('This app only knows Chinese New Year dates up to 2030. Ask for an update.');
   if (!settings.photo) setup.push(['warn', 'No face photo yet, so a placeholder is used. Add yours in <b>Me</b>.']);
   if (team) { const left = Math.max(0, team.limits.posters - (team.used.posters || 0));
@@ -2741,6 +2825,10 @@ $('#sentBtn').onclick = async () => {
   if (!(await ask(`Mark ${esc(c.nickname)} as sent?`, 'Saves today’s date and this message, so next year’s wish talks about something new.', 'Mark as sent'))) return;
   c.history = (c.history || []).concat({ date: new Date().toISOString().slice(0, 10), message: $('#w-msg').value, occasion,
     for: isEvent(occasion) ? `${occasion}-${ev.date}` : `${occasion}-${(occasionInfo(c) || { date: today0() }).date.getFullYear()}`, sang: sendingVideo() });
+  // a nominee / referral / prospect / friend who bought a policy becomes a client (same record, history kept)
+  if (occasion === 'newpolicy' && !isClient(c) && await ask(`Change ${esc(c.nickname)} to Client?`, `They’re saved as a ${CTYPES[ctype(c)][1].toLowerCase()}. Their details and history stay the same.`, 'Make client')) {
+    c.catHistory = (c.catHistory || []).concat({ date: new Date().toISOString().slice(0, 10), from: ctype(c), to: 'client' }); c.category = 'client';
+  }
   // a brand-new customer: offer to save this as their client-since date, so anniversaries start counting
   const d = eventDate();
   if (occasion === 'newpolicy' && !ev.repeat && !c.policyDate && d && d <= today0()
@@ -2764,6 +2852,7 @@ function updateRoutineCount() { // how many prospects are due, shown on the 定�
 }
 </script>
 <script src="routine.js"></script>
+<script src="sync.js"></script>
 <script>updateRoutineCount();</script>
 </body>
 </html>

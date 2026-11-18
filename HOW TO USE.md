@@ -86,7 +86,7 @@ Then **check before saving**. Use the filters (Needs a look / New / Updates / No
 
 **Re-import a newer list** the same way: birthdays and policy dates are replaced with the new values, while your nicknames, priorities and message history are kept. Customers not on the new list are shown so you can remove them, but nothing is removed unless you tick it and confirm.
 
-Other ways: **Excel (.xlsx) or CSV** with Policy Holder / Name, DOB and Commencement columns (same 📄 button, read on your phone), or **Photo or screenshot (AI)** for a few rows when you can't copy (it sends the image to the AI, so crop out what you don't need).
+Other ways: **Excel (.xlsx) or CSV** with Policy Holder / Name, DOB and Commencement columns (same 📄 button, read on your phone), or **Photos or screenshots (AI)**: pick several at once from your photo library (up to 3 are read at the same time; tap 📷 again to add more to the same list), when you can't copy (it sends the image to the AI, so crop out what you don't need).
 
 **One customer, many policies.** The same name and birthday is always one customer. The earliest policy is their client-since date (for the anniversary); later policy dates are kept and shown when you edit them ("Policies started: …"). If a customer is ever saved twice, the top of Customers shows **Merge duplicates**: it keeps one, with all priorities, wishes and policy dates. Adding someone by hand who already exists opens the existing one instead.
 
@@ -94,7 +94,7 @@ Other ways: **Excel (.xlsx) or CSV** with Policy Holder / Name, DOB and Commence
 
 - **Inside the app:** every time you open it, **Coming up in the next 7 days** shows at the top, followed by **This month**. Each has a Create button. On phones that support it, the app icon shows a count.
 - **Phone calendar:** **Add new customers to my calendar** creates yearly birthday and anniversary entries that remind you 3 days before and at 9am on the day. **Full calendar + monthly summaries** also adds a summary on the 1st of each month. On iPhone, import into a new calendar called "Customers" so you can replace it later.
-- **Your data stays only on this device**, not in the cloud, and phone, iPad and laptop don't sync. Deleting the app, clearing browser data or changing phone erases it, so: **Customers → 💾 Backup & restore → Download backup** every month and keep the file in Google Drive, iCloud or WhatsApp. The backup holds customers, 定联 prospects with their chats and results, and your Me details (never the OpenAI key). On another device, tap **Restore from backup**. The panel shows when you last backed up (orange after 30 days).
+- **Cloud sync (team link):** your contacts, 定联 prospects and Me details are saved on the REDEFINE team server under your sign-in email, so your phone, iPad and laptop show the same list, changes on one appear on the others within about a minute (or tap **☁️ Sync now** under **Contacts → ☁️ Sync & backup**), and deleting the app or changing phone loses nothing: sign in again and everything comes back. Only you can see your own list. If two devices change the same contact, the later change wins. A **Download backup** file is still a good extra copy. The OpenAI key and push-notification settings stay on each device.
 
 ## 定联 (Routine Engagement)
 
@@ -136,6 +136,14 @@ Open the **定联** tab. The red number on it is how many prospects are due. **S
 **Pop-ups** (Reminders box on the Today screen): tap **🔔 Turn on pop-ups**, pick the time for your daily reminder, and keep the **9pm nudge** on if you like. The pop-up says how many prospects are due, plus customer birthdays and anniversaries today. Use **Test in 15 s** to check it. iPhone: add the app to your Home Screen first. Names never leave your phone; only counts are used.
 
 **For the Group Manager:** **Team 定联 (numbers only)** at the bottom of Today shows each agent's chats, days, open, present, close, NOC and ANP for this week and last week.
+
+## Contacts: clients, nominees, referrals, prospects, friends
+
+- The **Contacts** tab holds everyone, each with a category: **💼 Client** (bought a policy through you), **📝 Nominee** (nominated by one of your clients), **🔗 Referral** (referred by a client or another contact), **🎯 Prospect** (someone you are approaching) or **😊 Friend**. ePartner imports come in as Clients.
+- **Add a contact:** pick the category first. Nominees and referrals can note who nominated or referred them. Only clients need a birthday and have policy dates; for others the birthday is optional (no birthday, no birthday reminder).
+- **Change a category** (e.g. a nominee buys a policy): open them, tap the new category, Save. It's the same record, so their priorities, wishes and history stay, and the change is noted ("History: Nominee → Client"). When someone becomes a Client the app offers a thank-you poster for their first policy. Marking a New policy poster as sent for a non-client also offers to make them a Client.
+- **All contacts:** filter by category (with counts), **Sort: Next occasion first · Name A–Z · Birthday Jan–Dec** (with month headings), and **Birth month** to see one month only.
+- **Coming up keeps them apart:** **🎂 Birthdays** (all categories) and **🤝 Policy anniversaries (clients)** are separate boxes, for the next 7 days and for this month. Anniversary and claim posters are for clients only.
 
 ## Priorities, search and 中文
 
@@ -182,7 +190,7 @@ Open the **定联** tab. The red number on it is how many prospects are due. **S
 
 ## Good to know
 
-- **Privacy:** customer list, photo and key stay in your phone's browser. Nickname, birthday, priorities and your photo are sent to OpenAI only when you tap Create. PDF, Excel, CSV and paste imports are read on the phone. Use **Backup & restore** monthly, because clearing browser data erases the list.
+- **Privacy:** on the team link your contacts and Me details sync through the REDEFINE team server under your email (only you see them); the OpenAI key stays on the device. Nickname, birthday, priorities and your photo are sent to OpenAI only when you tap Create. PDF, Excel, CSV and paste imports are read on the phone. Use **Backup & restore** monthly, because clearing browser data erases the list.
 - **Cost:** you pay OpenAI per image and per message. Check current prices on OpenAI's pricing page. Medium quality is the sweet spot.
 - **Models:** default is `gpt-image-2` for images and `gpt-5-mini` for writing. You can change both in **Me** if OpenAI renames them.
 - **Kelly** is a made-up example customer. Delete her once you've added real customers.

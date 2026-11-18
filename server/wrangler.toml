@@ -28,3 +28,9 @@ id = "daaa700913d9463e8e447c1c40351177"
 # Hourly: sends each agent's daily 定联 reminder at the hour they picked, and the 9pm nudge
 [triggers]
 crons = ["0 * * * *"]
+
+# Cloud sync: each agent's contacts, 定联 prospects and Me details, one row per record, keyed by their sign-in email
+[[d1_databases]]
+binding = "DB"
+database_name = "remembered-sync"
+database_id = "6e1a8e29-7877-403b-8646-10cd828d760e"

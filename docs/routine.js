@@ -13,7 +13,7 @@
   const stageWord = k => ({ open: 'Opened', present: 'Presented', close: 'Closed' })[k];
   const DEFAULTS = { gaps: { A: 7, B: 21, C: 42, D: 56 }, target: { A: 1, B: 2, C: 3, D: 3 }, celebrated: '', pushHour: 9, nudge9pm: true };
   const rset = Object.assign({}, DEFAULTS, store.get(KEY_R, {}));
-  const saveSet = () => store.set(KEY_R, rset);
+  const saveSet = () => { const ok = store.set(KEY_R, rset); if (window.syncSoon) window.syncSoon(); return ok; };
   const dayStr = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   const fromStr = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
   const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
@@ -44,7 +44,7 @@
     p.lastTouch = ts.length ? ts[ts.length - 1].date : '';
     if (ts.length) p.platform = ts[ts.length - 1].platform || p.platform;
   }
-  const save = () => { const ok = store.set(KEY_P, prospects); markDirty(); return ok; };
+  const save = () => { const ok = store.set(KEY_P, prospects); markDirty(); if (window.syncSoon) window.syncSoon(); return ok; };
 
   /* ---------- who is due ---------- */
   function due(p) { // days until next chat: 0 or less means talk now; never-contacted prospects are due today
@@ -256,7 +256,7 @@
       </div>
       <div class="row">
         <button class="btn primary grow" type="button" id="reAdd">+ Add prospects</button>
-        <label class="btn" for="reShot">📷 Photo / screenshot</label>
+        <label class="btn" for="reShot">📷 Photos / screenshots (pick several)</label>
         <input type="file" id="reShot" accept="image/*" multiple hidden>
       </div>
       <div id="reShotStatus" style="display:grid;gap:8px"></div>
@@ -685,10 +685,10 @@ Return JSON only: {"rows": [{"name": "", "platform": ""}], "note": ""}
     if (!aiReady()) { out.innerHTML = '<div class="notice warn">Reading photos needs team AI. Open the team link and sign in, or type the names instead.</div>'; return; }
     if (!(await ask('Read names from this photo?', `${files.length} image${files.length === 1 ? '' : 's'} will be sent to the AI. Only names are read, never phone numbers or messages. You check the list before anything is saved.`, 'Read names'))) return;
     const names = [], plats = [], msgs = [];
-    for (let i = 0; i < files.length; i++) {
-      out.innerHTML = `<div class="notice ok">Reading image ${i + 1} of ${files.length}…</div>`;
+    let done = 0; const tick = () => { out.innerHTML = `<div class="notice ok">Reading ${files.length} image${files.length === 1 ? '' : 's'}, 3 at a time… ${done} done</div>`; }; tick();
+    await inPool(files, 3, async (file, i) => { // several at once; each image's names are added as it finishes
       try {
-        const image = await downscale(files[i]);
+        const image = await downscale(file);
         let j;
         if (team) { try { j = await callJson('api/scan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image, kind: 'prospects' }) }, 'team', 120000); } finally { loadTeam(); } }
         else j = await callJson('https://api.openai.com/v1/chat/completions', { method: 'POST', headers: { Authorization: 'Bearer ' + settings.apiKey, 'Content-Type': 'application/json' },
@@ -697,7 +697,9 @@ Return JSON only: {"rows": [{"name": "", "platform": ""}], "note": ""}
         (r.rows || []).forEach(x => { const n = String(x.name || '').trim(); if (n) { names.push(n); if (x.platform) plats.push(x.platform); } });
         msgs.push(['ok', `Image ${i + 1}: ${(r.rows || []).length} name${(r.rows || []).length === 1 ? '' : 's'} found.${r.note ? ' ' + r.note : ''}`]);
       } catch (err) { msgs.push(['bad', `Image ${i + 1}: ${err.message || 'could not be read.'}`]); }
-    }
+      finally { done++; tick(); }
+    });
+    msgs.sort((a, b) => (+(a[1].match(/\d+/) || [0])[0]) - (+(b[1].match(/\d+/) || [0])[0]));
     out.innerHTML = msgs.map(([k, m]) => `<div class="notice ${k}">${esc(m)}</div>`).join('');
     if (names.length) {
       const top = plats.sort((a, b) => plats.filter(x => x === b).length - plats.filter(x => x === a).length)[0];
@@ -730,7 +732,7 @@ Return JSON only: {"rows": [{"name": "", "platform": ""}], "note": ""}
     // customers with reminders on, whose coming birthday / anniversary hasn't been wished or skipped yet
     const undecided = (c, o, d) => typeof doneFor !== 'function' || !doneFor(c, o, d.getFullYear());
     (typeof customers !== 'undefined' ? customers : []).filter(c => !c.sample && !c.noRemind).forEach(c => {
-      const nb = nextBirthday(c.dob), na = nextAnniversary(c.policyDate);
+      const nb = nextBirthday(c.dob), na = (c.category || 'client') === 'client' ? nextAnniversary(c.policyDate) : null;
       if (nb && undecided(c, 'birthday', nb.date)) { const k = dayStr(nb.date).slice(5); occ[k] = occ[k] || { b: 0, a: 0 }; occ[k].b++; }
       if (na && undecided(c, 'anniversary', na.date)) { const k = dayStr(na.date).slice(5); occ[k] = occ[k] || { b: 0, a: 0 }; occ[k].a++; }
     });
@@ -842,7 +844,9 @@ Return JSON only: {"rows": [{"name": "", "platform": ""}], "note": ""}
   // for the customer form: this customer's 定联 record, if they're also a prospect
   window.routineFor = c => { const k = [nk(c.fullName), nk(c.nickname)].filter(Boolean); const p = prospects.find(x => k.includes(nk(x.name))); return p ? { id: p.id, name: p.name, group: p.group, lastTouch: p.lastTouch } : null; };
   window.openProspectById = id => { if (typeof show === 'function') show('routine'); setTimeout(() => openProspect(id), 50); };
-  window.routineMarkDirty = () => markDirty(); // customer birthdays/anniversaries feed the pop-up counts too
+  window.routineMarkDirty = () => markDirty();
+  // cloud sync brought changes from another device: read them again and redraw
+  window.routineReload = () => { prospects = store.get(KEY_P, []) || []; Object.assign(rset, DEFAULTS, store.get(KEY_R, {})); if (!$('#view-routine').hidden) render(); if (typeof updateRoutineCount === 'function') updateRoutineCount(); }; // customer birthdays/anniversaries feed the pop-up counts too
   /* pop-ups open #routine; other REDEFINE apps (e.g. On Field) open #routine?find=<name> to jump to that person:
      one exact name match opens their sheet (Open / Present / Close, remark); otherwise the search shows matches or "+ Add" */
   function fromLink() {
