@@ -206,6 +206,12 @@ code { font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border
       <p class="lede">Birthdays and policy anniversaries, soonest first. Each card holds what the customer cares about, so every message sounds like you remembered.</p>
     </div>
     <div class="re-tabs" id="custTabs" role="tablist"><button type="button" data-cm="soon">Coming up</button><button type="button" data-cm="all">All customers</button></div>
+    <div class="seg" id="occView" role="radiogroup" aria-label="Show">
+      <input type="radio" name="occv" id="occv-both" value="both"><label for="occv-both">🎂 + 🤝 Both</label>
+      <input type="radio" name="occv" id="occv-birthday" value="birthday"><label for="occv-birthday">🎂 Birthdays only</label>
+      <input type="radio" name="occv" id="occv-anniversary" value="anniversary"><label for="occv-anniversary">🤝 Anniversaries only</label>
+    </div>
+    <div id="pushPanel"></div>
     <div id="dupeBox"></div>
     <div class="panel" id="monthPanel"></div>
 
@@ -234,7 +240,7 @@ code { font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border
       <div class="chipset" id="custCats"></div>
       <div class="two">
         <label class="mini-label">Sort<select id="custSort"><option value="soon">Next occasion first</option><option value="az">Name A–Z</option><option value="month">Birthday Jan–Dec</option></select></label>
-        <label class="mini-label">Birth month<select id="custMonth"><option value="">Any month</option></select></label>
+        <label class="mini-label">Month<select id="custMonth"><option value="">Any month</option></select></label>
       </div>
       <div class="chipset" id="custFilters"></div>
       <div id="custList" style="display:grid;gap:8px"></div>
@@ -778,7 +784,11 @@ function renderDupes() {
     saveCustomers(); renderCustomers(); toast('Duplicates merged');
   };
 }
-let custQ = '', custF = 'all', custShown = 20, custMode = 'soon', custCat = 'all', custSort = 'soon', custMonth = ''; // Coming up (daily view) or All customers (full list)
+let custQ = '', custF = 'all', custShown = 20, custMode = 'soon', custCat = 'all', custSort = 'soon', custMonth = '';
+// what the Clients tab shows: birthdays, policy anniversaries, or both (remembered on this device)
+let occView = ['birthday', 'anniversary'].includes(settings.occView) ? settings.occView : 'both';
+const showOcc = occ => occView === 'both' || occView === occ;
+const occsOf = c => nextOccasions(c).filter(o => showOcc(o.occ)); // Coming up (daily view) or All customers (full list)
 const CUST_FILTERS = [['all', 'All'], ['30', 'Next 30 days'], ['month', 'This month'], ['open', 'Not wished yet'], ['off', '🔕 Reminders off']];
 function renderBackupAge() {
   if (window.syncState) window.syncState();
@@ -788,6 +798,8 @@ function renderBackupAge() {
   el.style.color = days == null || days > 30 ? 'var(--warn)' : '';
 }
 function renderCustomers() {
+  const v = document.querySelector(`#occv-${occView}`); if (v) v.checked = true;
+  renderPushPanel();
   renderMonth(); renderDupes(); renderBackupAge();
   const list = $('#custList'), real = customers.filter(c => !c.sample).length;
   $('#custTabs').querySelectorAll('[data-cm]').forEach(b => {
@@ -807,8 +819,9 @@ function renderCustomers() {
   $('#custFilters').querySelectorAll('[data-cf]').forEach(b => b.onclick = () => { custF = b.dataset.cf; custShown = 20; renderCustomers(); });
   if (!customers.length) { list.innerHTML = '<div class="empty">No clients yet. Use <b>Import from ePartner</b> on Coming up, or add one below.</div>'; $('#custMore').hidden = true; return; }
   const q = custQ.trim().toUpperCase(), m = today0().getMonth();
-  const rows = customers.map(c => { const occ = nextOccasions(c); return { c, occ, next: occ.slice().sort((a, b) => a.days - b.days)[0] }; })
-    .filter(({ c }) => (custCat === 'all' || ctype(c) === custCat) && (!custMonth || (parseDob(c.dob) || {}).mo === +custMonth))
+  const rows = customers.map(c => { const occ = occsOf(c); return { c, occ, next: occ.slice().sort((a, b) => a.days - b.days)[0] }; })
+    .filter(({ c, occ }) => occView === 'both' || occ.length) // anniversaries only: people with a policy date; birthdays only: people with a birthday
+    .filter(({ c }) => (custCat === 'all' || ctype(c) === custCat) && (!custMonth || (monthDate(c) || {}).mo === +custMonth))
     .filter(({ c, occ }) => (!q || (c.nickname + ' ' + (c.fullName || '') + ' ' + (c.priorities || []).join(' ') + ' ' + (c.notes || '') + ' ' + (c.via || '')).toUpperCase().includes(q))
       && (custF === 'all' || (custF === '30' && occ.some(o => o.days <= 30)) || (custF === 'month' && occ.some(o => o.date.getMonth() === m && o.days <= 31))
         || (custF === 'open' && !c.noRemind && occ.some(o => o.days <= 30 && !o.done)) || (custF === 'off' && c.noRemind)))
@@ -817,10 +830,10 @@ function renderCustomers() {
       : (a, b) => (a.next ? a.next.days : 9999) - (b.next ? b.next.days : 9999));
   const inDays = n => n === 0 ? 'today' : `in ${n}d`;
   let lastMonth = null; // month headings when sorted by birthday
-  const heading = c => { if (custSort !== 'month') return ''; const p = parseDob(c.dob), m = p ? p.mo : 0; if (m === lastMonth) return ''; lastMonth = m;
-    return `<div class="cmonth">${m ? MONTH_NAMES[m - 1] : 'No birthday saved'}</div>`; };
+  const heading = c => { if (custSort !== 'month') return ''; const p = monthDate(c), m = p ? p.mo : 0; if (m === lastMonth) return ''; lastMonth = m;
+    return `<div class="cmonth">${m ? MONTH_NAMES[m - 1] : occView === 'anniversary' ? 'No policy date' : 'No birthday saved'}</div>`; };
   list.innerHTML = rows.length ? '<div class="clist">' + rows.slice(0, custShown).map(({ c, occ, next }) => { // one compact line per contact
-    const bd = parseDob(c.dob);
+    const bd = monthDate(c);
     const when = custSort === 'month' ? (bd ? `${bd.d} ${MONTHS[bd.mo - 1]}` : '–') : !next ? '–' : next.days === 0 ? 'Today' : `${next.date.getDate()} ${MONTHS[next.date.getMonth()]}`;
     const line = occ.map(o => `${o.occ === 'birthday' ? '🎂' : '🤝'} ${o.days === 0 ? 'today' : `${o.days}d`}${o.done === 'sent' ? ' ✓' : o.done === 'skipped' ? ' –' : ''}`).join(' · ') || (c.dob ? 'Birthday needs fixing' : 'No birthday saved');
     return heading(c) + `<div class="crow">
@@ -836,7 +849,13 @@ function renderCustomers() {
   if (!renderCustomers.opened) { renderCustomers.opened = true; $('#importPanel').open = real === 0; } // import folds away once you have customers
 }
 $('#custQ').oninput = e => { custQ = e.target.value; custShown = 20; renderCustomers(); };
-const bdKey = c => { const p = parseDob(c.dob); return p ? p.mo * 100 + p.d : 9999; }; // Jan 1 first, no birthday last
+// the date a month sort / month filter uses: the policy start date when showing anniversaries only, otherwise the birthday
+const monthDate = c => occView === 'anniversary' ? (isClient(c) ? parseDob(c.policyDate) : null) : parseDob(c.dob);
+const bdKey = c => { const p = monthDate(c); return p ? p.mo * 100 + p.d : 9999; }; // Jan 1 first, none last
+document.querySelectorAll('input[name="occv"]').forEach(r => r.onchange = () => {
+  occView = r.value; settings.occView = occView; store.set(KEY_S, settings); custShown = 20; renderCustomers();
+  const so = $('#custSort').options[2]; if (so) so.textContent = occView === 'anniversary' ? 'Anniversary Jan–Dec' : 'Birthday Jan–Dec';
+});
 $('#custMonth').innerHTML += ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'].map((m, i) => `<option value="${i + 1}">${m}</option>`).join('');
 $('#custSort').onchange = e => { custSort = e.target.value; custShown = 20; renderCustomers(); };
 $('#custMonth').onchange = e => { custMonth = e.target.value; custShown = 20; renderCustomers(); };
@@ -1009,28 +1028,50 @@ function renderMonth() {
       ${done === 'sent' ? '<span class="chip ok">✓</span>' : done === 'skipped' ? '<span class="chip">Skipped</span>' : `<button class="btn small" data-make="${o.c.id}" data-occ="${o.occ}">${o.occ === 'birthday' ? 'Wish' : 'Thank'}</button>`}</li>`;
     }).join('')}</ul></details>`;
   };
+  const nb = next.filter(o => o.occ === 'birthday').length, na = next.filter(o => o.occ === 'anniversary').length;
   $('#monthPanel').innerHTML = `<h2>Next 7 days</h2>
-    ${soonBox('birthday', '🎂 Birthdays', 'none in the next 7 days.')}
-    ${soonBox('anniversary', '🤝 Policy anniversaries (clients)', 'none in the next 7 days.')}
+    ${showOcc('birthday') ? soonBox('birthday', '🎂 Birthdays', 'none in the next 7 days.') : ''}
+    ${showOcc('anniversary') ? soonBox('anniversary', '🤝 Policy anniversaries (clients)', 'none in the next 7 days.') : ''}
     <div class="row" style="justify-content:space-between"><h2>This month: ${MONTH_NAMES[m]}</h2>
-      <span class="chip gold">${list.filter(o => o.occ === 'birthday').length} 🎂 · ${list.filter(o => o.occ === 'anniversary').length} 🤝</span></div>
-    ${monthBox('birthday', '🎂 Birthdays this month', 'none this month.')}
-    ${monthBox('anniversary', '🤝 Policy anniversaries this month', 'none this month.')}
-    <p class="hint" style="margin:0">Next month (${MONTH_NAMES[nm]}): ${next.filter(o => o.occ === 'birthday').length} birthday${next.filter(o => o.occ === 'birthday').length === 1 ? '' : 's'}, ${next.filter(o => o.occ === 'anniversary').length} policy anniversar${next.filter(o => o.occ === 'anniversary').length === 1 ? 'y' : 'ies'}.</p>
+      <span class="chip gold">${[showOcc('birthday') ? `${list.filter(o => o.occ === 'birthday').length} 🎂` : '', showOcc('anniversary') ? `${list.filter(o => o.occ === 'anniversary').length} 🤝` : ''].filter(Boolean).join(' · ')}</span></div>
+    ${showOcc('birthday') ? monthBox('birthday', '🎂 Birthdays this month', 'none this month.') : ''}
+    ${showOcc('anniversary') ? monthBox('anniversary', '🤝 Policy anniversaries this month', 'none this month.') : ''}
+    <p class="hint" style="margin:0">Next month (${MONTH_NAMES[nm]}): ${[showOcc('birthday') ? `${nb} birthday${nb === 1 ? '' : 's'}` : '', showOcc('anniversary') ? `${na} policy anniversar${na === 1 ? 'y' : 'ies'}` : ''].filter(Boolean).join(', ')}.</p>
     <button class="btn" type="button" id="viewAllCust">📋 View all ${customers.length} clients</button>
     <div class="row">
       <button class="btn small primary" type="button" id="calNewBtn" ${fresh ? '' : 'disabled'}>📅 Add ${fresh ? fresh : 'new'} customer${fresh === 1 ? '' : 's'} to my calendar</button>
       <button class="btn small" type="button" id="calAllBtn">Full calendar + monthly summaries</button>
     </div>
     <p class="hint" style="margin:0">Your phone calendar then reminds you 3 days before and at 9am on the day, every year. ${fresh ? `${fresh} customer${fresh === 1 ? ' is' : 's are'} not in your calendar yet.` : 'Everyone is in your calendar.'}</p>
-    ${team ? (store.get('remembered.pushToken', '') && 'Notification' in window && Notification.permission === 'granted'
-      ? '<p class="hint" style="margin:0">🔔 Pop-ups are on: you get a pop-up on the day of each birthday and anniversary, and the day before.</p>'
-      : '<button class="btn small" type="button" id="occPushBtn">🔔 Get pop-ups for birthdays and anniversaries</button>') : ''}`;
+`;
   wireOccActions($('#monthPanel'));
   $('#viewAllCust').onclick = () => { custMode = 'all'; renderCustomers(); $('main').scrollTo({ top: 0 }); };
   $('#calNewBtn').onclick = () => exportCalendar(false);
-  if ($('#occPushBtn')) $('#occPushBtn').onclick = () => { show('routine'); setTimeout(() => { const b = $('#rePush'); if (b) b.scrollIntoView({ behavior: 'smooth', block: 'center' }); }, 150); };
   $('#calAllBtn').onclick = () => exportCalendar(true);
+}
+/* lock-screen pop-ups (like WhatsApp), switched on and set up right here; the 定联 tab uses the same switch */
+const REMIND = { both: '🎂 + 🤝 Both', birthday: '🎂 Birthdays', anniversary: '🤝 Anniversaries' };
+function renderPushPanel() {
+  const box = $('#pushPanel'), api = window.pushApi; if (!box) return;
+  if (!team || !api) { box.innerHTML = ''; return; }
+  const on = api.on(), ro = REMIND[settings.remindOcc] ? settings.remindOcc : 'both';
+  const hours = Array.from({ length: 15 }, (_, i) => i + 7), label = h => `${h <= 12 ? h : h - 12}${h < 12 ? 'am' : 'pm'}`;
+  const controls = `<div class="two">
+      <label class="mini-label">Pop-up time<select id="ppHour">${hours.map(h => `<option value="${h}" ${h === api.hour() ? 'selected' : ''}>${label(h)}</option>`).join('')}</select></label>
+      <label class="mini-label">Remind me about<select id="ppWhat">${Object.entries(REMIND).map(([k, l]) => `<option value="${k}" ${k === ro ? 'selected' : ''}>${l}</option>`).join('')}</select></label></div>`;
+  if (!api.can()) box.innerHTML = `<div class="notice warn"><b>🔕 Lock-screen pop-ups are off</b><span>${api.ios() ? 'On iPhone: tap Share → <b>Add to Home Screen</b>, open the app from the new icon, then come back here to turn pop-ups on (iPhone 16.4 or newer).' : 'This browser can’t show pop-ups. Use Chrome on Android, or the Home Screen app on iPhone.'}</span></div>`;
+  else if (!on) box.innerHTML = `<div class="notice warn" style="gap:8px"><b>🔕 Lock-screen pop-ups are off on this phone</b>
+      <span>Turn them on to get a WhatsApp-style pop-up, even when your phone is locked: the day before and on the day of each client’s birthday and policy anniversary.</span>
+      ${controls}<button class="btn primary" type="button" id="ppOn">🔔 Turn on pop-ups</button></div>`;
+  else box.innerHTML = `<details class="panel" style="padding:10px 14px"><summary><b>🔔 Pop-ups on</b> <span class="hint">· ${label(api.hour())} · ${REMIND[ro]}</span></summary>
+      <div style="display:grid;gap:8px;margin-top:8px">${controls}
+      <div class="row"><button class="btn small" type="button" id="ppSave">Save</button><button class="btn small" type="button" id="ppTest">Test in 15 s (lock your phone)</button><button class="btn small ghost" type="button" id="ppOff">Turn off</button></div>
+      <p class="hint" style="margin:0">The pop-up shows how many, never names. Open it to wish or skip.</p></div></details>`;
+  const pick = () => { const h = Number($('#ppHour').value), w = $('#ppWhat').value; settings.remindOcc = w; store.set(KEY_S, settings); return h; };
+  if ($('#ppOn')) $('#ppOn').onclick = async () => { await api.enable(pick()); renderPushPanel(); };
+  if ($('#ppSave')) $('#ppSave').onclick = async () => { await api.save(pick()); renderPushPanel(); };
+  if ($('#ppTest')) $('#ppTest').onclick = () => api.test();
+  if ($('#ppOff')) $('#ppOff').onclick = async () => { await api.off(); renderPushPanel(); };
 }
 const calSig = c => `${c.nickname}|${c.dob}|${c.policyDate || ''}`; // what the calendar entries were made from
 const icsEsc = s => String(s).replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\n/g, '\\n');
@@ -2850,7 +2891,7 @@ $('#sentBtn').onclick = async () => {
 
 /* ---------- boot ---------- */
 loadSettingsForm(); renderCustomers();
-loadTeam().then(() => { if (!$('#view-create').hidden) renderSummary(); });
+loadTeam().then(() => { if (!$('#view-create').hidden) renderSummary(); renderPushPanel(); });
 (async () => { // draw a preview of the next birthday straight away so the app never opens empty
   renderCreate(); const c = current(); if (!c) return;
   lastWords = templateWords(c); await render();

@@ -747,8 +747,9 @@ Return JSON only: {"rows": [{"name": "", "platform": ""}], "note": ""}
     const undecided = (c, o, d) => typeof doneFor !== 'function' || !doneFor(c, o, d.getFullYear());
     (typeof customers !== 'undefined' ? customers : []).filter(c => !c.sample && !c.noRemind).forEach(c => {
       const nb = nextBirthday(c.dob), na = (c.category || 'client') === 'client' ? nextAnniversary(c.policyDate) : null;
-      if (nb && undecided(c, 'birthday', nb.date)) { const k = dayStr(nb.date).slice(5); occ[k] = occ[k] || { b: 0, a: 0 }; occ[k].b++; }
-      if (na && undecided(c, 'anniversary', na.date)) { const k = dayStr(na.date).slice(5); occ[k] = occ[k] || { b: 0, a: 0 }; occ[k].a++; }
+      const ro = (typeof settings !== 'undefined' && settings.remindOcc) || 'both';
+      if (nb && ro !== 'anniversary' && undecided(c, 'birthday', nb.date)) { const k = dayStr(nb.date).slice(5); occ[k] = occ[k] || { b: 0, a: 0 }; occ[k].b++; }
+      if (na && ro !== 'birthday' && undecided(c, 'anniversary', na.date)) { const k = dayStr(na.date).slice(5); occ[k] = occ[k] || { b: 0, a: 0 }; occ[k].a++; }
     });
     return { day: todayStr(), dueBy, occ, doneToday: doneTotalOf(plan), targetToday: targetTotalOf(plan) };
   }
@@ -824,6 +825,21 @@ Return JSON only: {"rows": [{"name": "", "platform": ""}], "note": ""}
     };
     $('#reCal').onclick = dailyReminder;
   }
+  // the same switch, for the Clients tab
+  window.pushApi = {
+    on: pushOn, hour: () => rset.pushHour,
+    can: () => 'Notification' in window && 'serviceWorker' in navigator,
+    ios: () => isIOS && !standalone,
+    enable: async hour => { rset.pushHour = hour; saveSet(); await enablePush({ hour, nudge: rset.nudge9pm }); },
+    save: async hour => { rset.pushHour = hour; saveSet(); dirty = true; await sync();
+      try { await callJson('api/push-reg', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: store.get('remembered.pushToken', ''), hour, nudge: rset.nudge9pm }) }, 'team', 20000); toast('Pop-up settings saved'); } catch (e) { toast(e.message); } },
+    test: async () => { dirty = true; await sync(); try { await callJson('api/push-test', { method: 'POST' }, 'team', 30000); toast('Test pop-up coming in about 15 seconds. Lock your phone now.'); } catch (e) { toast(e.message); } },
+    off: async () => {
+      if (!(await ask('Turn off pop-ups on this phone?', 'You can turn them on again any time.', 'Turn off'))) return;
+      try { await callJson('api/push-off', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: store.get('remembered.pushToken', '') }) }, 'team', 20000); } catch {}
+      store.set('remembered.pushToken', ''); renderPush();
+    }
+  };
   async function enablePush(prefs) {
     try {
       const perm = await Notification.requestPermission();
